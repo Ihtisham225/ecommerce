@@ -21,6 +21,13 @@ return new class extends Migration
             $table->string('zip')->nullable();
             $table->string('address_line_1');
             $table->string('address_line_2')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('company')->nullable();
+            $table->decimal('latitude', 10, 6)->nullable();
+            $table->decimal('longitude', 10, 6)->nullable();
+            $table->string('tax_number')->nullable();
+            $table->boolean('is_default')->default(false);
+
             $table->timestamps();
         });
     }

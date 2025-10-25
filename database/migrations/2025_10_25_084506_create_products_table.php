@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             // Basic info
-            $table->json('title')->nullable(); // {"en": "T-Shirt", "ur": "قمیض"}
-            $table->json('description')->nullable();
+            $table->string('title')->nullable(); // {"en": "T-Shirt", "ur": "قمیض"}
+            $table->text('description')->nullable();
 
             // SKU and type
             $table->string('sku')->unique();

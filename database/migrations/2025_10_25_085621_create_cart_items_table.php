@@ -12,12 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('cart_items', function (Blueprint $table) {
-            $table->id();
+           $table->id();
             $table->foreignId('cart_id')->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('product_variant_id')->nullable()->constrained()->nullOnDelete();
-            $table->integer('quantity')->default(1);
+
+            $table->string('sku')->nullable();
+            $table->string('title');
+            $table->integer('qty')->default(1);
+
             $table->decimal('price', 15, 3);
+            $table->decimal('total', 15, 3)->default(0);
+
             $table->timestamps();
         });
     }

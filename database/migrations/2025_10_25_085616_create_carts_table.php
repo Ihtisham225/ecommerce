@@ -15,8 +15,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
             $table->string('session_id')->nullable();
-            $table->decimal('total', 15, 3)->default(0);
+            $table->string('currency', 10)->default('USD');
+
+            $table->decimal('subtotal', 15, 3)->default(0);
+            $table->decimal('discount_total', 15, 3)->default(0);
+            $table->decimal('tax_total', 15, 3)->default(0);
+            $table->decimal('grand_total', 15, 3)->default(0);
+
+            $table->softDeletes();
             $table->timestamps();
+
+            $table->index(['customer_id', 'session_id']); // performance boost
         });
     }
 

@@ -52,19 +52,9 @@ class User extends Authenticatable
     }
 
     // Relationships
-    public function registrations(): HasMany
+    public function customer()
     {
-        return $this->hasMany(CourseRegistration::class);
-    }
-
-    public function blogs(): HasMany
-    {
-        return $this->hasMany(Blog::class, 'author_id');
-    }
-
-    public function blogComments(): HasMany
-    {
-        return $this->hasMany(BlogComment::class, 'user_id');
+        return $this->hasOne(Customer::class);
     }
 
     // Scopes

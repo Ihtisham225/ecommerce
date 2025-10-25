@@ -69,4 +69,9 @@ class Document extends Model
     {
         return \Storage::disk($this->disk)->url($this->path);
     }
+
+    public function scopeType($q, $type)
+    {
+        return $q->where('document_type', $type);
+    }
 }

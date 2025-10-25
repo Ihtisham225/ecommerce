@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('collections', function (Blueprint $table) {
             $table->id();
-            $table->json('title');
-            $table->json('description')->nullable();
+            $table->string('title');
+            $table->text('description')->nullable();
             $table->string('slug')->unique();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

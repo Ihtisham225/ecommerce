@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->json('name'); // {"en": "Electronics", "ar": "الكترونيات"}
-            $table->json('slug'); // {"en": "electronics"}
+            $table->string('name'); // {"en": "Electronics", "ar": "الكترونيات"}
+            $table->string('slug'); // {"en": "electronics"}
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->integer('position')->default(0);
             $table->boolean('is_active')->default(true);
