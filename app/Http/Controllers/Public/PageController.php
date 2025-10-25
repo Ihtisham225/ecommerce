@@ -33,29 +33,7 @@ class PageController extends Controller
             }
         }
 
-        // Get menu items from database
-        $menuItems = MenuItem::with('children')
-            ->whereNull('parent_id')
-            ->where('is_published', true)
-            ->orderBy('order')
-            ->get()
-            ->toArray();
-        
-        $countries = Country::all();
-        $sponsors = Sponsor::all();
-        $blogs = Blog::latest()->take(10)->get();
-        $courses = Course::latest()->take(10)->get();
-            
-        // Get welcome section data from site settings
-        $welcomeData = [
-            'title' => SiteSetting::getValue('welcome_title', 'Welcome'),
-            'description' => SiteSetting::getValue('welcome_description', 'Develop your skills by keeping up with the latest training techniques!'),
-            'ctaText' => SiteSetting::getValue('welcome_cta_text', 'Check now'),
-            'ctaLink' => SiteSetting::getValue('welcome_cta_link', '/courses'),
-            'backgroundImage' => SiteSetting::getValue('welcome_background_image'),
-        ];
-        
-        return view('public.welcome', compact('menuItems', 'welcomeData', 'countries', 'sponsors', 'blogs', 'courses'));
+        return view('public.welcome');
     }
     
     public function show(Page $page)
