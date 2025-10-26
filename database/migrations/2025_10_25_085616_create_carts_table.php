@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
             $table->string('session_id')->nullable();
-            $table->foreign('currency_id')->references('id')->on('currencies');
-            
+            $table->foreignId('currency_id')->references('id')->on('currencies');
+
             $table->decimal('subtotal', 15, 3)->default(0);
             $table->decimal('discount_total', 15, 3)->default(0);
             $table->decimal('tax_total', 15, 3)->default(0);

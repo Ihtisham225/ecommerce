@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('exchange_rates', function (Blueprint $table) {
             $table->id();
-            $table->foreign('base_currency_id')->references('id')->on('currencies');
-            $table->foreign('target_currency_id')->references('id')->on('currencies');
+            $table->foreignId('base_currency_id')->references('id')->on('currencies');
+            $table->foreignId('target_currency_id')->references('id')->on('currencies');
             $table->string('target_currency', 3);
             $table->decimal('rate', 15, 6);
             $table->timestamp('last_updated_at')->nullable();
