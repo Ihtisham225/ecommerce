@@ -10,7 +10,7 @@ class Order extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'order_number', 'customer_id', 'status', 'currency',
+        'order_number', 'customer_id', 'status', 'currency_id',
         'subtotal', 'discount_total', 'tax_total',
         'shipping_total', 'grand_total',
         'payment_status', 'shipping_status',
@@ -23,6 +23,7 @@ class Order extends Model
         'tax_total' => 'decimal:3',
         'shipping_total' => 'decimal:3',
         'grand_total' => 'decimal:3',
+        'currency_id' => 'integer',
     ];
 
     /** Relations */
@@ -55,5 +56,10 @@ class Order extends Model
     public function scopePaid($q)
     {
         return $q->where('payment_status', 'paid');
+    }
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 }

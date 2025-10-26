@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('tax', 15, 3)->default(0);
             $table->decimal('shipping', 15, 3)->default(0);
             $table->decimal('total', 15, 3)->default(0);
-            $table->string('currency_code', 3)->default('USD');
+            $table->foreign('currency_id')->references('id')->on('currencies');
             $table->enum('status', ['pending', 'processing', 'shipped', 'completed', 'cancelled'])->default('pending');
             $table->foreignId('shipping_rate_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();
