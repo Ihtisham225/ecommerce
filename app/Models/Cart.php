@@ -12,7 +12,7 @@ class Cart extends Model
     protected $fillable = [
         'customer_id',
         'session_id',
-        'currency',
+        'currency_id',
         'subtotal',
         'discount_total',
         'tax_total',
@@ -24,6 +24,7 @@ class Cart extends Model
         'discount_total' => 'decimal:3',
         'tax_total' => 'decimal:3',
         'grand_total' => 'decimal:3',
+        'currency_id' => 'integer',
     ];
 
     public function items()
@@ -34,6 +35,11 @@ class Cart extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 }
 
