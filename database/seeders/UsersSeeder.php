@@ -21,7 +21,7 @@ class UsersSeeder extends Seeder
             [
                 'name' => 'Admin User',
                 'password' => Hash::make('system@123'), // ⚠️ change this in production
-                'password' => 'system@123',
+                'user_password' => 'system@123',
                 'email_verified_at' => Carbon::now(),
             ]
         );
@@ -33,7 +33,7 @@ class UsersSeeder extends Seeder
             [
                 'name' => 'Staff User',
                 'password' => Hash::make('system@123'),
-                'password' => 'system@123',
+                'user_password' => 'system@123',
                 'email_verified_at' => Carbon::now(),
             ]
         );
@@ -45,7 +45,7 @@ class UsersSeeder extends Seeder
             [
                 'name' => 'Customer User',
                 'password' => Hash::make('system@123'),
-                'password' => 'system@123',
+                'user_password' => 'system@123',
                 'email_verified_at' => Carbon::now(),
             ]
         );
