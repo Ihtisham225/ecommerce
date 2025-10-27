@@ -42,7 +42,6 @@ return new class extends Migration
             $table->text('meta_description')->nullable();
 
             // Associations
-            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('brand_id')->nullable()->constrained()->nullOnDelete();
 
             // Platform Integration

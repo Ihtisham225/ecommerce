@@ -14,7 +14,7 @@ class Product extends Model
         'price', 'compare_at_price', 'stock_quantity',
         'track_stock', 'stock_status', 'is_active', 'is_featured',
         'published_at', 'slug', 'meta_title', 'meta_description',
-        'category_id', 'brand_id', 'external_id', 'platform', 'handle',
+        'brand_id', 'external_id', 'platform', 'handle',
         'raw_data', 'created_by'
     ];
 
@@ -45,6 +45,12 @@ class Product extends Model
 
 
     /** Relations */
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+
     public function categories()
     {
         return $this->belongsToMany(Category::class, 'product_category');
