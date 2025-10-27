@@ -17,10 +17,11 @@ class UsersSeeder extends Seeder
     {
         // Admin User
         $admin = User::firstOrCreate(
-            ['email' => 'admin@infotechkw.co'],
+            ['email' => 'admin@gmail.com'],
             [
                 'name' => 'Admin User',
-                'password' => Hash::make('Infotech@Q8-admin'), // ⚠️ change this in production
+                'password' => Hash::make('system@123'), // ⚠️ change this in production
+                'password' => 'system@123',
                 'email_verified_at' => Carbon::now(),
             ]
         );
@@ -28,10 +29,11 @@ class UsersSeeder extends Seeder
 
         // Staff User
         $staff = User::firstOrCreate(
-            ['email' => 'support@infotechq8.com'],
+            ['email' => 'staff@gmail'],
             [
                 'name' => 'Staff User',
-                'password' => Hash::make('Infotech@Q8-admin'),
+                'password' => Hash::make('system@123'),
+                'password' => 'system@123',
                 'email_verified_at' => Carbon::now(),
             ]
         );
@@ -39,10 +41,11 @@ class UsersSeeder extends Seeder
 
         // Customer User
         $customer = User::firstOrCreate(
-            ['email' => 'uihtisham0@gmail.com'],
+            ['email' => 'customer@gmail.com'],
             [
                 'name' => 'Customer User',
-                'password' => Hash::make('customer-password'),
+                'password' => Hash::make('system@123'),
+                'password' => 'system@123',
                 'email_verified_at' => Carbon::now(),
             ]
         );

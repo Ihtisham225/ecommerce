@@ -17,9 +17,10 @@ class RolesPermissionSeeder extends Seeder
         // Basic permissions
         $perms = [
         'manage users',
-        'manage courses',
+        'manage products',
         'manage pages',
-        'manage files',
+        'manage orders',
+        'manage documents',
         'send newsletters',
         'view admin',
         ];
@@ -34,6 +35,6 @@ class RolesPermissionSeeder extends Seeder
 
         // Grant
         $admin->givePermissionTo($perms);
-        $staff->givePermissionTo(['manage courses','manage pages','manage files','send newsletters','view admin']);
+        $staff->givePermissionTo(['manage users', 'manage products', 'manage pages', 'manage orders','manage documents','send newsletters','view admin']);
     }
 }
