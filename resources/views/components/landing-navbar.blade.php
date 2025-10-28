@@ -30,10 +30,10 @@
                     {{ __("Home") }}
                 </a>
 
-                <!-- Courses -->
-                <a href="{{ route('courses.index') }}" class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 
-                    {{ request()->routeIs('courses.*') ? 'bg-[#1B5388] text-white dark:bg-[#4A90E2]' : 'text-[#1b1b18] dark:text-[#EDEDEC] hover:bg-[#F5F7FA] dark:hover:bg-[#2A2A28]' }}">
-                    {{ __("Courses") }}
+                <!-- Products -->
+                <a href="{{ route('products.index') }}" class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 
+                    {{ request()->routeIs('products.*') ? 'bg-[#1B5388] text-white dark:bg-[#4A90E2]' : 'text-[#1b1b18] dark:text-[#EDEDEC] hover:bg-[#F5F7FA] dark:hover:bg-[#2A2A28]' }}">
+                    {{ __("Products") }}
                 </a>
 
                 <!-- Blogs -->
@@ -179,11 +179,11 @@
                 {{ __("Home") }}
             </a>
             
-            <!-- Courses -->
+            <!-- Products -->
             <div>
-                <a href="{{ route('courses.index') }}" class="block px-3 py-2 rounded-md text-base font-medium transition-colors duration-300 
-                    {{ request()->routeIs('courses.*') ? 'bg-[#1B5388] text-white dark:bg-[#4A90E2]' : 'text-[#1b1b18] dark:text-[#EDEDEC] hover:bg-[#F5F7FA] dark:hover:bg-[#2A2A28]' }}">
-                    {{ __('Courses') }}
+                <a href="{{ route('products.index') }}" class="block px-3 py-2 rounded-md text-base font-medium transition-colors duration-300 
+                    {{ request()->routeIs('products.*') ? 'bg-[#1B5388] text-white dark:bg-[#4A90E2]' : 'text-[#1b1b18] dark:text-[#EDEDEC] hover:bg-[#F5F7FA] dark:hover:bg-[#2A2A28]' }}">
+                    {{ __('Products') }}
                 </a>
             </div>
             

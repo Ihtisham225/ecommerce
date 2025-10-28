@@ -1,8 +1,15 @@
 <?php
 
-use App\Http\Controllers\BlogCategoryController;
-use App\Http\Controllers\BlogCommentController;
-use App\Http\Controllers\BlogController;
+//admin
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\ProductAttributeController as AdminProductAttributeController;
+use App\Http\Controllers\Admin\ProductMediaController as AdminProductMediaController;
+use App\Http\Controllers\Admin\ProductMetaController as AdminProductMetaController;
+use App\Http\Controllers\Admin\ProductPricingRuleController as AdminProductPricingRuleController;
+use App\Http\Controllers\Admin\ProductRelationController as AdminProductRelationController;
+use App\Http\Controllers\Admin\ProductVariantController as AdminProductVariantController;
+
+
 use App\Http\Controllers\Admin\BlogController as AdminBlogController;
 use App\Http\Controllers\Admin\BlogCategoryController as AdminBlogCategoryController;
 use App\Http\Controllers\Admin\BlogCommentController as AdminBlogCommentController;
@@ -16,9 +23,6 @@ use App\Http\Controllers\CountryController;
 use App\Http\Controllers\Admin\CountryController as AdminCountryController;
 use App\Http\Controllers\Public\CourseController as PublicCourseController;
 use App\Http\Controllers\Public\CourseCategoryController as PublicCourseCategoryController;
-use App\Http\Controllers\Admin\CourseController as AdminCourseController;
-use App\Http\Controllers\Admin\CourseRegistrationController as AdminCourseRegistrationController;
-use App\Http\Controllers\Admin\CompanyRegistrationController as AdminCompanyRegistrationController;
 use App\Http\Controllers\Public\CourseRegistrationController as PublicCourseRegistrationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
@@ -27,15 +31,11 @@ use App\Http\Controllers\Public\GalleryController as PublicGalleryController;
 use App\Http\Controllers\Public\PageController as PublicPageController;
 use App\Http\Controllers\Public\GlobalSearchController as PublicSearchController;
 use App\Http\Controllers\Admin\GlobalSearchController as AdminSearchController;
-use App\Http\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Public\ContactController as PublicConatactController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SponsorController;
 use App\Http\Controllers\Admin\SponsorController as AdminSponsorController;
 use App\Http\Controllers\Public\CourseEvaluationController as PublicCourseEvaluationController;
-use App\Http\Controllers\Admin\CourseEvaluationController as AdminCourseEvaluationController;
-use App\Http\Controllers\Admin\CourseEvaluationQuestionController as AdminCourseEvaluationQuestionController;
-use App\Http\Controllers\Admin\CourseEvaluationExportController as AdminCourseEvaluationExportController;
 use App\Http\Controllers\SubscriberController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use Illuminate\Support\Facades\Route;
@@ -56,14 +56,47 @@ Route::get('/', [PublicPageController::class, 'welcome'])->name('home');
 //     return view('public/welcome');
 // })->name('home');
 
-// Courses
-Route::get('/courses', [PublicCourseController::class, 'index'])->name('courses.index');
-Route::get('/courses/schedule', [PublicCourseController::class, 'schedule'])->name('courses.schedule');
-Route::get('/courses/{course:slug}', [PublicCourseController::class, 'show'])->name('courses.show');
 
-// Categories
-Route::get('/categories', [PublicCourseCategoryController::class, 'index'])->name('categories.index');
-Route::get('/categories/{courseCategory:slug}', [PublicCourseCategoryController::class, 'show'])->name('categories.show');
+// ===============================
+// Products Routes Starts
+// ===============================
+
+Route::get('/products', [PublicCourseController::class, 'index'])->name('products.index');
+Route::get('/products/featured', [PublicCourseController::class, 'featured'])->name('products.featured');
+
+// ===============================
+// Products Routes Ends
+// ===============================
+
+// ===============================
+// Category Routes Starts
+// ===============================
+
+Route::get('/categoriers', [PublicCourseController::class, 'index'])->name('categories.index');
+
+// ===============================
+// Category Routes Ends
+// ===============================
+
+// ===============================
+// Brand Routes Starts
+// ===============================
+
+Route::get('/brands', [PublicCourseController::class, 'index'])->name('brands.index');
+
+// ===============================
+// Brand Routes Ends
+// ===============================
+
+// ===============================
+// Collection Routes Starts
+// ===============================
+
+Route::get('/collections', [PublicCourseController::class, 'index'])->name('collections.index');
+
+// ===============================
+// Collection Routes Ends
+// ===============================
 
 // ===============================
 // COURSE SCHEDULE REGISTRATION
@@ -173,8 +206,60 @@ Route::get('/language/{locale}', function ($locale) {
 */
 Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->name('admin.')->group(function () {
 
-    // Courses
-    Route::resource('courses', AdminCourseController::class);
+    // -------------------------
+    // ✅ Products CRUD
+    // -------------------------
+    Route::resource('products', AdminProductController::class);
+    Route::post('products/{product}/autosave', [AdminProductController::class, 'autosave'])->name('products.autosave');
+    Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
+    Route::post('products/bulk-action', [AdminProductController::class, 'bulkAction'])->name('products.bulk');
+
+
+    // -------------------------
+    // ✅ Product Variants
+    // -------------------------
+    Route::get('products/{product}/variants', [AdminProductVariantController::class, 'index'])->name('products.variants.index');
+    Route::post('products/{product}/variants', [AdminProductVariantController::class, 'store'])->name('products.variants.store');
+    Route::put('products/{product}/variants/{variant}', [AdminProductVariantController::class, 'update'])->name('products.variants.update');
+    Route::delete('products/{product}/variants/{variant}', [AdminProductVariantController::class, 'destroy'])->name('products.variants.destroy');
+
+    // -------------------------
+    // ✅ Product Attributes
+    // -------------------------
+    Route::get('products/{product}/attributes', [AdminProductAttributeController::class, 'index'])->name('products.attributes.index');
+    Route::post('products/{product}/attributes', [AdminProductAttributeController::class, 'store'])->name('products.attributes.store');
+    Route::put('products/{product}/attributes/{attribute}', [AdminProductAttributeController::class, 'update'])->name('products.attributes.update');
+    Route::delete('products/{product}/attributes/{attribute}', [AdminProductAttributeController::class, 'destroy'])->name('products.attributes.destroy');
+
+    // -------------------------
+    // ✅ Product Meta
+    // -------------------------
+    Route::get('products/{product}/meta', [AdminProductMetaController::class, 'index'])->name('products.meta.index');
+    Route::post('products/{product}/meta', [AdminProductMetaController::class, 'store'])->name('products.meta.store');
+    Route::put('products/{product}/meta/{meta}', [AdminProductMetaController::class, 'update'])->name('products.meta.update');
+    Route::delete('products/{product}/meta/{meta}', [AdminProductMetaController::class, 'destroy'])->name('products.meta.destroy');
+
+    // -------------------------
+    // ✅ Product Media (Documents / Images)
+    // -------------------------
+    Route::get('products/{product}/media', [AdminProductMediaController::class, 'index'])->name('products.media.index');
+    Route::post('products/{product}/media', [AdminProductMediaController::class, 'store'])->name('products.media.store');
+    Route::delete('products/{product}/media/{media}', [AdminProductMediaController::class, 'destroy'])->name('products.media.destroy');
+
+    // -------------------------
+    // ✅ Product Pricing Rules
+    // -------------------------
+    Route::get('products/{product}/pricing-rules', [AdminProductPricingRuleController::class, 'index'])->name('products.pricing-rules.index');
+    Route::post('products/{product}/pricing-rules', [AdminProductPricingRuleController::class, 'store'])->name('products.pricing-rules.store');
+    Route::put('products/{product}/pricing-rules/{rule}', [AdminProductPricingRuleController::class, 'update'])->name('products.pricing-rules.update');
+    Route::delete('products/{product}/pricing-rules/{rule}', [AdminProductPricingRuleController::class, 'destroy'])->name('products.pricing-rules.destroy');
+
+    // -------------------------
+    // ✅ Product Relations (Upsell, Cross-sell, Related)
+    // -------------------------
+    Route::get('products/{product}/relations', [AdminProductRelationController::class, 'index'])->name('products.relations.index');
+    Route::post('products/{product}/relations', [AdminProductRelationController::class, 'store'])->name('products.relations.store');
+    Route::delete('products/{product}/relations/{relation}', [AdminProductRelationController::class, 'destroy'])->name('products.relations.destroy');
 
     // Course Categories
     Route::resource('course-categories', AdminCourseCategoryController::class);

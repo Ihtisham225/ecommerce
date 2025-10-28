@@ -26,7 +26,7 @@
                 <ul class="space-y-2 text-sm">
                     <li><a href="{{ route('home') }}" class="text-[#706f6c] dark:text-gray-400 hover:text-[#1b1b18] dark:hover:text-white">{{ __("Home") }}</a></li>
                     <li><a href="{{ route('about.who-we-are') }}" class="text-[#706f6c] dark:text-gray-400 hover:text-[#1b1b18] dark:hover:text-white">{{ __("About Us") }}</a></li>
-                    <li><a href="{{ route('courses.index') }}" class="text-[#706f6c] dark:text-gray-400 hover:text-[#1b1b18] dark:hover:text-white">{{ __("Courses") }}</a></li>
+                    <li><a href="{{ route('products.index') }}" class="text-[#706f6c] dark:text-gray-400 hover:text-[#1b1b18] dark:hover:text-white">{{ __("Products") }}</a></li>
                     <li><a href="{{ route('contact.us') }}" class="text-[#706f6c] dark:text-gray-400 hover:text-[#1b1b18] dark:hover:text-white">{{ __("Contact Us") }}</a></li>
                 </ul>
             </div>

@@ -118,6 +118,35 @@ class Product extends Model
         return $query->whereNotNull('published_at')
                     ->where('published_at', '<=', now());
     }
+
+    public function getCurrentPriceAttribute()
+    {
+        $rule = $this->pricingRules()
+            ->where('is_active', true)
+            ->where(function ($query) {
+                $query->whereNull('start_at')
+                    ->orWhere('start_at', '<=', now());
+            })
+            ->where(function ($query) {
+                $query->whereNull('end_at')
+                    ->orWhere('end_at', '>=', now());
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if ($rule) {
+            return $rule->type === 'discount'
+                ? max(0, $this->price - $rule->value)
+                : $this->price;
+        }
+
+        return $this->price;
+    }
+
+    public function pricingRules()
+    {
+        return $this->hasMany(ProductPricingRule::class);
+    }
 }
 
 

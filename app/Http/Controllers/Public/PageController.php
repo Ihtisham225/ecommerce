@@ -3,21 +3,18 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use App\Models\Blog;
-use App\Models\Country;
-use App\Models\Course;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Collection;
 use App\Models\Page;
-use App\Models\MenuItem;
-use App\Models\SiteSetting;
+use App\Models\Product;
 use App\Models\Sponsor;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 
 class PageController extends Controller
 {
     public function welcome()
     {
-
         // Run storage:link if the symbolic link doesn't exist
         if (!file_exists(public_path('storage'))) {
             try {
@@ -33,7 +30,59 @@ class PageController extends Controller
             }
         }
 
-        return view('public.welcome');
+        // Featured Products
+        $featuredProducts = Product::with(['brand', 'documents'])
+            ->active()
+            ->featured()
+            ->published()
+            ->inStock()
+            ->take(8)
+            ->get();
+
+        // Latest Products
+        $latestProducts = Product::with(['brand', 'documents'])
+            ->active()
+            ->published()
+            ->inStock()
+            ->orderBy('created_at', 'desc')
+            ->take(8)
+            ->get();
+
+        // Categories for slider
+        $categories = Category::with(['documents'])
+            ->active()
+            ->topLevel()
+            ->ordered()
+            ->take(10)
+            ->get();
+
+        // Collections for slider
+        $collections = Collection::with(['documents'])
+            ->active()
+            ->take(10)
+            ->get();
+
+        // Brands
+        $brands = Brand::where('is_active', true)
+            ->take(12)
+            ->get();
+
+        // Best Selling Products (you might need to implement this scope)
+        $bestSellingProducts = Product::with(['brand', 'documents'])
+            ->active()
+            ->published()
+            ->inStock()
+            ->take(8)
+            ->get();
+
+        return view('public.welcome', compact(
+            'featuredProducts',
+            'latestProducts',
+            'categories',
+            'collections',
+            'brands',
+            'bestSellingProducts'
+        ));
     }
     
     public function show(Page $page)

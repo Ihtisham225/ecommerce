@@ -31,8 +31,8 @@
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                             {{ __('Users') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.courses.index')" :active="request()->routeIs('admin.courses.*')">
-                            {{ __('Courses') }}
+                        <x-nav-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')">
+                            {{ __('Products') }}
                         </x-nav-link>
                         <x-nav-link :href="route('admin.instructors.index')" :active="request()->routeIs('admin.instructors.*')">
                             {{ __('Instructors') }}
@@ -162,8 +162,8 @@
                 <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                     {{ __('Users') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.courses.index')" :active="request()->routeIs('admin.courses.*')">
-                    {{ __('Courses') }}
+                <x-responsive-nav-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')">
+                    {{ __('Products') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.instructors.index')" :active="request()->routeIs('admin.instructors.*')">
                     {{ __('Instructors') }}
