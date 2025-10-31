@@ -209,10 +209,21 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     // -------------------------
     // ✅ Products CRUD
     // -------------------------
-    Route::resource('products', AdminProductController::class);
-    Route::post('products/{product}/autosave', [AdminProductController::class, 'autosave'])->name('products.autosave');
-    Route::post('products/{product}/publish', [AdminProductController::class, 'publish'])->name('products.publish');
-    Route::post('products/bulk-action', [AdminProductController::class, 'bulkAction'])->name('products.bulk');
+    Route::get('products', [\App\Http\Controllers\Admin\ProductController::class,'index'])->name('products.index');
+    Route::get('products/create', [\App\Http\Controllers\Admin\ProductController::class,'create'])->name('products.create');
+    Route::get('products/{product}/edit', [\App\Http\Controllers\Admin\ProductController::class,'edit'])->name('products.edit');
+
+    // autosave - uses POST to allow FormData
+    Route::post('products/{product}/autosave', [\App\Http\Controllers\Admin\ProductController::class,'autosave'])->name('products.autosave');
+
+    // full update (save without publishing) - accepts multipart/form-data
+    Route::post('products/{product}', [\App\Http\Controllers\Admin\ProductController::class,'update'])->name('products.update');
+
+    // publish endpoint (save + publish)
+    Route::post('products/{product}/publish', [\App\Http\Controllers\Admin\ProductController::class,'publish'])->name('products.publish');
+
+    // bulk action route (existing)
+    Route::post('products/bulk-action', [\App\Http\Controllers\Admin\ProductController::class,'bulkAction'])->name('products.bulk');
 
 
     // -------------------------
