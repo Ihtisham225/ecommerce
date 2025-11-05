@@ -19,4 +19,14 @@ class StoreSetting extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class, 'currency_code', 'code');
+    }
+
+    public function getCurrencySymbolAttribute()
+    {
+        return $this->currency->symbol ?? 'KWD';
+    }
 }

@@ -14,6 +14,11 @@ class Currency extends Model
         'exchange_rate' => 'decimal:6',
         'is_default' => 'boolean',
     ];
+    
+    public static function default()
+    {
+        return static::where('is_default', true)->first() ?? static::first();
+    }
 
     public function orders()
     {
