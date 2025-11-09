@@ -1,5 +1,17 @@
 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-100"
-    x-data="variantManager({{ json_encode($product->options ?? []) }}, {{ json_encode($product->variants ?? []) }}, {{ json_encode($product->media ?? []) }})">
+    x-data="variantManager(
+        {{ json_encode($product->options->map(fn($opt) => [
+            'name' => $opt->name,
+            'values' => $opt->values,
+        ]) ?? []) }},
+        {{ json_encode($product->variants ?? []) }},
+        {{ json_encode($product->documents ?? []) }}
+    )"
+    @submit.prevent="prepareSubmission($el)">
+
+    <!-- Hidden JSON fields for backend -->
+    <input type="hidden" name="variants_json" x-ref="variantsJson">
+    <input type="hidden" name="options_json" x-ref="optionsJson">
 
     <div class="flex items-center gap-3 mb-6">
         <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
@@ -19,9 +31,9 @@
             <div class="relative">
                 <input type="checkbox" x-model="hasOptions" class="sr-only">
                 <div class="w-12 h-6 bg-gray-200 rounded-full transition-colors group-hover:bg-gray-300" 
-                        :class="hasOptions ? 'bg-indigo-600' : 'bg-gray-200'"></div>
+                    :class="hasOptions ? 'bg-indigo-600' : 'bg-gray-200'"></div>
                 <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"
-                        :class="hasOptions ? 'transform translate-x-6' : ''"></div>
+                    :class="hasOptions ? 'translate-x-6' : ''"></div>
             </div>
             <div>
                 <span class="font-medium text-gray-900">This product has options</span>
@@ -185,15 +197,56 @@
                                 <!-- Image Selection -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Variant Image</label>
-                                    <select x-model="variant.image_id"
-                                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
-                                        <option value="">Select variant image</option>
-                                        <template x-for="img in media" :key="img.id">
-                                            <option :value="img.id" x-text="img.alt || 'Image ' + img.id"></option>
-                                        </template>
-                                    </select>
-                                </div>
 
+                                    <!-- Existing main image -->
+                                    <template x-if="variant.existing_main_document_id">
+                                        <div class="relative w-24 h-24 rounded-lg overflow-hidden border">
+                                            <img :src="productMedia.find(img => img.id === variant.existing_main_document_id)?.url"
+                                                class="object-cover w-full h-full">
+                                            <button type="button"
+                                                    @click="removeMainImage(variant)"
+                                                    class="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-600 hover:bg-white">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </template>
+
+                                    <!-- New upload preview -->
+                                    <template x-if="variant.new_main_image">
+                                        <div class="relative w-24 h-24 rounded-lg overflow-hidden border mt-2">
+                                            <img :src="variant.preview" class="object-cover w-full h-full">
+                                            <button type="button"
+                                                    @click="variant.new_main_image = null; variant.preview = null"
+                                                    class="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-600 hover:bg-white">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </template>
+
+                                    <!-- File input -->
+                                    <div class="mt-2">
+                                        <input type="file"
+                                            accept="image/*"
+                                            @change="handleImageUpload($event, variant)"
+                                            class="block text-sm text-gray-600">
+                                    </div>
+
+                                    <!-- Select from existing gallery -->
+                                    <div class="mt-2">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Or choose from product gallery</label>
+                                        <select x-model="variant.existing_main_document_id"
+                                                class="w-full border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">— Select —</option>
+                                            <template x-for="img in productMedia" :key="img.id">
+                                                <option :value="img.id" x-text="img.name || ('Image ' + img.id)"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                
                                 <!-- SKU & Barcode -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">SKU</label>
@@ -275,3 +328,143 @@
         </div>
     </template>
 </div>
+
+<script>
+function variantManager(initialOptions = [], initialVariants = [], productMedia = []) {
+    return {
+        hasOptions: initialOptions.length > 0,
+        options: initialOptions.length ? initialOptions : [{ name: '', values: '' }],
+        variants: initialVariants.length ? initialVariants.map(v => ({
+            id: v.id ?? null,
+            title: v.title ?? '',
+            sku: v.sku ?? '',
+            barcode: v.barcode ?? '',
+            price: parseFloat(v.price ?? 0),
+            compare_at_price: parseFloat(v.compare_at_price ?? 0),
+            cost: parseFloat(v.cost ?? 0),
+            stock_quantity: parseInt(v.stock_quantity ?? 0),
+            track_quantity: v.track_quantity ?? true,
+            taxable: v.taxable ?? true,
+            options: v.options ?? {},
+            // Morph document handling
+            documents: v.documents ?? [],
+            new_main_image: null,
+            existing_main_document_id: v.documents?.find(d => d.document_type === 'main')?.id ?? null,
+            gallery_remove_ids: [],
+            existing_gallery_ids: v.documents
+                ?.filter(d => d.document_type === 'gallery')
+                ?.map(d => d.id) ?? [],
+        })) : [],
+        productMedia: productMedia || [],
+        bulkEdit: false,
+
+        addOption() {
+            this.options.push({ name: '', values: '' });
+            this.generateVariants();
+        },
+
+        removeOption(index) {
+            this.options.splice(index, 1);
+            this.generateVariants();
+            if (this.options.length === 0) {
+                this.hasOptions = false;
+                this.variants = [];
+            }
+        },
+
+        generateVariants() {
+            const validOptions = this.options
+                .filter(o => o.name && o.values.trim())
+                .map(o => ({
+                    name: o.name.trim(),
+                    values: o.values.split(',')
+                        .map(v => v.trim())
+                        .filter(Boolean)
+                }));
+
+            if (!validOptions.length) {
+                this.variants = [];
+                return;
+            }
+
+            const combinations = validOptions.reduce((acc, option) => {
+                if (acc.length === 0) return option.values.map(v => [v]);
+                return acc.flatMap(a => option.values.map(v => [...a, v]));
+            }, []);
+
+            const newVariants = combinations.map(values => {
+                const title = values.join(' / ');
+                const existing = this.variants.find(v => v.title === title);
+
+                return existing || {
+                    id: null,
+                    title,
+                    sku: '',
+                    barcode: '',
+                    price: 0,
+                    compare_at_price: 0,
+                    cost: 0,
+                    stock_quantity: 0,
+                    track_quantity: true,
+                    taxable: true,
+                    options: validOptions.reduce((acc, opt, i) => {
+                        acc[opt.name] = values[i];
+                        return acc;
+                    }, {}),
+                    documents: [],
+                    new_main_image: null,
+                    existing_main_document_id: null,
+                    gallery_remove_ids: [],
+                    existing_gallery_ids: [],
+                };
+            });
+
+            this.variants = newVariants;
+        },
+
+        handleImageUpload(event, variant) {
+            const file = event.target.files[0];
+            if (!file) return;
+            variant.new_main_image = file;
+            variant.preview = URL.createObjectURL(file);
+        },
+
+        removeMainImage(variant) {
+            if (variant.existing_main_document_id) {
+                variant.gallery_remove_ids.push(variant.existing_main_document_id);
+            }
+            variant.existing_main_document_id = null;
+            variant.new_main_image = null;
+            variant.preview = null;
+        },
+
+        prepareSubmission(form) {
+            // Serialize variants as JSON
+            const sanitizedVariants = this.variants.map(v => ({
+                id: v.id,
+                title: v.title,
+                sku: v.sku,
+                barcode: v.barcode,
+                price: parseFloat(v.price || 0),
+                compare_at_price: parseFloat(v.compare_at_price || 0),
+                cost: parseFloat(v.cost || 0),
+                stock_quantity: parseInt(v.stock_quantity || 0),
+                track_quantity: !!v.track_quantity,
+                taxable: !!v.taxable,
+                options: v.options || {},
+                existing_main_document_id: v.existing_main_document_id,
+                gallery_remove_ids: v.gallery_remove_ids,
+                existing_gallery_ids: v.existing_gallery_ids,
+            }));
+
+            const sanitizedOptions = this.options.map(o => ({
+                name: o.name.trim(),
+                values: o.values.split(',').map(v => v.trim()).filter(Boolean),
+            }));
+
+            form.querySelector('[x-ref="variantsJson"]').value = JSON.stringify(sanitizedVariants);
+            form.querySelector('[x-ref="optionsJson"]').value = JSON.stringify(sanitizedOptions);
+        },
+    };
+}
+</script>

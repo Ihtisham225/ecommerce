@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable();
 
             // SKU and type
-            $table->string('sku')->unique();
+            $table->string('sku')->unique()->nullable();
             $table->string('type')->default('simple'); // simple, variable, digital, etc.
 
             // Pricing
@@ -32,12 +32,16 @@ return new class extends Migration
             $table->string('stock_status')->default('in_stock'); // in_stock, out_of_stock, etc.
 
             // Status & Visibility
+            $table->boolean('has_options')->default(false);
+            $table->boolean('charge_tax')->default(false);
+            $table->boolean('requires_shipping')->default(true);
             $table->boolean('is_active')->default(true);
             $table->boolean('is_featured')->default(false);
+            $table->boolean('is_published')->default(false);
             $table->timestamp('published_at')->nullable();
 
             // SEO & Slug
-            $table->string('slug')->unique();
+            $table->string('slug')->unique()->nullable();
             $table->string('meta_title')->nullable();
             $table->text('meta_description')->nullable();
 

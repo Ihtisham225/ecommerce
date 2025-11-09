@@ -50,6 +50,25 @@
         }, 5000);
     </script>
 
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('dropdowns', {
+                categories: [],
+                brands: [],
+                collections: []
+            });
+
+            window.addEventListener('dropdown:add', (e) => {
+                const { type, item } = e.detail;
+                const store = Alpine.store('dropdowns');
+                if (type && Array.isArray(store[type])) {
+                    store[type].push(item);
+                }
+            });
+        });
+    </script>
+
+
     @stack('scripts')
 </body>
 </html>

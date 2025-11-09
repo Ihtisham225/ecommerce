@@ -3,40 +3,87 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'title', // stored as JSON or string fallback
-        'description', // stored as JSON or string fallback
-        'sku', 'type',
-        'price', 'compare_at_price', 'stock_quantity',
-        'track_stock', 'stock_status', 'is_active', 'is_featured',
+        'title', 'description', 'sku', 'type', 'price', 'compare_at_price',
+        'stock_quantity', 'track_stock', 'stock_status',
+        'is_active', 'is_featured', 'is_published',
         'published_at', 'slug', 'meta_title', 'meta_description',
-        'brand_id', 'external_id', 'platform', 'handle',
-        'raw_data', 'created_by'
+        'brand_id', 'external_id', 'platform', 'handle', 'raw_data',
+        'created_by', 'has_options', 'charge_tax', 'requires_shipping',
     ];
 
     protected $casts = [
         'track_stock' => 'boolean',
         'is_active' => 'boolean',
+        'is_published' => 'boolean',
         'is_featured' => 'boolean',
+        'has_options' => 'boolean',
+        'charge_tax' => 'boolean',
+        'requires_shipping' => 'boolean',
         'raw_data' => 'array',
         'published_at' => 'datetime',
-        // if you store title/description as JSON columns, cast:
         'title' => 'array',
         'description' => 'array',
     ];
 
-    // ---------- Translations (morph) ----------
-    public function translations()
+    protected static function booted()
     {
-        return $this->morphMany(\App\Models\Translation::class, 'translatable');
+        static::creating(function ($product) {
+            // For new products, slug starts null
+            if (!isset($product->slug)) {
+                $product->slug = null;
+            }
+
+            // SKU starts null
+            if (!isset($product->sku)) {
+                $product->sku = null;
+            }
+        });
     }
+
+    /**
+     * Generate unique SKU (and slug) from title
+     */
+    public static function generateUniqueSkuAndSlug(string $title, $ignoreId = null): array
+    {
+        $titlePart = Str::upper(Str::slug(substr($title, 0, 20), '-'));
+        $datetime = now()->format('YmdHis'); // e.g. 20251108123045
+        $sku = 'PROD-' . $titlePart . '-' . $datetime; 
+        $slug = Str::slug($title);
+
+        $counter = 1;
+
+        // Ensure SKU uniqueness
+        while (self::where('sku', $sku)
+            ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()
+        ) {
+            $sku = 'PROD-' . $titlePart . '-' . $datetime . '-' . str_pad($counter++, 2, '0', STR_PAD_LEFT);
+        }
+
+        // Ensure slug uniqueness
+        $originalSlug = $slug;
+        while (self::where('slug', $slug)
+            ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()
+        ) {
+            $slug = $originalSlug . '-' . Str::random(4);
+        }
+
+        return ['sku' => $sku, 'slug' => $slug];
+    }
+
 
     /**
      * Get translated string for a field with fallback:
@@ -92,10 +139,18 @@ class Product extends Model
         }
     }
 
-    // ---------- Documents (images) ----------
-    public function documents()
+    // ---------- Relations ----------
+
+    // ---------- Translations (morph) ----------
+    public function translations(): MorphMany
     {
-        return $this->morphMany(\App\Models\Document::class, 'documentable');
+        return $this->morphMany(Translation::class, 'translatable');
+    }
+
+    // ---------- Documents (images) ----------
+    public function documents(): MorphMany
+    {
+        return $this->morphMany(Document::class, 'documentable');
     }
 
     public function mainImage()
@@ -108,20 +163,24 @@ class Product extends Model
         return $this->documents()->where('document_type', 'gallery')->orderBy('id');
     }
 
-    // ---------- Relations ----------
-    public function brand()
+    public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
     }
 
-    public function categories()
+    public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'product_category');
     }
 
-    public function variants()
+    public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
+    }
+
+    public function options(): HasMany
+    {
+        return $this->hasMany(ProductOption::class);
     }
 
     // ... other relations left as-is

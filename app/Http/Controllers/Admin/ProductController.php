@@ -7,7 +7,9 @@ use App\Models\Product;
 use App\Models\Document;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Yajra\DataTables\DataTables;
 use Illuminate\Validation\Rule;
@@ -45,7 +47,7 @@ class ProductController extends Controller
     public function create()
     {
         $existing = Product::where('is_active', 0)
-            ->where('created_by', auth()->id())
+            ->where('created_by', Auth::id())
             ->latest()
             ->first();
 
@@ -53,13 +55,10 @@ class ProductController extends Controller
             return redirect()->route('admin.products.edit', $existing->id);
         }
 
-        $sku = 'draft-' . now()->format('YmdHis') . '-' . auth()->id();
         $draft = Product::create([
-            'title' => ['en' => 'Untitled Product'], // store minimal JSON
-            'sku' => $sku,
-            'slug' => Str::slug('Untitled Product') . '-' . Str::random(6),
+            'title' => ['en' => 'Untitled Product'], // minimal JSON
             'is_active' => 0,
-            'created_by' => auth()->id(),
+            'created_by' => Auth::id(),
         ]);
 
         return redirect()->route('admin.products.edit', $draft->id);
@@ -67,177 +66,194 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        // eager load small relations
-        $product->load('categories','brand','variants','documents');
+        $product->load([
+            'categories:id,name',
+            'brand:id,name',
+            'variants:id,product_id,title,sku,barcode,price,compare_at_price,cost,stock_quantity,track_quantity,taxable,options',
+            'documents:id,document_type,file_path',
+            'options:id,product_id,name,values',
+        ]);
+
+        // Ensure options and translations are arrays
+        $product->options = $product->options ?? [];
+        $product->has_options = (bool) $product->has_options;
+        $product->title = $product->title ?? ['en' => ''];
+        $product->description = $product->description ?? ['en' => ''];
+
         return view('admin.products.form', compact('product'));
     }
+
 
     /**
      * Autosave (for drafts). Keeps product as draft (is_active = 0).
      */
     public function autosave(Request $request, Product $product)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'nullable|array',
             'title.*' => 'nullable|string|max:191',
             'description' => 'nullable|array',
             'description.*' => 'nullable|string',
-            'sku' => 'nullable|string',
+            'sku' => ['nullable', 'string', Rule::unique('products', 'sku')->ignore($product->id)],
             'price' => 'nullable|numeric|min:0',
             'compare_at_price' => 'nullable|numeric|min:0',
             'stock_quantity' => 'nullable|integer|min:0',
             'track_stock' => 'nullable|boolean',
-            'category_id' => 'nullable|integer|exists:categories,id',
-            'brand_id' => 'nullable|integer|exists:brands,id',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            // basic scalar fields
-            $product->update([
-                'sku' => $request->input('sku', $product->sku),
-                'price' => $request->input('price', $product->price),
-                'compare_at_price' => $request->input('compare_at_price', $product->compare_at_price),
-                'stock_quantity' => $request->input('stock_quantity', $product->stock_quantity ?? 0),
-                'track_stock' => $request->has('track_stock') ? (bool) $request->input('track_stock') : $product->track_stock,
-                'brand_id' => $request->input('brand_id', $product->brand_id),
-                // keep draft
-                'is_active' => 0,
-            ]);
-
-            // translations
-            $product->setTranslationsFromRequest($request->only(['title','description']));
-
-            // categories sync (optional single selection here; adapt if you keep many-to-many)
-            if ($request->filled('category_id')) {
-                $product->categories()->sync([$request->input('category_id')]);
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Draft saved automatically.',
-                'updated_at' => now()->toDateTimeString()
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['success'=>false,'message'=>'Failed to autosave','error'=>$e->getMessage()],500);
-        }
-    }
-
-    /**
-     * Update (full save without publishing). Accepts images + variants.
-     */
-    public function update(Request $request, Product $product)
-    {
-        $validated = $request->validate([
-            'title' => 'required|array',
-            'title.*' => 'required|string|max:191',
-            'description' => 'nullable|array',
-            'description.*' => 'nullable|string',
-            'sku' => ['required','string', Rule::unique('products','sku')->ignore($product->id)],
-            'price' => 'required|numeric|min:0',
-            'compare_at_price' => 'nullable|numeric|min:0',
-            'stock_quantity' => 'nullable|integer|min:0',
-            'track_stock' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
             'brand_id' => 'nullable|integer|exists:brands,id',
             'category_id' => 'nullable|integer|exists:categories,id',
-            // images: new_main_image, new_gallery[] and attachments to existing docs via ids
+            'has_options' => 'nullable|boolean',
+            'charge_tax' => 'nullable|boolean',
+            'requires_shipping' => 'nullable|boolean',
             'new_main_image' => 'nullable|file|image|max:5120',
             'new_gallery.*' => 'nullable|file|image|max:5120',
             'gallery_remove_ids' => 'nullable|array',
             'gallery_remove_ids.*' => 'integer|exists:documents,id',
-            // variants json
-            'variants' => 'nullable|array',
-            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
-            'variants.*.sku' => 'required_with:variants|string',
-            'variants.*.price' => 'required_with:variants|numeric|min:0',
-            'variants.*.stock_quantity' => 'nullable|integer|min:0',
-            'variants.*.options' => 'nullable|array',
+            'existing_main_document_id' => 'nullable|integer|exists:documents,id',
+            'existing_gallery_ids' => 'nullable|array',
+            'existing_gallery_ids.*' => 'integer|exists:documents,id',
+            'options_json' => 'nullable|string',
+            'variants_json' => 'nullable|string',
+
+            // SEO Fields
+            'meta_title' => 'nullable|string|max:191',
+            'meta_description' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
+
         try {
-            // update product fields
+            $validatedTitle = $validated['title']['en'] ?? $product->title['en'] ?? 'Untitled';
+            $skuAndSlug = Product::generateUniqueSkuAndSlug($validatedTitle, $product->id);
+                
+            // 🔹 Update core fields
             $product->update([
-                'sku' => $validated['sku'],
-                'price' => $validated['price'],
-                'compare_at_price' => $validated['compare_at_price'] ?? null,
+                'sku' => $skuAndSlug['sku'],
+                'slug' => $skuAndSlug['slug'],
+                'price' => $validated['price'] ?? $product->price,
+                'compare_at_price' => $validated['compare_at_price'] ?? $product->compare_at_price,
                 'stock_quantity' => $validated['stock_quantity'] ?? $product->stock_quantity,
                 'track_stock' => (bool) ($validated['track_stock'] ?? $product->track_stock),
                 'brand_id' => $validated['brand_id'] ?? $product->brand_id,
-                'is_featured' => $request->has('is_featured') ? (bool)$request->input('is_featured') : $product->is_featured,
-                'is_active' => $request->has('is_active') ? (bool)$request->input('is_active') : $product->is_active,
+                'is_active' => false,
+                'is_featured' => $validated['is_featured'] ?? $product->is_featured,
+                'is_published' => false,
+                'published_at' => null,
+                'has_options' => (bool) ($validated['has_options'] ?? false),
+                'charge_tax' => $validated['charge_tax'] ?? $product->charge_tax,
+                'requires_shipping' => $validated['requires_shipping'] ?? $product->requires_shipping,
+                'type' => ($validated['has_options'] ?? false) ? 'variable' : 'simple',
             ]);
 
-            // translations (title/description)
-            $product->setTranslationsFromRequest($request->only(['title','description']));
+            // 🔹 Translations
+            if ($request->has('title')) {
+                $product->setTranslationsFromRequest($request->only(['title', 'description']));
+            }
 
-            // categories (single)
+            // 🔹 Category sync
             if ($request->filled('category_id')) {
                 $product->categories()->sync([$request->input('category_id')]);
             }
 
-            // images: remove gallery items
-            if ($request->filled('gallery_remove_ids')) {
-                Document::whereIn('id', $request->input('gallery_remove_ids'))
-                    ->where('documentable_type', Product::class)
-                    ->delete();
-            }
+            // 🔹 Images
+            $this->syncProductImages($product, $request, $validated);
 
-            if ($request->filled('existing_main_document_id')) {
-                Document::where('id', $request->input('existing_main_document_id'))->update([
-                    'documentable_id' => $product->id,
-                    'documentable_type' => Product::class,
-                    'document_type' => 'main',
-                ]);
-            }
+            // 🔹 Variants + Options
+            $variants = json_decode($request->input('variants_json', '[]'), true);
+            $options = json_decode($request->input('options_json', '[]'), true);
 
-            // attach new main image
-            if ($request->hasFile('new_main_image')) {
-                $file = $request->file('new_main_image');
-                $path = $file->store('documents', 'public');
-                $docData = [
-                    'name' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_type' => $file->getClientOriginalExtension(),
-                    'size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'document_type' => 'main',
-                ];
-                // remove old main if exists (or keep history if you prefer)
-                $product->documents()->where('document_type','main')->delete();
-                $product->documents()->create($docData);
-            }
+            $validatedVariants = collect($variants)->map(fn($v) => [
+                'id' => $v['id'] ?? null,
+                'title' => $v['title'] ?? null,
+                'sku' => $v['sku'] ?? null,
+                'barcode' => $v['barcode'] ?? null,
+                'price' => $v['price'] ?? 0,
+                'compare_at_price' => $v['compare_at_price'] ?? null,
+                'cost' => $v['cost'] ?? null,
+                'stock_quantity' => $v['quantity'] ?? 0,
+                'track_quantity' => $v['track_quantity'] ?? false,
+                'taxable' => $v['taxable'] ?? false,
+                'options' => $v['options'] ?? [],
+            ])->toArray();
 
-            // attach new gallery images
-            if ($request->hasFile('new_gallery')) {
-                foreach ($request->file('new_gallery') as $file) {
-                    $path = $file->store('documents', 'public');
-                    $docData = [
-                        'name' => $file->getClientOriginalName(),
-                        'file_path' => $path,
-                        'file_type' => $file->getClientOriginalExtension(),
-                        'size' => $file->getSize(),
-                        'mime_type' => $file->getMimeType(),
-                        'document_type' => 'gallery',
+            $product->update(['options' => $options]);
+
+            // First, sync all variant records (create/update/delete)
+            $this->syncVariants($product, $validatedVariants);
+
+            // Now handle variant-specific images
+            foreach ($variants as $v) {
+                if (!empty($v['id'])) {
+                    $variant = ProductVariant::find($v['id']);
+                } else {
+                    // handle newly created variants by title or sku if needed
+                    $variant = $product->variants()
+                        ->where('sku', $v['sku'] ?? null)
+                        ->orWhere('title', $v['title'] ?? null)
+                        ->latest('id')
+                        ->first();
+                }
+
+                if ($variant) {
+                    // Pass image-related inputs for this variant only
+                    $variantData = [
+                        'variant_existing_main_document_id' => $v['existing_main_document_id'] ?? null,
+                        'variant_gallery_remove_ids'        => $v['gallery_remove_ids'] ?? [],
+                        'variant_existing_gallery_ids'      => $v['existing_gallery_ids'] ?? [],
                     ];
-                    $product->documents()->create($docData);
+
+                    // Create a subrequest-like object for image uploads
+                    $variantRequest = new Request();
+
+                    // Attach uploaded files manually
+                    if ($request->hasFile("variants.{$variant->id}.new_main_image")) {
+                        $variantRequest->files->set('variant_new_main_image', $request->file("variants.{$variant->id}.new_main_image"));
+                    }
+
+                    if ($request->hasFile("variants.{$variant->id}.new_gallery")) {
+                        $variantRequest->files->set('variant_new_gallery', $request->file("variants.{$variant->id}.new_gallery"));
+                    }
+
+                    // Finally, sync the images for this variant
+                    $this->syncVariantImages($variant, $variantRequest, $variantData);
                 }
             }
 
-            // sync variants
-            if ($request->has('variants')) {
-                $this->syncVariants($product, $request->input('variants'));
-            }
 
+            // SEO Handling
+            $seoTitle = $validated['meta_title']
+                ?? $product->title['en']
+                ?? $product->title[array_key_first($product->title)] ?? null;
+
+            $seoDescription = $validated['meta_description']
+                ?? strip_tags(Str::limit($product->description['en'] ?? '', 160))
+                ?? null;
+
+            $product->update([
+                'meta_title' => $seoTitle,
+                'meta_description' => $seoDescription,
+            ]);
+            
             DB::commit();
 
-            return response()->json(['success'=>true,'message'=>'Product saved.']);
+            // ✅ Reload product with relations for frontend
+            $product->refresh()->load(['categories', 'brand', 'variants', 'documents']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Draft autosaved successfully.',
+                'updated_at' => now()->toDateTimeString(),
+                'product' => $product,
+            ]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['success'=>false,'message'=>'Save failed','error'=>$e->getMessage()],500);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Autosave failed.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -248,14 +264,15 @@ class ProductController extends Controller
     public function publish(Request $request, Product $product)
     {
         // Reuse validation from update, but we accept same fields via form-data
-        $res = $this->update($request, $product);
+        $res = $this->autosave($request, $product);
         if ($res->getStatusCode() !== 200) {
             return $res;
         }
 
         // now mark published
-        $product->update([
-            'is_active' => 1,
+        $product->refresh()->update([
+            'is_active' => true,
+            'is_published' => true,
             'published_at' => now(),
         ]);
 
@@ -269,31 +286,200 @@ class ProductController extends Controller
     protected function syncVariants(Product $product, array $variants)
     {
         $incomingIds = [];
+
         foreach ($variants as $v) {
+            $data = [
+                'title'           => $v['title'] ?? null,
+                'sku'             => $v['sku'] ?? null,
+                'barcode'         => $v['barcode'] ?? null,
+                'price'           => $v['price'] ?? 0,
+                'compare_at_price'=> $v['compare_at_price'] ?? null,
+                'cost'            => $v['cost'] ?? null,
+                'stock_quantity'  => $v['quantity'] ?? 0,
+                'track_quantity'  => $v['track_quantity'] ?? false,
+                'taxable'         => $v['taxable'] ?? false,
+                'options'         => $v['options'] ?? [],
+                'is_active'       => true,
+            ];
+
+            // Update existing
             if (!empty($v['id'])) {
-                // update existing
                 $variant = ProductVariant::find($v['id']);
-                if (!$variant || $variant->product_id != $product->id) continue;
-                $variant->update([
-                    'sku' => $v['sku'],
-                    'price' => $v['price'],
-                    'stock_quantity' => $v['stock_quantity'] ?? $variant->stock_quantity,
-                    'options' => $v['options'] ?? $variant->options,
-                ]);
-                $incomingIds[] = $variant->id;
-            } else {
-                // create new
-                $new = $product->variants()->create([
-                    'sku' => $v['sku'],
-                    'price' => $v['price'],
-                    'stock_quantity' => $v['stock_quantity'] ?? 0,
-                    'options' => $v['options'] ?? [],
-                ]);
-                $incomingIds[] = $new->id;
+                if ($variant && $variant->product_id === $product->id) {
+                    $variant->update($data);
+                    $incomingIds[] = $variant->id;
+                    continue;
+                }
+            }
+
+            // Create new
+            $newVariant = $product->variants()->create($data);
+            $incomingIds[] = $newVariant->id;
+        }
+
+        // Delete variants not in request
+        if (!empty($incomingIds)) {
+            $product->variants()->whereNotIn('id', $incomingIds)->delete();
+        } else {
+            $product->variants()->delete();
+        }
+    }
+
+    private function syncProductImages(Product $product, Request $request, array $validated): void
+    {
+        // 🗑️ 1. Remove selected gallery images (delete files + records)
+        if (!empty($validated['gallery_remove_ids'])) {
+            $docsToRemove = Document::whereIn('id', $validated['gallery_remove_ids'])
+                ->where('documentable_type', Product::class)
+                ->where('documentable_id', $product->id)
+                ->get();
+
+            foreach ($docsToRemove as $doc) {
+                if ($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
+                    Storage::disk('public')->delete($doc->file_path);
+                }
+                $doc->delete();
             }
         }
 
-        // Delete any variants that were removed by the UI
-        $product->variants()->whereNotIn('id', $incomingIds)->delete();
+        // 🌟 2. Reassign existing image as main
+        if (!empty($validated['existing_main_document_id'])) {
+            // Demote old main to gallery
+            $product->documents()->where('document_type', 'main')->update(['document_type' => 'gallery']);
+
+            // Promote chosen existing document
+            Document::where('id', $validated['existing_main_document_id'])->update([
+                'documentable_id' => $product->id,
+                'documentable_type' => Product::class,
+                'document_type' => 'main',
+            ]);
+        }
+
+        // 🖼️ 3. Replace main image if a new one is uploaded
+        if ($request->hasFile('new_main_image')) {
+            // Delete old main image and file
+            if ($oldMain = $product->documents()->where('document_type', 'main')->first()) {
+                if ($oldMain->file_path && Storage::disk('public')->exists($oldMain->file_path)) {
+                    Storage::disk('public')->delete($oldMain->file_path);
+                }
+                $oldMain->delete();
+            }
+
+            $file = $request->file('new_main_image');
+            $path = $file->store('documents', 'public');
+
+            $product->documents()->create([
+                'name'          => $file->getClientOriginalName(),
+                'file_path'     => $path,
+                'file_type'     => $file->getClientOriginalExtension(),
+                'size'          => $file->getSize(),
+                'mime_type'     => $file->getMimeType(),
+                'document_type' => 'main',
+            ]);
+        }
+
+        // 🖼️ 4. Attach existing gallery images
+        if (!empty($validated['existing_gallery_ids'])) {
+            Document::whereIn('id', $validated['existing_gallery_ids'])
+                ->update([
+                    'documentable_id'   => $product->id,
+                    'documentable_type' => Product::class,
+                    'document_type'     => 'gallery',
+                ]);
+        }
+
+        // 🖼️ 5. Add new gallery images
+        if ($request->hasFile('new_gallery')) {
+            foreach ($request->file('new_gallery') as $file) {
+                $path = $file->store('documents', 'public');
+
+                $product->documents()->create([
+                    'name'          => $file->getClientOriginalName(),
+                    'file_path'     => $path,
+                    'file_type'     => $file->getClientOriginalExtension(),
+                    'size'          => $file->getSize(),
+                    'mime_type'     => $file->getMimeType(),
+                    'document_type' => 'gallery',
+                ]);
+            }
+        }
     }
+
+    private function syncVariantImages(ProductVariant $variant, Request $request, array $validated): void
+    {
+        // Remove selected images
+        if (!empty($validated['variant_gallery_remove_ids'])) {
+            $docsToRemove = Document::whereIn('id', $validated['variant_gallery_remove_ids'])
+                ->where('documentable_type', ProductVariant::class)
+                ->where('documentable_id', $variant->id)
+                ->get();
+
+            foreach ($docsToRemove as $doc) {
+                if ($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
+                    Storage::disk('public')->delete($doc->file_path);
+                }
+                $doc->delete();
+            }
+        }
+
+        // Replace or promote existing main image
+        if (!empty($validated['variant_existing_main_document_id'])) {
+            $variant->documents()->where('document_type', 'main')->update(['document_type' => 'gallery']);
+
+            Document::where('id', $validated['variant_existing_main_document_id'])->update([
+                'documentable_id'   => $variant->id,
+                'documentable_type' => ProductVariant::class,
+                'document_type'     => 'main',
+            ]);
+        }
+
+        // New main image upload
+        if ($request->hasFile('variant_new_main_image')) {
+            if ($oldMain = $variant->documents()->where('document_type', 'main')->first()) {
+                if ($oldMain->file_path && Storage::disk('public')->exists($oldMain->file_path)) {
+                    Storage::disk('public')->delete($oldMain->file_path);
+                }
+                $oldMain->delete();
+            }
+
+            $file = $request->file('variant_new_main_image');
+            $path = $file->store('documents', 'public');
+
+            $variant->documents()->create([
+                'name'          => $file->getClientOriginalName(),
+                'file_path'     => $path,
+                'file_type'     => $file->getClientOriginalExtension(),
+                'size'          => $file->getSize(),
+                'mime_type'     => $file->getMimeType(),
+                'document_type' => 'main',
+            ]);
+        }
+
+        // Attach existing gallery images
+        if (!empty($validated['variant_existing_gallery_ids'])) {
+            Document::whereIn('id', $validated['variant_existing_gallery_ids'])
+                ->update([
+                    'documentable_id'   => $variant->id,
+                    'documentable_type' => ProductVariant::class,
+                    'document_type'     => 'gallery',
+                ]);
+        }
+
+        // Add new gallery uploads
+        if ($request->hasFile('variant_new_gallery')) {
+            foreach ($request->file('variant_new_gallery') as $file) {
+                $path = $file->store('documents', 'public');
+
+                $variant->documents()->create([
+                    'name'          => $file->getClientOriginalName(),
+                    'file_path'     => $path,
+                    'file_type'     => $file->getClientOriginalExtension(),
+                    'size'          => $file->getSize(),
+                    'mime_type'     => $file->getMimeType(),
+                    'document_type' => 'gallery',
+                ]);
+            }
+        }
+    }
+
 }

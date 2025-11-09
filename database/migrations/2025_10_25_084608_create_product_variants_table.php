@@ -13,29 +13,18 @@ return new class extends Migration
     {
         Schema::create('product_variants', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->string('title')->nullable();
             $table->string('sku')->nullable();
             $table->string('barcode')->nullable();
-            $table->string('title')->nullable(); // e.g. "Red / XL"
-            
-            $table->decimal('price', 15, 3)->nullable();
-            $table->decimal('compare_at_price', 15, 3)->nullable();
-            $table->decimal('cost_price', 15, 3)->nullable();
-
-            $table->integer('stock_quantity')->nullable();
-            $table->boolean('track_stock')->default(true);
-            $table->string('stock_status')->default('in_stock');
-
-            $table->json('options')->nullable(); // {"Color": "Red", "Size": "XL"}
-
+            $table->decimal('price', 10, 2)->default(0);
+            $table->decimal('compare_at_price', 10, 2)->nullable();
+            $table->decimal('cost', 10, 2)->nullable();
+            $table->integer('stock_quantity')->default(0);
+            $table->boolean('track_quantity')->default(true);
+            $table->boolean('taxable')->default(true);
+            $table->json('options')->nullable();
             $table->boolean('is_active')->default(true);
-
-            // Platform Integration
-            $table->string('external_id')->nullable(); // Shopify/Woo variant ID
-            $table->json('raw_data')->nullable();
-
             $table->timestamps();
         });
     }

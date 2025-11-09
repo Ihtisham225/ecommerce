@@ -785,3 +785,11 @@ animation-delay: 2s;
 
 .animation-delay-500 { animation-delay: 0.5s; }
 .animation-delay-700 { animation-delay: 0.7s; }
+
+/* CK Editor */
+.ck-editor__editable_inline {
+    min-height: 200px;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    background: white;
+}

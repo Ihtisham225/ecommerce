@@ -8,6 +8,9 @@ use App\Http\Controllers\Admin\ProductMetaController as AdminProductMetaControll
 use App\Http\Controllers\Admin\ProductPricingRuleController as AdminProductPricingRuleController;
 use App\Http\Controllers\Admin\ProductRelationController as AdminProductRelationController;
 use App\Http\Controllers\Admin\ProductVariantController as AdminProductVariantController;
+use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Admin\BrandController as AdminBrandController;
+use App\Http\Controllers\Admin\CollectionController as AdminCollectionController;
 
 
 use App\Http\Controllers\Admin\BlogController as AdminBlogController;
@@ -209,21 +212,18 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     // -------------------------
     // ✅ Products CRUD
     // -------------------------
-    Route::get('products', [\App\Http\Controllers\Admin\ProductController::class,'index'])->name('products.index');
-    Route::get('products/create', [\App\Http\Controllers\Admin\ProductController::class,'create'])->name('products.create');
-    Route::get('products/{product}/edit', [\App\Http\Controllers\Admin\ProductController::class,'edit'])->name('products.edit');
+    Route::get('products', [AdminProductController::class,'index'])->name('products.index');
+    Route::get('products/create', [AdminProductController::class,'create'])->name('products.create');
+    Route::get('products/{product}/edit', [AdminProductController::class,'edit'])->name('products.edit');
 
     // autosave - uses POST to allow FormData
-    Route::post('products/{product}/autosave', [\App\Http\Controllers\Admin\ProductController::class,'autosave'])->name('products.autosave');
-
-    // full update (save without publishing) - accepts multipart/form-data
-    Route::post('products/{product}', [\App\Http\Controllers\Admin\ProductController::class,'update'])->name('products.update');
+    Route::post('products/{product}/autosave', [AdminProductController::class,'autosave'])->name('products.autosave');
 
     // publish endpoint (save + publish)
-    Route::post('products/{product}/publish', [\App\Http\Controllers\Admin\ProductController::class,'publish'])->name('products.publish');
+    Route::post('products/{product}/publish', [AdminProductController::class,'publish'])->name('products.publish');
 
     // bulk action route (existing)
-    Route::post('products/bulk-action', [\App\Http\Controllers\Admin\ProductController::class,'bulkAction'])->name('products.bulk');
+    Route::post('products/bulk-action', [AdminProductController::class,'bulkAction'])->name('products.bulk');
 
 
     // -------------------------
@@ -272,8 +272,20 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::post('products/{product}/relations', [AdminProductRelationController::class, 'store'])->name('products.relations.store');
     Route::delete('products/{product}/relations/{relation}', [AdminProductRelationController::class, 'destroy'])->name('products.relations.destroy');
 
-    // Course Categories
-    Route::resource('course-categories', AdminCourseCategoryController::class);
+    // -------------------------
+    // ✅ Product categories
+    // -------------------------
+    Route::post('/categories/quick-add', [AdminCategoryController::class, 'quickAdd'])->name('admin.categories.quick-add');
+
+    // -------------------------
+    // ✅ Product brands
+    // -------------------------
+    Route::post('/brands/quick-add', [AdminBrandController::class, 'quickAdd'])->name('admin.brands.quick-add');
+
+    // -------------------------
+    // ✅ Product collections
+    // -------------------------
+    Route::post('/collections/quick-add', [AdminCollectionController::class, 'quickAdd'])->name('admin.collections.quick-add');
 
     // Instructors
     Route::resource('instructors', AdminInstructorController::class);

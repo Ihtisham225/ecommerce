@@ -23,14 +23,21 @@
                 </button>
             </div>
             <select name="category_id"
-                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border">
-                <option value="">-- Select Category --</option>
-                @foreach(\App\Models\Category::where('is_active', true)->orderBy('name')->get() as $c)
-                    <option value="{{ $c->id }}" {{ optional($product->categories->first())->id == $c->id ? 'selected' : '' }}>
-                        {{ $c->name }}
-                    </option>
-                @endforeach
-            </select>
+                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
+                x-init="$watch('$store.dropdowns.categories', () => {})">
+            <option value="">-- Select Category --</option>
+
+            @foreach(\App\Models\Category::where('is_active', true)->orderBy('name')->get() as $c)
+                <option value="{{ $c->id }}" {{ optional($product->categories->first())->id == $c->id ? 'selected' : '' }}>
+                    {{ $c->name }}
+                </option>
+            @endforeach
+
+            <template x-for="cat in $store.dropdowns.categories" :key="cat.id">
+                <option :value="cat.id" x-text="cat.name"></option>
+            </template>
+        </select>
+
         </div>
 
         {{-- Brand --}}
@@ -47,14 +54,21 @@
                 </button>
             </div>
             <select name="brand_id"
-                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border">
-                <option value="">-- Select Brand --</option>
-                @foreach(\App\Models\Brand::where('is_active', true)->orderBy('name')->get() as $b)
-                    <option value="{{ $b->id }}" {{ $product->brand_id == $b->id ? 'selected' : '' }}>
-                        {{ $b->name }}
-                    </option>
-                @endforeach
-            </select>
+                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
+                x-init="$watch('$store.dropdowns.brands', () => {})">
+            <option value="">-- Select Brand --</option>
+
+            @foreach(\App\Models\Brand::where('is_active', true)->orderBy('name')->get() as $b)
+                <option value="{{ $b->id }}" {{ $product->brand_id == $b->id ? 'selected' : '' }}>
+                    {{ $b->name }}
+                </option>
+            @endforeach
+
+            <template x-for="brand in $store.dropdowns.brands" :key="brand.id">
+                <option :value="brand.id" x-text="brand.name"></option>
+            </template>
+        </select>
+
         </div>
 
         {{-- Collection --}}
@@ -71,14 +85,21 @@
                 </button>
             </div>
             <select name="collection_id"
-                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border">
-                <option value="">-- Select Collection --</option>
-                @foreach(\App\Models\Collection::where('is_active', true)->orderBy('title')->get() as $col)
-                    <option value="{{ $col->id }}" {{ $product->collection_id == $col->id ? 'selected' : '' }}>
-                        {{ $col->title }}
-                    </option>
-                @endforeach
-            </select>
+                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
+                x-init="$watch('$store.dropdowns.collections', () => {})">
+            <option value="">-- Select Collection --</option>
+
+            @foreach(\App\Models\Collection::where('is_active', true)->orderBy('title')->get() as $col)
+                <option value="{{ $col->id }}" {{ $product->collection_id == $col->id ? 'selected' : '' }}>
+                    {{ $col->title }}
+                </option>
+            @endforeach
+
+            <template x-for="col in $store.dropdowns.collections" :key="col.id">
+                <option :value="col.id" x-text="col.title"></option>
+            </template>
+        </select>
+
         </div>
 
         {{-- Tags --}}
@@ -377,8 +398,11 @@
                     if (response.ok) {
                         this.showNotification('Category created successfully!', 'success');
                         this.modalOpen = false;
-                        // Refresh the category dropdown
-                        setTimeout(() => window.location.reload(), 1000);
+
+                        window.dispatchEvent(new CustomEvent('dropdown:add', {
+                            detail: { type: 'categories', item: data.data }
+                        }));
+                        document.querySelector('select[name="category_id"]').value = data.data.id;
                     } else {
                         throw new Error(data.message || 'Failed to create category');
                     }
@@ -412,7 +436,11 @@
                     if (response.ok) {
                         this.showNotification('Brand created successfully!', 'success');
                         this.modalOpen = false;
-                        setTimeout(() => window.location.reload(), 1000);
+
+                        window.dispatchEvent(new CustomEvent('dropdown:add', {
+                            detail: { type: 'brands', item: data.data }
+                        }));
+                        document.querySelector('select[name="brand_id"]').value = data.data.id;
                     } else {
                         throw new Error(data.message || 'Failed to create brand');
                     }
@@ -444,9 +472,15 @@
                     const data = await response.json();
                     
                     if (response.ok) {
-                        this.showNotification('Collection created successfully!', 'success');
-                        this.modalOpen = false;
-                        setTimeout(() => window.location.reload(), 1000);
+                        if (response.ok) {
+                            this.showNotification('Collection created successfully!', 'success');
+                            this.modalOpen = false;
+
+                            window.dispatchEvent(new CustomEvent('dropdown:add', {
+                                detail: { type: 'collections', item: data.data }
+                            }));
+                            document.querySelector('select[name="collection_id"]').value = data.data.id;
+                        }
                     } else {
                         throw new Error(data.message || 'Failed to create collection');
                     }
