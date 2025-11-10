@@ -35,7 +35,8 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Option Name</label>
                             <input type="text" x-model="option.name" placeholder="e.g. Size, Color, Material"
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border"
-                                @input="generateVariants()">
+                                @input="generateVariants()"
+                                @input.debounce.1000ms="triggerAutosave()">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Option Values</label>
@@ -248,17 +249,17 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
                                     <input type="number" step="0.01" x-model.number="variant.price"
-                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
+                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Compare at Price</label>
                                     <input type="number" step="0.01" x-model.number="variant.compare_at_price"
-                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
+                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Cost per Item</label>
                                     <input type="number" step="0.01" x-model.number="variant.cost"
-                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
+                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
                                 </div>
 
                                 <!-- Profit & Margin Display -->
@@ -285,7 +286,7 @@
                                         <div class="flex items-center gap-3">
                                             <label class="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" x-model="variant.track_quantity" 
-                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @input.debounce.1000ms="triggerAutosave()">
                                                 <span class="text-sm font-medium text-gray-700">Track quantity</span>
                                             </label>
                                         </div>
@@ -293,13 +294,13 @@
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-2">Quantity in Stock</label>
                                                 <input type="number" x-model.number="variant.quantity"
-                                                    class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
+                                                    class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
                                             </div>
                                         </template>
                                         <div class="flex items-center gap-3">
                                             <label class="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" x-model="variant.taxable"
-                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @input.debounce.1000ms="triggerAutosave()">
                                                 <span class="text-sm font-medium text-gray-700">Charge tax on this variant</span>
                                             </label>
                                         </div>

@@ -1,6 +1,6 @@
 <x-app-layout>
     {{-- Single Alpine wrapper --}}
-    <div x-data="productForm()">
+    <div x-data="productForm()" @autosave-trigger.window="triggerAutosave()">
         {{-- ✅ Sticky Header --}}
         @include('admin.products.partials._sticky_header', ['product' => $product])
 
@@ -100,36 +100,78 @@
                 async autosave() {
                     this.saving = true;
 
-                    // 🧩 Get data from the variant manager
-                    const variantComponent = document.querySelector('[x-data^="variantManager"]')?._x_dataStack?.[0];
-                    const variantsJson = JSON.stringify(variantComponent?.variants || []);
-                    const optionsJson = JSON.stringify(variantComponent?.options || []);
-
-                    const payload = {
-                        title: { en: this.title },
-                        description: { en: this.description },
-                        price: this.price,
-                        cost: this.cost,
-                        compare_at_price: this.compare_at_price,
-                        has_options: this.hasOptions ? 1 : 0,
-                        charge_tax: this.charge_tax ? 1 : 0,
-                        requires_shipping: this.shipping ? 1 : 0,
-                        variants_json: variantsJson,
-                        options_json: optionsJson,
-                    };
-
                     try {
+                        const variantComponent = document.querySelector('[x-data^="variantManager"]')?._x_dataStack?.[0];
+
+                        // Always JSON.stringify to send as a string
+                        const variantsJson = JSON.stringify(variantComponent?.variants || []);
+                        const optionsJson = JSON.stringify(variantComponent?.options || []);
+
+                        const mainImageInput = document.querySelector('input[name="new_main_image"]');
+                        const galleryInputs = document.querySelectorAll('input[name="new_gallery[]"]');
+                        const existingMainId = document.querySelector('input[name="existing_main_document_id"]:checked')?.value || null;
+                        const existingGalleryIds = [...document.querySelectorAll('input[name="existing_gallery_ids[]"]:checked')].map(i => i.value);
+                        const galleryRemoveIds = [...document.querySelectorAll('input[name="gallery_remove_ids[]"]:checked')].map(i => i.value);
+
+                        const payload = {
+                            title: JSON.stringify({ en: this.title }),
+                            description: JSON.stringify({ en: this.description }),
+                            price: this.price ?? 0,
+                            cost: this.cost ?? 0,
+                            compare_at_price: this.compare_at_price ?? 0,
+                            has_options: this.hasOptions ? 1 : 0,
+                            charge_tax: this.charge_tax ? 1 : 0,
+                            requires_shipping: this.shipping ? 1 : 0,
+                            variants_json: variantsJson, // string
+                            options_json: optionsJson,   // string
+                            existing_main_document_id: existingMainId ? Number(existingMainId) : '',
+                            existing_gallery_ids: existingGalleryIds,
+                            gallery_remove_ids: galleryRemoveIds,
+                        };
+
+                        let body;
+                        let headers = {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        };
+
+                        const hasMainImage = mainImageInput && mainImageInput.files.length > 0;
+                        const hasGallery = galleryInputs && [...galleryInputs].some(i => i.files.length > 0);
+
+                        if (hasMainImage || hasGallery) {
+                            body = new FormData();
+
+                            for (const [key, value] of Object.entries(payload)) {
+                                if (key === 'variants_json' || key === 'options_json') {
+                                    body.append(key, value); // ✅ append as string
+                                } else if (Array.isArray(value)) {
+                                    value.forEach(v => body.append(`${key}[]`, v));
+                                } else {
+                                    body.append(key, value);
+                                }
+                            }
+
+                            if (hasMainImage) body.append('new_main_image', mainImageInput.files[0]);
+                            if (hasGallery) {
+                                [...galleryInputs].forEach(input => {
+                                    [...input.files].forEach(file => body.append('new_gallery[]', file));
+                                });
+                            }
+                        } else {
+                            headers['Content-Type'] = 'application/json';
+                            body = JSON.stringify(payload);
+                        }
+
                         const response = await fetch(`/admin/products/${this.productId}/autosave`, {
                             method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(payload)
+                            headers,
+                            body
                         });
 
-                        const data = await response.json();
+                        const text = await response.text();
+                        let data;
+                        try { data = JSON.parse(text); } 
+                        catch { throw new Error('Server returned invalid JSON:\n' + text.slice(0,200)); }
 
                         if (response.ok && data.success) {
                             this.updateProductData(data.product);

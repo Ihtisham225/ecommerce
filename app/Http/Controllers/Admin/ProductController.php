@@ -70,7 +70,7 @@ class ProductController extends Controller
             'categories:id,name',
             'brand:id,name',
             'variants:id,product_id,title,sku,barcode,price,compare_at_price,cost,stock_quantity,track_quantity,taxable,options',
-            'documents:id,document_type,file_path',
+            'documents',
             'options:id,product_id,name,values',
         ]);
 
@@ -89,6 +89,16 @@ class ProductController extends Controller
      */
     public function autosave(Request $request, Product $product)
     {
+        // 🧩 Convert JSON strings back to arrays before validation
+        foreach (['title', 'description'] as $field) {
+            if ($request->has($field) && is_string($request->$field)) {
+                $decoded = json_decode($request->$field, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $request->merge([$field => $decoded]);
+                }
+            }
+        }
+        
         $validated = $request->validate([
             'title' => 'nullable|array',
             'title.*' => 'nullable|string|max:191',
@@ -105,13 +115,17 @@ class ProductController extends Controller
             'has_options' => 'nullable|boolean',
             'charge_tax' => 'nullable|boolean',
             'requires_shipping' => 'nullable|boolean',
-            'new_main_image' => 'nullable|file|image|max:5120',
-            'new_gallery.*' => 'nullable|file|image|max:5120',
+
+            // Images
+            'new_main_image' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
+            'new_gallery.*'  => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
             'gallery_remove_ids' => 'nullable|array',
             'gallery_remove_ids.*' => 'integer|exists:documents,id',
             'existing_main_document_id' => 'nullable|integer|exists:documents,id',
             'existing_gallery_ids' => 'nullable|array',
             'existing_gallery_ids.*' => 'integer|exists:documents,id',
+
+            //variants and options
             'options_json' => 'nullable|string',
             'variants_json' => 'nullable|string',
 
@@ -383,7 +397,7 @@ class ProductController extends Controller
 
     private function syncProductImages(Product $product, Request $request, array $validated): void
     {
-        // 🗑️ 1. Remove selected gallery images (delete files + records)
+        // 1️⃣ Remove selected gallery images
         if (!empty($validated['gallery_remove_ids'])) {
             $docsToRemove = Document::whereIn('id', $validated['gallery_remove_ids'])
                 ->where('documentable_type', Product::class)
@@ -398,22 +412,19 @@ class ProductController extends Controller
             }
         }
 
-        // 🌟 2. Reassign existing image as main
+        // 2️⃣ Reassign existing main image
         if (!empty($validated['existing_main_document_id'])) {
-            // Demote old main to gallery
             $product->documents()->where('document_type', 'main')->update(['document_type' => 'gallery']);
-
-            // Promote chosen existing document
-            Document::where('id', $validated['existing_main_document_id'])->update([
-                'documentable_id' => $product->id,
-                'documentable_type' => Product::class,
-                'document_type' => 'main',
-            ]);
+            Document::where('id', $validated['existing_main_document_id'])
+                ->update([
+                    'documentable_id' => $product->id,
+                    'documentable_type' => Product::class,
+                    'document_type' => 'main',
+                ]);
         }
 
-        // 🖼️ 3. Replace main image if a new one is uploaded
+        // 3️⃣ Upload new main image
         if ($request->hasFile('new_main_image')) {
-            // Delete old main image and file
             if ($oldMain = $product->documents()->where('document_type', 'main')->first()) {
                 if ($oldMain->file_path && Storage::disk('public')->exists($oldMain->file_path)) {
                     Storage::disk('public')->delete($oldMain->file_path);
@@ -425,39 +436,39 @@ class ProductController extends Controller
             $path = $file->store('documents', 'public');
 
             $product->documents()->create([
-                'name'          => $file->getClientOriginalName(),
-                'file_path'     => $path,
-                'file_type'     => $file->getClientOriginalExtension(),
-                'size'          => $file->getSize(),
-                'mime_type'     => $file->getMimeType(),
+                'name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_type' => $file->getClientOriginalExtension(),
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
                 'document_type' => 'main',
             ]);
         }
 
-        // 🖼️ 4. Attach existing gallery images
-        if (!empty($validated['existing_gallery_ids'])) {
-            Document::whereIn('id', $validated['existing_gallery_ids'])
-                ->update([
-                    'documentable_id'   => $product->id,
-                    'documentable_type' => Product::class,
-                    'document_type'     => 'gallery',
-                ]);
-        }
-
-        // 🖼️ 5. Add new gallery images
+        // 4️⃣ Upload new gallery images
         if ($request->hasFile('new_gallery')) {
             foreach ($request->file('new_gallery') as $file) {
                 $path = $file->store('documents', 'public');
 
                 $product->documents()->create([
-                    'name'          => $file->getClientOriginalName(),
-                    'file_path'     => $path,
-                    'file_type'     => $file->getClientOriginalExtension(),
-                    'size'          => $file->getSize(),
-                    'mime_type'     => $file->getMimeType(),
+                    'name' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_type' => $file->getClientOriginalExtension(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
                     'document_type' => 'gallery',
                 ]);
             }
+        }
+
+        // 5️⃣ Attach existing gallery images
+        if (!empty($validated['existing_gallery_ids'])) {
+            Document::whereIn('id', $validated['existing_gallery_ids'])
+                ->update([
+                    'documentable_id' => $product->id,
+                    'documentable_type' => Product::class,
+                    'document_type' => 'gallery',
+                ]);
         }
     }
 

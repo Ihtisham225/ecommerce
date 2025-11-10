@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Storage;
 
 class Document extends Model
 {
@@ -17,6 +18,8 @@ class Document extends Model
         'mime_type',
         'size',
     ];
+
+    protected $appends = ['url'];
 
     public function documentable(): MorphTo
     {
@@ -67,7 +70,7 @@ class Document extends Model
     // Accessors
     public function getUrlAttribute()
     {
-        return \Storage::disk($this->disk)->url($this->path);
+        return Storage::disk('public')->url($this->file_path);
     }
 
     public function scopeType($q, $type)
