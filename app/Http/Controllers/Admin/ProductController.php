@@ -176,9 +176,10 @@ class ProductController extends Controller
                 'options' => $v['options'] ?? [],
             ])->toArray();
 
-            $product->update(['options' => $options]);
+            // sync all opions like color, size
+            $this->syncOptions($product, $options);
 
-            // First, sync all variant records (create/update/delete)
+            // sync all variant records (create/update/delete)
             $this->syncVariants($product, $validatedVariants);
 
             // Now handle variant-specific images
@@ -237,7 +238,7 @@ class ProductController extends Controller
             DB::commit();
 
             // ✅ Reload product with relations for frontend
-            $product->refresh()->load(['categories', 'brand', 'variants', 'documents']);
+            $product->refresh()->load(['categories', 'brand', 'variants', 'documents', 'options']);
 
             return response()->json([
                 'success' => true,
@@ -280,6 +281,48 @@ class ProductController extends Controller
     }
 
     /**
+     * Sync product options (like Color, Size)
+     */
+    protected function syncOptions(Product $product, array $options)
+    {
+        // Collect IDs for cleanup later
+        $incomingIds = [];
+
+        foreach ($options as $opt) {
+            // Skip empty option names (e.g. user deleted all)
+            if (empty($opt['name'])) {
+                continue;
+            }
+
+            $data = [
+                'name'   => $opt['name'],
+                'values' => $opt['values'] ?? [],
+            ];
+
+            // Update existing option
+            if (!empty($opt['id'])) {
+                $option = $product->options()->find($opt['id']);
+                if ($option) {
+                    $option->update($data);
+                    $incomingIds[] = $option->id;
+                    continue;
+                }
+            }
+
+            // Create new
+            $newOption = $product->options()->create($data);
+            $incomingIds[] = $newOption->id;
+        }
+
+        // Remove deleted options
+        if (!empty($incomingIds)) {
+            $product->options()->whereNotIn('id', $incomingIds)->delete();
+        } else {
+            $product->options()->delete();
+        }
+    }
+
+    /**
      * Sync variants array: each variant item may have id (update) or no id (create).
      * Each item: ['id'=>..., 'sku'=>'', 'price'=>'', 'stock_quantity'=>int, 'options'=>[]]
      */
@@ -288,21 +331,34 @@ class ProductController extends Controller
         $incomingIds = [];
 
         foreach ($variants as $v) {
+            // Build human-readable variant label (e.g. "Red / XL")
+            $variantLabel = '';
+            if (!empty($v['options']) && is_array($v['options'])) {
+                $variantLabel = collect($v['options'])
+                    ->filter(fn($opt) => !empty($opt))
+                    ->implode(' / ');
+            }
+
+            // Generate unique SKU based on parent product SKU + variant title/options
+            $baseTitle = $product->title['en'] ?? 'Untitled';
+            $variantTitle = $v['title'] ?? $variantLabel ?? '';
+            $skuTitle = trim($baseTitle . ' ' . $variantTitle);
+            $generated = ProductVariant::generateUniqueSkuFromParent($product, $skuTitle, $v['id'] ?? null);
+
             $data = [
-                'title'           => $v['title'] ?? null,
-                'sku'             => $v['sku'] ?? null,
-                'barcode'         => $v['barcode'] ?? null,
-                'price'           => $v['price'] ?? 0,
-                'compare_at_price'=> $v['compare_at_price'] ?? null,
-                'cost'            => $v['cost'] ?? null,
-                'stock_quantity'  => $v['quantity'] ?? 0,
-                'track_quantity'  => $v['track_quantity'] ?? false,
-                'taxable'         => $v['taxable'] ?? false,
-                'options'         => $v['options'] ?? [],
-                'is_active'       => true,
+                'title'            => $v['title'] ?? $variantLabel,
+                'sku'              => $generated['sku'], // Auto-generated only
+                'barcode'          => $v['barcode'] ?? null,
+                'price'            => $v['price'] ?? 0,
+                'compare_at_price' => $v['compare_at_price'] ?? null,
+                'cost'             => $v['cost'] ?? null,
+                'stock_quantity'   => $v['quantity'] ?? 0,
+                'track_quantity'   => $v['track_quantity'] ?? false,
+                'taxable'          => $v['taxable'] ?? false,
+                'options'          => $v['options'] ?? [],
+                'is_active'        => true,
             ];
 
-            // Update existing
             if (!empty($v['id'])) {
                 $variant = ProductVariant::find($v['id']);
                 if ($variant && $variant->product_id === $product->id) {
@@ -312,18 +368,18 @@ class ProductController extends Controller
                 }
             }
 
-            // Create new
             $newVariant = $product->variants()->create($data);
             $incomingIds[] = $newVariant->id;
         }
 
-        // Delete variants not in request
+        // Delete removed variants
         if (!empty($incomingIds)) {
             $product->variants()->whereNotIn('id', $incomingIds)->delete();
         } else {
             $product->variants()->delete();
         }
     }
+
 
     private function syncProductImages(Product $product, Request $request, array $validated): void
     {

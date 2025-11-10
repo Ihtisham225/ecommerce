@@ -16,11 +16,32 @@
                     {{-- MEDIA --}}
                     @include('admin.products.partials._media', ['product' => $product])
 
-                    {{-- VARIANTS --}}
-                    @include('admin.products.partials._variants', ['product' => $product])
+                    {{-- ✅ HAS OPTIONS TOGGLE (moved here) --}}
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <div class="relative">
+                                <input type="checkbox" x-model="hasOptions" class="sr-only">
+                                <div class="w-12 h-6 bg-gray-200 rounded-full transition-colors group-hover:bg-gray-300"
+                                    :class="hasOptions ? 'bg-indigo-600' : 'bg-gray-200'"></div>
+                                <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"
+                                    :class="hasOptions ? 'translate-x-6' : ''"></div>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-900">This product has options</span>
+                                <p class="text-sm text-gray-500">Enable to add size, color, or other variations</p>
+                            </div>
+                        </label>
+                    </div>
 
-                    {{-- PRICING --}}
-                    @include('admin.products.partials._pricing', ['product' => $product])
+                    {{-- VARIANTS (only shown if hasOptions) --}}
+                    <div x-show="hasOptions" x-cloak>
+                        @include('admin.products.partials._variants', ['product' => $product])
+                    </div>
+
+                    {{-- PRICING (only shown if no options) --}}
+                    <div x-show="!hasOptions" x-cloak>
+                        @include('admin.products.partials._pricing', ['product' => $product])
+                    </div>
 
                     {{-- INVENTORY --}}
                     @include('admin.products.partials._inventory', ['product' => $product])
@@ -192,21 +213,29 @@
                     }
 
                     // ---- Variants ----
-                    const variantsContainer = document.querySelector('#variants-container');
-                    if (variantsContainer) {
-                        variantsContainer.innerHTML = '';
-                        (product.variants || []).forEach(variant => {
-                            const div = document.createElement('div');
-                            div.className = 'p-3 border rounded-lg flex justify-between items-center';
-                            div.innerHTML = `
-                                <div>
-                                    <p class="font-semibold">${variant.title || 'Untitled Variant'}</p>
-                                    <p class="text-sm text-gray-500">SKU: ${variant.sku || 'N/A'}</p>
-                                </div>
-                                <p class="text-sm">$${variant.price ?? 0}</p>
-                            `;
-                            variantsContainer.appendChild(div);
-                        });
+                    const variantComponent = document.querySelector('[x-data^="variantManager"]')?._x_dataStack?.[0];
+                    if (variantComponent && product.variants) {
+                        // Replace variant data entirely with backend-updated versions
+                        variantComponent.variants = product.variants.map(v => ({
+                            id: v.id ?? null,
+                            title: v.title ?? '',
+                            sku: v.sku ?? '',
+                            barcode: v.barcode ?? '',
+                            price: parseFloat(v.price ?? 0),
+                            compare_at_price: parseFloat(v.compare_at_price ?? 0),
+                            cost: parseFloat(v.cost ?? 0),
+                            stock_quantity: parseInt(v.stock_quantity ?? 0),
+                            track_quantity: v.track_quantity ?? true,
+                            taxable: v.taxable ?? true,
+                            options: v.options ?? {},
+                            documents: v.documents ?? [],
+                            new_main_image: null,
+                            existing_main_document_id: v.documents?.find(d => d.document_type === 'main')?.id ?? null,
+                            gallery_remove_ids: [],
+                            existing_gallery_ids: v.documents
+                                ?.filter(d => d.document_type === 'gallery')
+                                ?.map(d => d.id) ?? [],
+                        }));
                     }
 
                     // ---- SEO ----
