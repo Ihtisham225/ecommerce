@@ -3,7 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 class Collection extends Model
 {
     protected $fillable = ['title', 'description', 'slug', 'is_active'];
@@ -12,7 +13,18 @@ class Collection extends Model
         'is_active' => 'boolean'
     ];
 
-    public function products()
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($collection) {
+            if (empty($collection->slug)) {
+                $collection->slug = Str::slug($collection->title);
+            }
+        });
+    }
+
+    public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'product_collection');
     }
@@ -20,23 +32,6 @@ class Collection extends Model
     public function scopeActive($q)
     {
         return $q->where('is_active', 1);
-    }
-
-    public function translate($field, $locale = null)
-    {
-        $locale = $locale ?? app()->getLocale();
-
-        $translation = $this->translations()
-            ->where('field', $field)
-            ->where('locale', $locale)
-            ->value('value');
-
-        return $translation ?: $this->{$field}[$locale] ?? $this->{$field}['en'] ?? null;
-    }
-
-    public function translations()
-    {
-        return $this->morphMany(Translation::class, 'translatable');
     }
 }
 

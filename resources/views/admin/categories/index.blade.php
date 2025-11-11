@@ -17,12 +17,7 @@
                     <h3 class="text-lg font-semibold">{{ __('Categories') }}</h3>
 
                     <div class="flex justify-between items-center mb-4">
-                        <a href="{{ route('admin.courses.index') }}"
-                           class="mx-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
-                            ← {{ __('Back to Courses') }}
-                        </a>
-
-                        <a href="{{ route('admin.course-categories.create') }}"
+                        <a href="{{ route('admin.categories.create') }}"
                            class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
                             {{ __('Add Category') }}
                         </a>
@@ -36,33 +31,33 @@
                                 <th class="px-4 py-2 border">{{ __('Name') }}</th>
                                 <th class="px-4 py-2 border">{{ __('Slug') }}</th>
                                 <th class="px-4 py-2 border">{{ __('Parent Category') }}</th>
-                                <th class="px-4 py-2 border">{{ __('Courses Count') }}</th>
+                                <th class="px-4 py-2 border">{{ __('Products Count') }}</th>
                                 <th class="px-4 py-2 border">{{ __('Description') }}</th>
                                 <th class="px-4 py-2 border">{{ __('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($categories as $courseCategory)
+                            @forelse($categories as $category)
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td class="px-4 py-2 border font-medium">
-                                        {{ $courseCategory->name }}
+                                        {{ $category->name }}
                                     </td>
                                     <td class="px-4 py-2 border">
-                                        {{ $courseCategory->slug }}
+                                        {{ $category->slug }}
                                     </td>
                                     <td class="px-4 py-2 border">
-                                        {{ $courseCategory->parent?->name ?? '—' }}
+                                        {{ $category->parent?->name ?? '—' }}
                                     </td>
                                     <td class="px-4 py-2 border text-center">
-                                        {{ $courseCategory->courses()->count() }}
+                                        {{ $category->products()->count() }}
                                     </td>
                                     <td class="px-4 py-2 border">
-                                        {{ Str::limit($courseCategory->description, 50) }}
+                                        {{ Str::limit($category->description, 50) }}
                                     </td>
                                     <td class="px-4 py-2 border">
                                         <div class="flex space-x-3 justify-center">
                                             <!-- Show -->
-                                            <a href="{{ route('admin.course-categories.show', $courseCategory) }}" 
+                                            <a href="{{ route('admin.categories.show', $category) }}" 
                                                class="text-blue-600 hover:text-blue-800" 
                                                title="{{ __('View Details') }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" 
@@ -78,7 +73,7 @@
                                             </a>
 
                                             <!-- Edit -->
-                                            <a href="{{ route('admin.course-categories.edit', $courseCategory) }}" 
+                                            <a href="{{ route('admin.categories.edit', $category) }}" 
                                                class="text-yellow-600 hover:text-yellow-800" 
                                                title="{{ __('Edit') }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" 
@@ -90,7 +85,7 @@
                                             </a>
 
                                             <!-- Delete -->
-                                            <form method="POST" action="{{ route('admin.course-categories.destroy', $courseCategory) }}" 
+                                            <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" 
                                                   onsubmit="return confirm('{{ __('Are you sure?') }}')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="text-red-600 hover:text-red-800" 

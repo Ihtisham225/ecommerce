@@ -215,6 +215,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::get('products', [AdminProductController::class,'index'])->name('products.index');
     Route::get('products/create', [AdminProductController::class,'create'])->name('products.create');
     Route::get('products/{product}/edit', [AdminProductController::class,'edit'])->name('products.edit');
+    Route::get('products/{product}/show', [AdminProductController::class,'show'])->name('products.show');
 
     // autosave - uses POST to allow FormData
     Route::post('products/{product}/autosave', [AdminProductController::class,'autosave'])->name('products.autosave');
@@ -275,16 +276,19 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     // -------------------------
     // ✅ Product categories
     // -------------------------
+    Route::resource('/categories', AdminCategoryController::class);
     Route::post('/categories/quick-add', [AdminCategoryController::class, 'quickAdd'])->name('admin.categories.quick-add');
 
     // -------------------------
     // ✅ Product brands
     // -------------------------
+    Route::resource('/brands', AdminBrandController::class);
     Route::post('/brands/quick-add', [AdminBrandController::class, 'quickAdd'])->name('admin.brands.quick-add');
 
     // -------------------------
     // ✅ Product collections
     // -------------------------
+    Route::resource('/collections', AdminCollectionController::class);
     Route::post('/collections/quick-add', [AdminCollectionController::class, 'quickAdd'])->name('admin.collections.quick-add');
 
     // Instructors

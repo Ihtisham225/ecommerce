@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Course Category Details') }}
+            {{ __('Category Details') }}
         </h2>
     </x-slot>
 
@@ -17,7 +17,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 7h18M3 12h18M3 17h18" />
                         </svg>
-                        <span>{{ $courseCategory->name }}</span>
+                        <span>{{ $category->name }}</span>
                     </h3>
                 </div>
                 
@@ -28,25 +28,25 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Slug') }}</p>
-                            <p class="text-lg font-semibold">{{ $courseCategory->slug }}</p>
+                            <p class="text-lg font-semibold">{{ $category->slug }}</p>
                         </div>
 
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Status') }}</p>
                             <span class="px-3 py-1 text-sm rounded-full
-                                {{ $courseCategory->deleted_at ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">
-                                {{ $courseCategory->deleted_at ? __('Inactive') : __('Active') }}
+                                {{ $category->deleted_at ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">
+                                {{ $category->deleted_at ? __('Inactive') : __('Active') }}
                             </span>
                         </div>
 
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Created At') }}</p>
-                            <p class="text-lg font-semibold">{{ $courseCategory->created_at->format('d M Y, h:i A') }}</p>
+                            <p class="text-lg font-semibold">{{ $category->created_at->format('d M Y, h:i A') }}</p>
                         </div>
 
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Last Updated') }}</p>
-                            <p class="text-lg font-semibold">{{ $courseCategory->updated_at->format('d M Y, h:i A') }}</p>
+                            <p class="text-lg font-semibold">{{ $category->updated_at->format('d M Y, h:i A') }}</p>
                         </div>
                     </div>
 
@@ -59,12 +59,12 @@
                             </svg>
                             <span>{{ __('Parent Category') }}</span>
                         </h4>
-                        @if($courseCategory->parent)
+                        @if($category->parent)
                             <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                                 <span class="font-medium text-gray-800 dark:text-gray-200">
-                                    {{ $courseCategory->parent->name }}
+                                    {{ $category->parent->name }}
                                 </span>
-                                <a href="{{ route('admin.course-categories.show', $courseCategory->parent) }}"
+                                <a href="{{ route('admin.categories.show', $category->parent) }}"
                                    class="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -87,12 +87,12 @@
                             </svg>
                             <span>{{ __('Child Categories') }}</span>
                         </h4>
-                        @if($courseCategory->children->count())
+                        @if($category->children->count())
                             <ul class="space-y-2">
-                                @foreach($courseCategory->children as $child)
+                                @foreach($category->children as $child)
                                     <li class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                                         <span class="text-gray-700 dark:text-gray-300 font-medium">{{ $child->name }}</span>
-                                        <a href="{{ route('admin.course-categories.show', $child) }}" 
+                                        <a href="{{ route('admin.categories.show', $child) }}" 
                                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg">
                                             {{ __('View') }}
                                         </a>
@@ -114,27 +114,27 @@
                             <span>{{ __('Description') }}</span>
                         </h4>
                         <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg prose dark:prose-invert max-w-none">
-                            {!! $courseCategory->description ?? __('No description available.') !!}
+                            {!! $category->description ?? __('No description available.') !!}
                         </div>
                     </div>
 
-                    <!-- Courses -->
+                    <!-- Products -->
                     <div>
                         <h4 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300 flex items-center space-x-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                             </svg>
-                            <span>{{ __('Courses in this Category') }}</span>
+                            <span>{{ __('Products in this Category') }}</span>
                         </h4>
-                        @if($courseCategory->courses->count())
+                        @if($category->products->count())
                             <ul class="space-y-2">
-                                @foreach($courseCategory->courses as $course)
+                                @foreach($category->products as $product)
                                     <li class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                                         <span class="text-gray-700 dark:text-gray-300 font-medium">
-                                            {{ $course->title }}
+                                            {{ $product->title['en'] }}
                                         </span>
-                                        <a href="{{ route('admin.courses.show', $course) }}" 
+                                        <a href="{{ route('admin.products.show', $product) }}" 
                                            class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg">
                                             {{ __('View') }}
                                         </a>
@@ -142,7 +142,7 @@
                                 @endforeach
                             </ul>
                         @else
-                            <p class="text-gray-500 dark:text-gray-400">{{ __('No courses in this category yet.') }}</p>
+                            <p class="text-gray-500 dark:text-gray-400">{{ __('No Products in this category yet.') }}</p>
                         @endif
                     </div>
 
@@ -158,7 +158,7 @@
                         <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-sm text-gray-700 dark:text-gray-300">
                             @php
                                 $tree = [];
-                                $current = $courseCategory;
+                                $current = $category;
                                 while ($current) {
                                     $tree[] = $current;
                                     $current = $current->parent;
@@ -170,7 +170,7 @@
                                 @if($index > 0)
                                     <span class="mx-1 text-gray-400">›</span>
                                 @endif
-                                <a href="{{ route('admin.course-categories.show', $node) }}"
+                                <a href="{{ route('admin.categories.show', $node) }}"
                                    class="{{ $loop->last ? 'font-semibold text-indigo-600' : 'text-gray-700 dark:text-gray-300 hover:text-indigo-600' }}">
                                     {{ $node->name }}
                                 </a>
@@ -180,7 +180,7 @@
 
                     <!-- Actions -->
                     <div class="flex justify-between mt-8">
-                        <a href="{{ route('admin.course-categories.index') }}"
+                        <a href="{{ route('admin.categories.index') }}"
                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center space-x-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -189,7 +189,7 @@
                             <span>{{ __('Back to Categories') }}</span>
                         </a>
 
-                        <a href="{{ route('admin.course-categories.edit', $courseCategory) }}"
+                        <a href="{{ route('admin.categories.edit', $category) }}"
                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center space-x-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

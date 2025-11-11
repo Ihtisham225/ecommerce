@@ -28,12 +28,30 @@
                     </x-nav-link>
 
                     @if(Auth::user()->hasRole(['admin','staff']))
+                        <!-- Products -->
+                        <x-nav-dropdown label="Products">
+                            <a href="{{ route('admin.products.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Products
+                            </a>
+                            <a href="{{ route('admin.brands.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Brands
+                            </a>
+                            <a href="{{ route('admin.categories.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Categories
+                            </a>
+                            <a href="{{ route('admin.collections.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Collections
+                            </a>
+                        </x-nav-dropdown>
+
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                             {{ __('Users') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')">
-                            {{ __('Products') }}
-                        </x-nav-link>
+
                         <x-nav-link :href="route('admin.instructors.index')" :active="request()->routeIs('admin.instructors.*')">
                             {{ __('Instructors') }}
                         </x-nav-link>
