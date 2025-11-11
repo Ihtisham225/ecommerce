@@ -20,7 +20,7 @@
                     <div class="bg-gray-50 p-4 rounded-lg mb-6">
                         <label class="flex items-center gap-3 cursor-pointer group">
                             <div class="relative">
-                                <input type="checkbox" x-model="hasOptions" class="sr-only">
+                                <input type="checkbox" x-model="hasOptions" class="sr-only" @input.debounce.1000ms="triggerAutosave()">
                                 <div class="w-12 h-6 bg-gray-200 rounded-full transition-colors group-hover:bg-gray-300"
                                     :class="hasOptions ? 'bg-indigo-600' : 'bg-gray-200'"></div>
                                 <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"
@@ -52,7 +52,7 @@
                     <div class="bg-gray-50 p-4 rounded-lg mb-6">
                         <label class="flex items-center gap-3 cursor-pointer group">
                             <div class="relative">
-                                <input type="checkbox" x-model="shipping" class="sr-only">
+                                <input type="checkbox" x-model="shipping" class="sr-only" @input.debounce.1000ms="triggerAutosave()">
                                 <div class="w-12 h-6 bg-gray-200 rounded-full transition-colors group-hover:bg-gray-300"
                                     :class="shipping ? 'bg-indigo-600' : 'bg-gray-200'"></div>
                                 <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"

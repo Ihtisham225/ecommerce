@@ -11,13 +11,13 @@
     <div class="space-y-6">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
-            <input type="text" name="meta_title" value="{{ $product->meta_title ?? '' }}" placeholder="Optimized page title for search engines"
+            <input type="text" name="meta_title" value="{{ $product->meta_title ?? '' }}" placeholder="Optimized page title for search engines" @input.debounce.1000ms="triggerAutosave()"
                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             <p class="text-xs text-gray-500 mt-1">Recommended: 50-60 characters</p>
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
-            <textarea name="meta_description" rows="3" placeholder="Brief description for search engine results"
+            <textarea name="meta_description" rows="3" placeholder="Brief description for search engine results" @input.debounce.1000ms="triggerAutosave()"
                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">{{ $product->meta_description ?? '' }}</textarea>
             <p class="text-xs text-gray-500 mt-1">Recommended: 150-160 characters</p>
         </div>

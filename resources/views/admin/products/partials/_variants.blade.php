@@ -34,7 +34,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Option Name</label>
                         <div class="flex gap-2">
-                            <select x-model="option.name" 
+                            <select x-model="option.name" @input.debounce.1000ms="triggerAutosave()"
                                     class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border"
                                     @change="if(option.name === 'custom') $nextTick(() => $refs[`customInput${index}`].focus())">
                                 <option value="">Select option type</option>
@@ -45,7 +45,7 @@
                                 <option value="custom">Custom option</option>
                             </select>
                             <template x-if="option.name === 'custom'">
-                                <input type="text" 
+                                <input type="text" @input.debounce.1000ms="triggerAutosave()"
                                         x-ref="`customInput${index}`"
                                         x-model="option.customName"
                                         placeholder="Enter custom option"
@@ -71,7 +71,7 @@
                                     </span>
                                 </template>
                             </div>
-                            <input type="text"
+                            <input type="text" @input.debounce.1000ms="triggerAutosave()"
                                     x-ref="`valueInput${index}`"
                                     placeholder="Type a value and press Enter"
                                     class="w-full border-0 p-0 focus:ring-0 text-sm"
@@ -83,7 +83,8 @@
                 </div>
                 <button type="button" 
                         class="mt-3 text-red-600 text-sm hover:text-red-800 flex items-center gap-1 transition-colors"
-                        @click="removeOption(index)">
+                        @click="removeOption(index)"
+                        @input.debounce.1000ms="triggerAutosave()">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
@@ -124,7 +125,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" step="0.01" x-model="quickActions.price"
+                            <input type="number" step="0.01" x-model="quickActions.price" @input.debounce.1000ms="triggerAutosave()"
                                 placeholder="0.00"
                                 class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
                             <button type="button"
@@ -139,7 +140,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Compare at Price</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" step="0.01" x-model="quickActions.compare_at_price"
+                            <input type="number" step="0.01" x-model="quickActions.compare_at_price" @input.debounce.1000ms="triggerAutosave()"
                                 placeholder="0.00"
                                 class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
                             <button type="button"
@@ -154,7 +155,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Cost</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" step="0.01" x-model="quickActions.cost"
+                            <input type="number" step="0.01" x-model="quickActions.cost" @input.debounce.1000ms="triggerAutosave()"
                                 placeholder="0.00"
                                 class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
                             <button type="button"
@@ -169,7 +170,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" x-model="quickActions.quantity"
+                            <input type="number" x-model="quickActions.quantity" @input.debounce.1000ms="triggerAutosave()"
                                 placeholder="0"
                                 class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
                             <button type="button"
@@ -187,7 +188,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Track Quantity</label>
                         <div class="flex items-center gap-2">
-                            <select x-model="quickActions.track_quantity"
+                            <select x-model="quickActions.track_quantity" @input.debounce.1000ms="triggerAutosave()"
                                 class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
                                 <option value="true">Track Quantity</option>
                                 <option value="false">Don't Track</option>
@@ -204,7 +205,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Tax Setting</label>
                         <div class="flex items-center gap-2">
-                            <select x-model="quickActions.taxable"
+                            <select x-model="quickActions.taxable" @input.debounce.1000ms="triggerAutosave()"
                                 class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
                                 <option value="true">Taxable</option>
                                 <option value="false">Not Taxable</option>
@@ -342,17 +343,17 @@
                                 
                                 <!-- Pricing -->
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="number" step="0.01" x-model="variant.price" 
+                                    <input type="number" step="0.01" x-model="variant.price" @input.debounce.1000ms="triggerAutosave()"
                                             class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
                                             @input="updateProfit(variant)">
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="number" step="0.01" x-model="variant.compare_at_price" 
+                                    <input type="number" step="0.01" x-model="variant.compare_at_price" @input.debounce.1000ms="triggerAutosave()"
                                             class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
                                             placeholder="0.00">
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="number" step="0.01" x-model="variant.cost" 
+                                    <input type="number" step="0.01" x-model="variant.cost" @input.debounce.1000ms="triggerAutosave()"
                                             class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
                                             @input="updateProfit(variant)">
                                 </td>
@@ -375,10 +376,10 @@
                                 <!-- Inventory -->
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" x-model="variant.track_quantity" 
+                                        <input type="checkbox" x-model="variant.track_quantity" @input.debounce.1000ms="triggerAutosave()"
                                                 class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                         <template x-if="variant.track_quantity">
-                                            <input type="number" x-model="variant.quantity" 
+                                            <input type="number" x-model="variant.quantity" @input.debounce.1000ms="triggerAutosave()"
                                                     class="w-16 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
                                         </template>
                                         <template x-if="!variant.track_quantity">
@@ -389,7 +390,7 @@
 
                                 <!-- Tax -->
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="checkbox" x-model="variant.taxable" 
+                                    <input type="checkbox" x-model="variant.taxable" @input.debounce.1000ms="triggerAutosave()"
                                             class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
                             </tr>

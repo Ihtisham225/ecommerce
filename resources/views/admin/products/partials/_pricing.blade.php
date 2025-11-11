@@ -15,7 +15,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span class="text-gray-500">$</span>
                 </div>
-                <input type="number" step="0.01" name="price" x-model="price"
+                <input type="number" step="0.01" name="price" x-model="price" @input.debounce.1000ms="triggerAutosave()"
                     class="pl-8 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
         </div>
@@ -25,7 +25,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span class="text-gray-500">$</span>
                 </div>
-                <input type="number" step="0.01" name="compare_at_price" x-model="compare_at_price"
+                <input type="number" step="0.01" name="compare_at_price" x-model="compare_at_price" @input.debounce.1000ms="triggerAutosave()"
                     class="pl-8 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
             <p class="text-xs text-gray-500 mt-1">Show as discounted price</p>
@@ -36,7 +36,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span class="text-gray-500">$</span>
                 </div>
-                <input type="number" step="0.01" name="cost" x-model="cost"
+                <input type="number" step="0.01" name="cost" x-model="cost" @input.debounce.1000ms="triggerAutosave()"
                     class="pl-8 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
             <p class="text-xs text-gray-500 mt-1">Your cost for this item</p>
@@ -62,7 +62,7 @@
     {{-- TAX SETTINGS --}}
     <div class="mt-6 pt-6 border-t border-gray-200">
         <label class="flex items-center gap-3 cursor-pointer group">
-            <input type="checkbox" name="charge_tax" value="1" x-model="charge_tax"
+            <input type="checkbox" name="charge_tax" value="1" x-model="charge_tax" @input.debounce.1000ms="triggerAutosave()"
                 class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
             <div>
                 <span class="font-medium text-gray-900">Charge tax on this product</span>

@@ -1,12 +1,58 @@
 <aside class="w-full lg:w-80 space-y-6 lg:sticky lg:top-24 self-start" 
-x-data="organizationSidebar({
-    category_id: {{ $product->category_id ?? 'null' }},
-    brand_id: {{ $product->brand_id ?? 'null' }},
-    collection_id: {{ $product->collection_id ?? 'null' }},
-    tags: @js($product->tags ?? null),
-    is_active: {{ $product->is_active ? 'true' : 'false' }},
-    is_featured: {{ $product->is_featured ? 'true' : 'false' }},
-})">
+    x-data="organizationSidebar({
+        category_id: {{ $product->category_id ?? 'null' }},
+        brand_id: {{ $product->brand_id ?? 'null' }},
+        collection_id: {{ $product->collection_id ?? 'null' }},
+        tags: @js($product->tags ?? null),
+        is_active: {{ $product->is_active ? 'true' : 'false' }},
+        is_featured: {{ $product->is_featured ? 'true' : 'false' }},
+    })">
+
+    {{-- ⚙️ STATUS --}}
+    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <h3 class="text-sm font-semibold mb-4 text-gray-800 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ __('Product Status') }}
+        </h3>
+
+        <div class="flex flex-col gap-3">
+            {{-- Active Toggle --}}
+            <div class="flex items-center justify-between py-2 px-3 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
+                <div class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Active</span>
+                    <span class="text-xs text-gray-500">Visible in store</span>
+                </div>
+
+                <button type="button" class="relative inline-flex h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200"
+                    :class="is_active ? 'bg-indigo-600' : 'bg-gray-200'"
+                    @click="is_active = !is_active; triggerAutosave()">
+                    <span class="sr-only">Toggle Active</span>
+                    <span aria-hidden="true"
+                        class="inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out"
+                        :class="is_active ? 'translate-x-5' : 'translate-x-0'"></span>
+                </button>
+            </div>
+
+            {{-- Featured Toggle --}}
+            <div class="flex items-center justify-between py-2 px-3 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
+                <div class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Featured Product</span>
+                    <span class="text-xs text-gray-500">Showcase on homepage</span>
+                </div>
+
+                <button type="button" class="relative inline-flex h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200"
+                    :class="is_featured ? 'bg-indigo-600' : 'bg-gray-200'"
+                    @click="is_featured = !is_featured; triggerAutosave()">
+                    <span class="sr-only">Toggle Featured</span>
+                    <span aria-hidden="true"
+                        class="inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out"
+                        :class="is_featured ? 'translate-x-5' : 'translate-x-0'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     {{-- 🏷️ ORGANIZATION --}}
     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -30,7 +76,7 @@ x-data="organizationSidebar({
                     Add New
                 </button>
             </div>
-            <select x-model="category_id" name="category_id"
+            <select x-model="category_id" name="category_id" @input.debounce.1000ms="triggerAutosave()"
                 class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
                 x-init="$watch('$store.dropdowns.categories', () => {})">
             <option value="">-- Select Category --</option>
@@ -61,7 +107,7 @@ x-data="organizationSidebar({
                     Add New
                 </button>
             </div>
-            <select x-model="brand_id" name="brand_id"
+            <select x-model="brand_id" name="brand_id" @input.debounce.1000ms="triggerAutosave()"
                 class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
                 x-init="$watch('$store.dropdowns.brands', () => {})">
             <option value="">-- Select Brand --</option>
@@ -92,7 +138,7 @@ x-data="organizationSidebar({
                     Add New
                 </button>
             </div>
-            <select x-model="collection_id" name="collection_id"
+            <select x-model="collection_id" name="collection_id" @input.debounce.1000ms="triggerAutosave()"
                 class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
                 x-init="$watch('$store.dropdowns.collections', () => {})">
             <option value="">-- Select Collection --</option>
@@ -128,45 +174,12 @@ x-data="organizationSidebar({
                     placeholder="Type a tag and press Enter"
                     class="w-full border-0 p-0 focus:ring-0 text-sm"
                     @keydown.enter.prevent="addTag($event)"
-                    @blur="if($event.target.value) addTag($event)">
+                    @blur="if($event.target.value) addTag($event)"
+                    @input.debounce.1000ms="triggerAutosave()">
             </div>
             <p class="text-xs text-gray-500 mt-1">Press Enter to add tags</p>
         </div>
 
-    </div>
-
-    {{-- ⚙️ STATUS --}}
-    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
-            </svg>
-            {{ __('Status') }}
-        </h3>
-
-        <div class="space-y-4">
-            <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div class="relative">
-                    <input type="checkbox" name="is_active" x-model="is_active" value="1" {{ $product->is_active ? 'checked' : '' }}
-                           class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
-                    <p class="text-xs text-gray-500 mt-1">Visible in store and search results</p>
-                </div>
-            </label>
-
-            <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div class="relative">
-                    <input type="checkbox" name="is_featured" x-model="is_featured" value="1" {{ $product->is_featured ? 'checked' : '' }}
-                           class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Featured Product</span>
-                    <p class="text-xs text-gray-500 mt-1">Showcase this product in featured sections</p>
-                </div>
-            </label>
-        </div>
     </div>
 
     {{-- Modals for Category, Brand, Collection --}}
@@ -449,11 +462,16 @@ function organizationSidebar(initialData = {}) {
                 this.showNotification(`${type.slice(0, -1)} created successfully!`, 'success');
                 this.modalOpen = false;
 
+                // ✅ Add to dropdown store (reactive update)
                 window.dispatchEvent(new CustomEvent('dropdown:add', {
                     detail: { type, item: resData.data }
                 }));
 
-                this[fieldName] = resData.data.id;
+                // ✅ Wait for store to update, then select new value
+                setTimeout(() => {
+                    this[fieldName] = resData.data.id;
+                }, 100);
+
             } catch (err) {
                 this.showNotification(err.message, 'error');
             } finally {

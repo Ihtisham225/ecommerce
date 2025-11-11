@@ -25,25 +25,25 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
-                <input type="number" step="0.01" x-model.number="weight"
+                <input type="number" step="0.01" x-model.number="weight" @input.debounce.1000ms="triggerAutosave()"
                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm
                     focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Width (cm)</label>
-                <input type="number" step="0.01" x-model.number="width"
+                <input type="number" step="0.01" x-model.number="width" @input.debounce.1000ms="triggerAutosave()"
                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm
                     focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Height (cm)</label>
-                <input type="number" step="0.01" x-model.number="height"
+                <input type="number" step="0.01" x-model.number="height" @input.debounce.1000ms="triggerAutosave()"
                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm
                     focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Length (cm)</label>
-                <input type="number" step="0.01" x-model.number="length"
+                <input type="number" step="0.01" x-model.number="length" @input.debounce.1000ms="triggerAutosave()"
                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm
                     focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
             </div>
