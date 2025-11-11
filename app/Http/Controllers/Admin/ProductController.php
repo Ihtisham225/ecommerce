@@ -69,9 +69,13 @@ class ProductController extends Controller
         $product->load([
             'categories:id,name',
             'brand:id,name',
-            'variants:id,product_id,title,sku,barcode,price,compare_at_price,cost,stock_quantity,track_quantity,taxable,options',
+            'collections:id,title',  // load collections
+            'variants:id,product_id,title,sku,barcode,price,compare_at_price,cost,stock_quantity,track_quantity,taxable,options,image_id',
+            'variants.image:id,file_path', // optional: only needed fields
             'documents',
             'options:id,product_id,name,values',
+            'shipping',
+            'tags:id,name,slug', // load tags
         ]);
 
         // Ensure options and translations are arrays
@@ -80,9 +84,23 @@ class ProductController extends Controller
         $product->title = $product->title ?? ['en' => ''];
         $product->description = $product->description ?? ['en' => ''];
 
+        // Flatten shipping data for Alpine
+        $product->requires_shipping = $product->shipping?->requires_shipping ?? false;
+        $product->weight = $product->shipping?->weight ?? null;
+        $product->width = $product->shipping?->width ?? null;
+        $product->height = $product->shipping?->height ?? null;
+        $product->length = $product->shipping?->length ?? null;
+
+        // Flatten organization sidebar data for Alpine
+        $product->category_id = $product->categories->first()?->id ?? null;
+        $product->brand_id = $product->brand?->id ?? null;
+        $product->collection_id = $product->collections->first()?->id ?? null;
+        $product->tags = $product->tags->pluck('name')->toArray();
+        $product->is_active = (bool) $product->is_active;
+        $product->is_featured = (bool) $product->is_featured;
+
         return view('admin.products.form', compact('product'));
     }
-
 
     /**
      * Autosave (for drafts). Keeps product as draft (is_active = 0).
@@ -114,7 +132,13 @@ class ProductController extends Controller
             'category_id' => 'nullable|integer|exists:categories,id',
             'has_options' => 'nullable|boolean',
             'charge_tax' => 'nullable|boolean',
+
+            // Shipping fields
             'requires_shipping' => 'nullable|boolean',
+            'weight' => 'nullable|numeric|min:0',
+            'width' => 'nullable|numeric|min:0',
+            'height' => 'nullable|numeric|min:0',
+            'length' => 'nullable|numeric|min:0',
 
             // Images
             'new_main_image' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
@@ -129,6 +153,15 @@ class ProductController extends Controller
             'options_json' => 'nullable|string',
             'variants_json' => 'nullable|string',
 
+            //organization sidebar
+            'organizationData'          => 'nullable|array',
+            'organizationData.category_id'   => 'nullable|integer|exists:categories,id',
+            'organizationData.brand_id'      => 'nullable|integer|exists:brands,id',
+            'organizationData.collection_id' => 'nullable|integer|exists:collections,id',
+            'organizationData.tags'          => 'nullable|string',
+            'organizationData.is_active'     => 'nullable|boolean',
+            'organizationData.is_featured'   => 'nullable|boolean',
+
             // SEO Fields
             'meta_title' => 'nullable|string|max:191',
             'meta_description' => 'nullable|string',
@@ -140,6 +173,16 @@ class ProductController extends Controller
             $validatedTitle = $validated['title']['en'] ?? $product->title['en'] ?? 'Untitled';
             $skuAndSlug = Product::generateUniqueSkuAndSlug($validatedTitle, $product->id);
                 
+            // extract organization data
+            $org = $validated['organizationData'] ?? [];
+
+            $categoryId   = $org['category_id'] ?? null;
+            $brandId      = $org['brand_id'] ?? null;
+            $collectionId = $org['collection_id'] ?? null;
+            $isActive     = isset($org['is_active']) ? (bool) $org['is_active'] : $product->is_active;
+            $isFeatured   = isset($org['is_featured']) ? (bool) $org['is_featured'] : $product->is_featured;
+            $tags         = $org['tags'] ?? null;
+
             // 🔹 Update core fields
             $product->update([
                 'sku' => $skuAndSlug['sku'],
@@ -148,16 +191,54 @@ class ProductController extends Controller
                 'compare_at_price' => $validated['compare_at_price'] ?? $product->compare_at_price,
                 'stock_quantity' => $validated['stock_quantity'] ?? $product->stock_quantity,
                 'track_stock' => (bool) ($validated['track_stock'] ?? $product->track_stock),
-                'brand_id' => $validated['brand_id'] ?? $product->brand_id,
-                'is_active' => false,
-                'is_featured' => $validated['is_featured'] ?? $product->is_featured,
-                'is_published' => false,
-                'published_at' => null,
+                'brand_id'       => $brandId,
+                'is_active'      => $isActive,
+                'is_featured'    => $isFeatured,
+                'is_published' => $isActive,
+                'published_at' => now(),
                 'has_options' => (bool) ($validated['has_options'] ?? false),
                 'charge_tax' => $validated['charge_tax'] ?? $product->charge_tax,
-                'requires_shipping' => $validated['requires_shipping'] ?? $product->requires_shipping,
                 'type' => ($validated['has_options'] ?? false) ? 'variable' : 'simple',
             ]);
+
+            // 🔹 Category sync
+            if ($categoryId) {
+                $product->categories()->sync([$categoryId]);
+            }
+
+            // 🔹 Collection sync
+            if ($collectionId) {
+                $product->collections()->sync([$collectionId]);
+            }
+
+            // 🔹 Tags handling (comma-separated string)
+            if (!empty($tags)) {
+                $tagsArray = collect(explode(',', $tags))
+                    ->map(fn($tag) => trim($tag))
+                    ->filter()
+                    ->unique();
+
+                $tagIds = $tagsArray->map(fn($tagName) => \App\Models\Tag::firstOrCreate(
+                    ['slug' => \Illuminate\Support\Str::slug($tagName)],
+                    ['name' => $tagName]
+                )->id);
+
+                $product->tags()->sync($tagIds);
+            } else {
+                $product->tags()->sync([]); // clear tags if empty
+            }
+
+            // store shipping
+            $product->shipping()->updateOrCreate(
+                ['product_id' => $product->id], // lookup condition
+                [
+                    'requires_shipping' => (bool) ($validated['requires_shipping'] ?? false),
+                    'weight' => ($validated['requires_shipping'] ?? false) ? ($validated['weight'] ?? null) : null,
+                    'width'  => ($validated['requires_shipping'] ?? false) ? ($validated['width'] ?? null) : null,
+                    'height' => ($validated['requires_shipping'] ?? false) ? ($validated['height'] ?? null) : null,
+                    'length' => ($validated['requires_shipping'] ?? false) ? ($validated['length'] ?? null) : null,
+                ]
+            );
 
             // 🔹 Translations
             if ($request->has('title')) {
@@ -181,6 +262,7 @@ class ProductController extends Controller
                 'title' => $v['title'] ?? null,
                 'sku' => $v['sku'] ?? null,
                 'barcode' => $v['barcode'] ?? null,
+                'image_id' => $v['image_id'] ?? null,
                 'price' => $v['price'] ?? 0,
                 'compare_at_price' => $v['compare_at_price'] ?? null,
                 'cost' => $v['cost'] ?? null,
@@ -195,45 +277,6 @@ class ProductController extends Controller
 
             // sync all variant records (create/update/delete)
             $this->syncVariants($product, $validatedVariants);
-
-            // Now handle variant-specific images
-            foreach ($variants as $v) {
-                if (!empty($v['id'])) {
-                    $variant = ProductVariant::find($v['id']);
-                } else {
-                    // handle newly created variants by title or sku if needed
-                    $variant = $product->variants()
-                        ->where('sku', $v['sku'] ?? null)
-                        ->orWhere('title', $v['title'] ?? null)
-                        ->latest('id')
-                        ->first();
-                }
-
-                if ($variant) {
-                    // Pass image-related inputs for this variant only
-                    $variantData = [
-                        'variant_existing_main_document_id' => $v['existing_main_document_id'] ?? null,
-                        'variant_gallery_remove_ids'        => $v['gallery_remove_ids'] ?? [],
-                        'variant_existing_gallery_ids'      => $v['existing_gallery_ids'] ?? [],
-                    ];
-
-                    // Create a subrequest-like object for image uploads
-                    $variantRequest = new Request();
-
-                    // Attach uploaded files manually
-                    if ($request->hasFile("variants.{$variant->id}.new_main_image")) {
-                        $variantRequest->files->set('variant_new_main_image', $request->file("variants.{$variant->id}.new_main_image"));
-                    }
-
-                    if ($request->hasFile("variants.{$variant->id}.new_gallery")) {
-                        $variantRequest->files->set('variant_new_gallery', $request->file("variants.{$variant->id}.new_gallery"));
-                    }
-
-                    // Finally, sync the images for this variant
-                    $this->syncVariantImages($variant, $variantRequest, $variantData);
-                }
-            }
-
 
             // SEO Handling
             $seoTitle = $validated['meta_title']
@@ -252,7 +295,17 @@ class ProductController extends Controller
             DB::commit();
 
             // ✅ Reload product with relations for frontend
-            $product->refresh()->load(['categories', 'brand', 'variants', 'documents', 'options']);
+            $product->refresh()->load([
+                'categories',
+                'brand',
+                'collections',
+                'variants:id,product_id,title,sku,barcode,price,compare_at_price,cost,stock_quantity,track_quantity,taxable,options,image_id',
+                'variants.image:id,file_path', // only DB columns
+                'documents', // optionally select id, file_path if you want
+                'options',
+                'shipping',
+                'tags',
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -270,28 +323,6 @@ class ProductController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-
-    /**
-     * Publish: mark as active and set published_at
-     * This endpoint will also perform a save (delegates to update)
-     */
-    public function publish(Request $request, Product $product)
-    {
-        // Reuse validation from update, but we accept same fields via form-data
-        $res = $this->autosave($request, $product);
-        if ($res->getStatusCode() !== 200) {
-            return $res;
-        }
-
-        // now mark published
-        $product->refresh()->update([
-            'is_active' => true,
-            'is_published' => true,
-            'published_at' => now(),
-        ]);
-
-        return response()->json(['success'=>true,'message'=>'Product published successfully.']);
     }
 
     /**
@@ -370,6 +401,7 @@ class ProductController extends Controller
                 'track_quantity'   => $v['track_quantity'] ?? false,
                 'taxable'          => $v['taxable'] ?? false,
                 'options'          => $v['options'] ?? [],
+                'image_id'         => $v['image_id'] ?? null,
                 'is_active'        => true,
             ];
 
@@ -393,7 +425,6 @@ class ProductController extends Controller
             $product->variants()->delete();
         }
     }
-
 
     private function syncProductImages(Product $product, Request $request, array $validated): void
     {
@@ -471,82 +502,4 @@ class ProductController extends Controller
                 ]);
         }
     }
-
-    private function syncVariantImages(ProductVariant $variant, Request $request, array $validated): void
-    {
-        // Remove selected images
-        if (!empty($validated['variant_gallery_remove_ids'])) {
-            $docsToRemove = Document::whereIn('id', $validated['variant_gallery_remove_ids'])
-                ->where('documentable_type', ProductVariant::class)
-                ->where('documentable_id', $variant->id)
-                ->get();
-
-            foreach ($docsToRemove as $doc) {
-                if ($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
-                    Storage::disk('public')->delete($doc->file_path);
-                }
-                $doc->delete();
-            }
-        }
-
-        // Replace or promote existing main image
-        if (!empty($validated['variant_existing_main_document_id'])) {
-            $variant->documents()->where('document_type', 'main')->update(['document_type' => 'gallery']);
-
-            Document::where('id', $validated['variant_existing_main_document_id'])->update([
-                'documentable_id'   => $variant->id,
-                'documentable_type' => ProductVariant::class,
-                'document_type'     => 'main',
-            ]);
-        }
-
-        // New main image upload
-        if ($request->hasFile('variant_new_main_image')) {
-            if ($oldMain = $variant->documents()->where('document_type', 'main')->first()) {
-                if ($oldMain->file_path && Storage::disk('public')->exists($oldMain->file_path)) {
-                    Storage::disk('public')->delete($oldMain->file_path);
-                }
-                $oldMain->delete();
-            }
-
-            $file = $request->file('variant_new_main_image');
-            $path = $file->store('documents', 'public');
-
-            $variant->documents()->create([
-                'name'          => $file->getClientOriginalName(),
-                'file_path'     => $path,
-                'file_type'     => $file->getClientOriginalExtension(),
-                'size'          => $file->getSize(),
-                'mime_type'     => $file->getMimeType(),
-                'document_type' => 'main',
-            ]);
-        }
-
-        // Attach existing gallery images
-        if (!empty($validated['variant_existing_gallery_ids'])) {
-            Document::whereIn('id', $validated['variant_existing_gallery_ids'])
-                ->update([
-                    'documentable_id'   => $variant->id,
-                    'documentable_type' => ProductVariant::class,
-                    'document_type'     => 'gallery',
-                ]);
-        }
-
-        // Add new gallery uploads
-        if ($request->hasFile('variant_new_gallery')) {
-            foreach ($request->file('variant_new_gallery') as $file) {
-                $path = $file->store('documents', 'public');
-
-                $variant->documents()->create([
-                    'name'          => $file->getClientOriginalName(),
-                    'file_path'     => $path,
-                    'file_type'     => $file->getClientOriginalExtension(),
-                    'size'          => $file->getSize(),
-                    'mime_type'     => $file->getMimeType(),
-                    'document_type' => 'gallery',
-                ]);
-            }
-        }
-    }
-
 }

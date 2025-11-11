@@ -26,49 +26,81 @@
     </div>
 
     {{-- OPTIONS BUILDER --}}
-    <template x-if="hasOptions">
-        <div class="space-y-4 mb-8">
-            <template x-for="(option, index) in options" :key="index">
-                <div class="border-2 border-dashed border-gray-200 p-5 rounded-lg hover:border-gray-300 transition-colors">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Option Name</label>
-                            <input type="text" x-model="option.name" placeholder="e.g. Size, Color, Material"
-                                class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border"
-                                @input="generateVariants()"
-                                @input.debounce.1000ms="triggerAutosave()">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Option Values</label>
-                            <input type="text" x-model="option.values"
-                                placeholder="Separate with commas: S, M, L"
-                                class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border"
-                                @input="generateVariants()"
-                                @input.debounce.1000ms="triggerAutosave()">
-                            <p class="text-xs text-gray-500 mt-1">Separate values with commas</p>
+    <div class="space-y-4 mb-8">
+        <template x-for="(option, index) in options" :key="index">
+            <div class="border border-gray-200 p-5 rounded-lg hover:border-gray-300 transition-colors">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Option Name with Predefined Options -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Option Name</label>
+                        <div class="flex gap-2">
+                            <select x-model="option.name" 
+                                    class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border"
+                                    @change="if(option.name === 'custom') $nextTick(() => $refs[`customInput${index}`].focus())">
+                                <option value="">Select option type</option>
+                                <option value="Color">Color</option>
+                                <option value="Size">Size</option>
+                                <option value="Material">Material</option>
+                                <option value="Style">Style</option>
+                                <option value="custom">Custom option</option>
+                            </select>
+                            <template x-if="option.name === 'custom'">
+                                <input type="text" 
+                                        x-ref="`customInput${index}`"
+                                        x-model="option.customName"
+                                        placeholder="Enter custom option"
+                                        class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border"
+                                        @input.debounce.500ms="generateVariants()">
+                            </template>
                         </div>
                     </div>
-                    <button type="button" 
-                            class="mt-3 text-red-600 text-sm hover:text-red-800 flex items-center gap-1 transition-colors"
-                            @click="removeOption(index)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                        Remove Option
-                    </button>
-                </div>
-            </template>
 
-            <button type="button" 
-                    class="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
-                    @click="addOption()">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                Add Another Option
-            </button>
-        </div>
-    </template>
+                    <!-- Option Values with Tag Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Option Values</label>
+                        <div class="border border-gray-300 rounded-md p-2 min-h-[42px] focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                            <div class="flex flex-wrap gap-1 mb-1">
+                                <template x-for="(value, valueIndex) in option.values" :key="valueIndex">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                        <span x-text="value"></span>
+                                        <button type="button" 
+                                                @click="removeValue(index, valueIndex)"
+                                                class="ml-1 text-indigo-600 hover:text-indigo-800">
+                                            ×
+                                        </button>
+                                    </span>
+                                </template>
+                            </div>
+                            <input type="text"
+                                    x-ref="`valueInput${index}`"
+                                    placeholder="Type a value and press Enter"
+                                    class="w-full border-0 p-0 focus:ring-0 text-sm"
+                                    @keydown.enter.prevent="addValue(index, $event.target)"
+                                    @blur="if($event.target.value) addValue(index, $event.target)">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Press Enter to add values</p>
+                    </div>
+                </div>
+                <button type="button" 
+                        class="mt-3 text-red-600 text-sm hover:text-red-800 flex items-center gap-1 transition-colors"
+                        @click="removeOption(index)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Remove Option
+                </button>
+            </div>
+        </template>
+
+        <button type="button" 
+                class="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
+                @click="addOption()">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Add Another Option
+        </button>
+    </div>
 
     {{-- VARIANTS MANAGEMENT --}}
     <template x-if="hasOptions">
@@ -78,239 +110,303 @@
                     <h3 class="text-lg font-bold text-gray-900">{{ __('Product Variants') }}</h3>
                     <p class="text-sm text-gray-500" x-text="`${variants.length} variants generated`"></p>
                 </div>
+            </div>
 
-                <div class="flex gap-2">
-                    <button type="button"
-                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm flex items-center gap-2"
-                            @click="bulkEdit = !bulkEdit"
-                            x-text="bulkEdit ? 'Exit Bulk Edit' : 'Bulk Edit'">
-                    </button>
-                    <button type="button"
-                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                        </svg>
-                        Export CSV
-                    </button>
+            <!-- Quick Actions Toolbar -->
+            <div class="mb-6 p-5 bg-gray-50 rounded-xl border border-gray-200 shadow-sm">
+                <h4 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    Quick Apply to All Variants
+                </h4>
+
+                <!-- First Row: Pricing Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-5">
+                    <!-- Price -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" step="0.01" x-model="quickActions.price"
+                                placeholder="0.00"
+                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <button type="button"
+                                @click="applyToAll('price', quickActions.price)"
+                                class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Compare at Price -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Compare at Price</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" step="0.01" x-model="quickActions.compare_at_price"
+                                placeholder="0.00"
+                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <button type="button"
+                                @click="applyToAll('compare_at_price', quickActions.compare_at_price)"
+                                class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cost -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Cost</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" step="0.01" x-model="quickActions.cost"
+                                placeholder="0.00"
+                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <button type="button"
+                                @click="applyToAll('cost', quickActions.cost)"
+                                class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" x-model="quickActions.quantity"
+                                placeholder="0"
+                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <button type="button"
+                                @click="applyToAll('quantity', quickActions.quantity)"
+                                class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Second Row: Settings -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <!-- Track Quantity -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Track Quantity</label>
+                        <div class="flex items-center gap-2">
+                            <select x-model="quickActions.track_quantity"
+                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                                <option value="true">Track Quantity</option>
+                                <option value="false">Don't Track</option>
+                            </select>
+                            <button type="button"
+                                @click="applyToAll('track_quantity', quickActions.track_quantity === 'true')"
+                                class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tax Setting -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Tax Setting</label>
+                        <div class="flex items-center gap-2">
+                            <select x-model="quickActions.taxable"
+                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                                <option value="true">Taxable</option>
+                                <option value="false">Not Taxable</option>
+                            </select>
+                            <button type="button"
+                                @click="applyToAll('taxable', quickActions.taxable === 'true')"
+                                class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Quick Actions</label>
+                        <div class="flex items-center gap-2">
+                            <button type="button"
+                                @click="clearAllQuickActions()"
+                                class="flex-1 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-xs font-medium transition">
+                                Clear All
+                            </button>
+                            <button type="button"
+                                @click="applyAllQuickActions()"
+                                class="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium transition">
+                                Apply All
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {{-- BULK EDIT MODE --}}
-            <template x-if="bulkEdit">
-                <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variant</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compare at</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <template x-for="(variant, idx) in variants" :key="idx">
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="variant.title"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <select x-model="variant.image_id"
-                                                class="border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                            <option value="">Select image</option>
-                                            <template x-for="img in media" :key="img.id">
-                                                <option :value="img.id" x-text="img.alt || 'Image ' + img.id"></option>
+
+            {{-- VARIANTS TABLE --}}
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variant</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compare at</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="(variant, idx) in variants" :key="idx">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="variant.title"></td>
+                                
+                                <!-- Image Selection with Visual Dropdown -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="relative" x-data="{ open: false }">
+                                        <!-- Current Image Preview as Dropdown Trigger -->
+                                        <button type="button"
+                                                @click="open = !open"
+                                                class="flex items-center gap-2 p-1 border border-gray-300 rounded-md hover:border-gray-400 transition-colors">
+                                            <template x-if="getVariantImage(variant)">
+                                                <div class="w-10 h-10 rounded border overflow-hidden flex-shrink-0">
+                                                    <img :src="getVariantImage(variant)" class="w-full h-full object-cover">
+                                                </div>
                                             </template>
-                                        </select>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <input type="text" x-model="variant.sku" 
-                                                class="w-24 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <input type="number" step="0.01" x-model="variant.price" 
-                                                class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <input type="number" step="0.01" x-model="variant.compare_at_price" 
-                                                class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <input type="number" step="0.01" x-model="variant.cost" 
-                                                class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
+                                            <template x-if="!getVariantImage(variant)">
+                                                <div class="w-10 h-10 rounded border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                </div>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Dropdown Menu with Image Grid -->
+                                        <div x-show="open"
+                                             @click.away="open = false"
+                                             class="absolute top-full left-0 mt-1 w-64 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                                            <div class="p-2">
+                                                <!-- No Image Option -->
+                                                <button type="button"
+                                                        @click="variant.image_id = null; open = false"
+                                                        class="w-full flex items-center gap-3 p-2 rounded hover:bg-gray-100 text-left mb-2">
+                                                    <div class="w-12 h-12 rounded border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 flex-shrink-0">
+                                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-sm font-medium text-gray-900">No image</div>
+                                                        <div class="text-xs text-gray-500">Remove image</div>
+                                                    </div>
+                                                </button>
+
+                                                <div class="border-t pt-2">
+                                                    <!-- Image Grid -->
+                                                    <div class="grid grid-cols-3 gap-2">
+                                                        <template x-for="img in productMedia" :key="img.id">
+                                                            <button type="button"
+                                                                    @click="variant.image_id = img.id; open = false"
+                                                                    class="aspect-square rounded border-2 transition-all"
+                                                                    :class="variant.image_id === img.id ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200 hover:border-gray-300'">
+                                                                <img :src="img.url" 
+                                                                     :alt="img.alt || img.name"
+                                                                     class="w-full h-full object-cover rounded">
+                                                            </button>
+                                                        </template>
+                                                    </div>
+
+                                                    <!-- Empty State -->
+                                                    <template x-if="productMedia.length === 0">
+                                                        <div class="text-center py-4 text-gray-500">
+                                                            <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                            </svg>
+                                                            <p class="text-sm">No images available</p>
+                                                            <p class="text-xs">Upload images first</p>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <!-- SKU -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <input type="text" x-model="variant.sku" 
+                                            class="w-24 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
+                                            placeholder="SKU-001" disabled>
+                                </td>
+                                
+                                <!-- Pricing -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <input type="number" step="0.01" x-model="variant.price" 
+                                            class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
+                                            @input="updateProfit(variant)">
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <input type="number" step="0.01" x-model="variant.compare_at_price" 
+                                            class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
+                                            placeholder="0.00">
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <input type="number" step="0.01" x-model="variant.cost" 
+                                            class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
+                                            @input="updateProfit(variant)">
+                                </td>
+                                
+                                <!-- Profit & Margin -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <template x-if="variant.price > 0 && variant.cost > 0">
+                                        <div class="text-xs">
+                                            <div class="font-semibold text-green-600" 
+                                                 x-text="`$${calculateProfit(variant).toFixed(2)}`"></div>
+                                            <div class="text-gray-500" 
+                                                 x-text="`${calculateMargin(variant)}%`"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="!(variant.price > 0 && variant.cost > 0)">
+                                        <span class="text-gray-400 text-xs">—</span>
+                                    </template>
+                                </td>
+                                
+                                <!-- Inventory -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" x-model="variant.track_quantity" 
+                                                class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                         <template x-if="variant.track_quantity">
                                             <input type="number" x-model="variant.quantity" 
                                                     class="w-16 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
                                         </template>
                                         <template x-if="!variant.track_quantity">
-                                            <span class="text-gray-400 text-xs italic">—</span>
+                                            <span class="text-gray-400 text-xs">∞</span>
                                         </template>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                                    </div>
+                                </td>
+
+                                <!-- Tax -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <input type="checkbox" x-model="variant.taxable" 
+                                            class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary Footer -->
+            <div class="mt-4 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div class="text-sm text-gray-600">
+                    <span x-text="variants.length"></span> variants
                 </div>
-            </template>
-
-            {{-- CARD MODE (Default) --}}
-            <template x-if="!bulkEdit">
-                <div class="grid gap-4">
-                    <template x-if="variants.length === 0">
-                        <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                            <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                            </svg>
-                            <p class="mt-4 text-gray-500">No variants yet. Add option values above to generate variants.</p>
-                        </div>
-                    </template>
-
-                    <template x-for="(variant, idx) in variants" :key="idx">
-                        <div class="border border-gray-200 rounded-lg p-5 hover:border-gray-300 transition-colors">
-                            <div class="flex justify-between items-start mb-4">
-                                <h4 class="font-semibold text-gray-900" x-text="variant.title"></h4>
-                                <button type="button" class="text-gray-400 hover:text-gray-600">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path>
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <!-- Image Selection -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Variant Image</label>
-
-                                    <!-- Existing main image -->
-                                    <template x-if="variant.existing_main_document_id">
-                                        <div class="relative w-24 h-24 rounded-lg overflow-hidden border">
-                                            <img :src="productMedia.find(img => img.id === variant.existing_main_document_id)?.url"
-                                                class="object-cover w-full h-full">
-                                            <button type="button"
-                                                    @click="removeMainImage(variant)"
-                                                    class="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-600 hover:bg-white">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M6 18L18 6M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </template>
-
-                                    <!-- New upload preview -->
-                                    <template x-if="variant.new_main_image">
-                                        <div class="relative w-24 h-24 rounded-lg overflow-hidden border mt-2">
-                                            <img :src="variant.preview" class="object-cover w-full h-full">
-                                            <button type="button"
-                                                    @click="variant.new_main_image = null; variant.preview = null"
-                                                    class="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-600 hover:bg-white">
-                                                ✕
-                                            </button>
-                                        </div>
-                                    </template>
-
-                                    <!-- File input -->
-                                    <div class="mt-2">
-                                        <input type="file"
-                                            accept="image/*"
-                                            @change="handleImageUpload($event, variant)"
-                                            class="block text-sm text-gray-600">
-                                    </div>
-
-                                    <!-- Select from existing gallery -->
-                                    <div class="mt-2">
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">Or choose from product gallery</label>
-                                        <select x-model="variant.existing_main_document_id"
-                                                class="w-full border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                            <option value="">— Select —</option>
-                                            <template x-for="img in productMedia" :key="img.id">
-                                                <option :value="img.id" x-text="img.name || ('Image ' + img.id)"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <!-- SKU -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        SKU (Auto-generated)
-                                    </label>
-                                    <input type="text"
-                                        x-model="variant.sku"
-                                        placeholder="Auto-generated by system"
-                                        disabled
-                                        class="w-full border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed
-                                            focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border">
-                                </div>
-
-                                <!-- Pricing -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
-                                    <input type="number" step="0.01" x-model.number="variant.price"
-                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Compare at Price</label>
-                                    <input type="number" step="0.01" x-model.number="variant.compare_at_price"
-                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Cost per Item</label>
-                                    <input type="number" step="0.01" x-model.number="variant.cost"
-                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
-                                </div>
-
-                                <!-- Profit & Margin Display -->
-                                <div class="col-span-full">
-                                    <div class="bg-gray-50 p-3 rounded-lg" x-show="variant.price && variant.cost">
-                                        <div class="grid grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <span class="text-gray-600">Profit:</span>
-                                                <span class="font-semibold text-green-600 ml-2" 
-                                                        x-text="'$' + (variant.price - variant.cost).toFixed(2)"></span>
-                                            </div>
-                                            <div>
-                                                <span class="text-gray-600">Margin:</span>
-                                                <span class="font-semibold text-green-600 ml-2" 
-                                                        x-text="((variant.price - variant.cost) / variant.price * 100).toFixed(1) + '%'"></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Inventory -->
-                                <div class="col-span-full border-t pt-4 mt-2">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div class="flex items-center gap-3">
-                                            <label class="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" x-model="variant.track_quantity" 
-                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @input.debounce.1000ms="triggerAutosave()">
-                                                <span class="text-sm font-medium text-gray-700">Track quantity</span>
-                                            </label>
-                                        </div>
-                                        <template x-if="variant.track_quantity">
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">Quantity in Stock</label>
-                                                <input type="number" x-model.number="variant.quantity"
-                                                    class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 border" @input.debounce.1000ms="triggerAutosave()">
-                                            </div>
-                                        </template>
-                                        <div class="flex items-center gap-3">
-                                            <label class="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" x-model="variant.taxable"
-                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @input.debounce.1000ms="triggerAutosave()">
-                                                <span class="text-sm font-medium text-gray-700">Charge tax on this variant</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
+                <div class="text-sm text-gray-600" x-show="totalProfit > 0">
+                    Total Profit: <span class="font-semibold text-green-600" x-text="`$${totalProfit.toFixed(2)}`"></span>
                 </div>
-            </template>
+            </div>
         </div>
     </template>
 </div>
@@ -318,56 +414,85 @@
 <script>
 function variantManager(initialOptions = [], initialVariants = [], productMedia = []) {
     return {
-        // 🧩 Product Options (e.g., Size, Color)
-        options: initialOptions.length ? initialOptions : [{ name: '', values: '' }],
+        options: initialOptions.length ? initialOptions.map(opt => ({
+            name: opt.name,
+            customName: '',
+            values: Array.isArray(opt.values) ? opt.values : [opt.values].filter(Boolean)
+        })) : [{ name: '', customName: '', values: [] }],
 
-        // 🧬 Variants (each combination of options)
         variants: initialVariants.length ? initialVariants.map(v => ({
             id: v.id ?? null,
             title: v.title ?? '',
-            sku: v.sku ?? '', // Auto-generated — not editable
+            sku: v.sku ?? '',
             barcode: v.barcode ?? '',
             price: parseFloat(v.price ?? 0),
             compare_at_price: parseFloat(v.compare_at_price ?? 0),
             cost: parseFloat(v.cost ?? 0),
-            stock_quantity: parseInt(v.stock_quantity ?? 0),
+            quantity: parseInt(v.quantity ?? v.stock_quantity ?? 0),
             track_quantity: v.track_quantity ?? true,
             taxable: v.taxable ?? true,
             options: v.options ?? {},
-            documents: v.documents ?? [],
-            new_main_image: null,
-            existing_main_document_id: v.documents?.find(d => d.document_type === 'main')?.id ?? null,
-            gallery_remove_ids: [],
-            existing_gallery_ids: v.documents
-                ?.filter(d => d.document_type === 'gallery')
-                ?.map(d => d.id) ?? [],
+            image_id: v.image_id ?? v.documents?.find(d => d.document_type === 'main')?.id ?? null,
         })) : [],
 
-        // 🖼 Product Media Reference
         productMedia: productMedia || [],
-        bulkEdit: false,
 
-        // ➕ Add a new option row (e.g., Size)
-        addOption() {
-            this.options.push({ name: '', values: '' });
-            this.generateVariants();
+        // Quick Actions State
+        quickActions: {
+            price: '',
+            compare_at_price: '',
+            cost: '',
+            quantity: '',
+            track_quantity: 'true',
+            taxable: 'true'
         },
 
-        // ➖ Remove an option and rebuild variants
+        get hasOptions() {
+            return this.options.some(opt => opt.name && opt.values.length > 0);
+        },
+
+        get totalProfit() {
+            return this.variants.reduce((total, variant) => {
+                return total + this.calculateProfit(variant);
+            }, 0);
+        },
+
+        getOptionName(option) {
+            return option.name === 'custom' ? option.customName : option.name;
+        },
+
+        addOption() {
+            this.options.push({ name: '', customName: '', values: [] });
+        },
+
         removeOption(index) {
             this.options.splice(index, 1);
             this.generateVariants();
         },
 
-        // ⚙️ Generate all variant combinations based on current options
+        addValue(optionIndex, inputElement) {
+            const trimmedValue = inputElement.value.trim();
+            
+            if (trimmedValue && !this.options[optionIndex].values.includes(trimmedValue)) {
+                this.options[optionIndex].values.push(trimmedValue);
+                this.generateVariants();
+            }
+            
+            // Clear the input field
+            inputElement.value = '';
+        },
+
+        removeValue(optionIndex, valueIndex) {
+            this.options[optionIndex].values.splice(valueIndex, 1);
+            this.generateVariants();
+        },
+
         generateVariants() {
             const validOptions = this.options
-                .filter(o => o.name && o.values.trim())
-                .map(o => ({
-                    name: o.name.trim(),
-                    values: o.values.split(',')
-                        .map(v => v.trim())
-                        .filter(Boolean)
+                .filter(opt => this.getOptionName(opt) && opt.values.length > 0)
+                .map(opt => ({
+                    name: this.getOptionName(opt),
+                    values: opt.values
                 }));
 
             if (!validOptions.length) {
@@ -380,83 +505,124 @@ function variantManager(initialOptions = [], initialVariants = [], productMedia 
                 return acc.flatMap(a => option.values.map(v => [...a, v]));
             }, []);
 
-            // Build new variant list or reuse existing where possible
             const newVariants = combinations.map(values => {
                 const title = values.join(' / ');
                 const existing = this.variants.find(v => v.title === title);
 
-                return existing || {
+                if (existing) {
+                    return {
+                        ...existing,
+                        options: validOptions.reduce((acc, opt, i) => {
+                            acc[opt.name] = values[i];
+                            return acc;
+                        }, {})
+                    };
+                }
+
+                return {
                     id: null,
                     title,
-                    sku: '', // Will be auto-generated on save
+                    sku: '',
                     barcode: '',
                     price: 0,
                     compare_at_price: 0,
                     cost: 0,
-                    stock_quantity: 0,
+                    quantity: 0,
                     track_quantity: true,
                     taxable: true,
                     options: validOptions.reduce((acc, opt, i) => {
                         acc[opt.name] = values[i];
                         return acc;
                     }, {}),
-                    documents: [],
-                    new_main_image: null,
-                    existing_main_document_id: null,
-                    gallery_remove_ids: [],
-                    existing_gallery_ids: [],
+                    image_id: null,
                 };
             });
 
             this.variants = newVariants;
         },
 
-        // 📸 Variant image upload
-        handleImageUpload(event, variant) {
-            const file = event.target.files[0];
-            if (!file) return;
-            variant.new_main_image = file;
-            variant.preview = URL.createObjectURL(file);
+        getVariantImage(variant) {
+            if (!variant.image_id) return null;
+            const variantImageId = parseInt(variant.image_id);
+            const media = this.productMedia.find(img => parseInt(img.id) === variantImageId);
+            return media ? media.url : null;
         },
 
-        // 🗑 Remove main image
-        removeMainImage(variant) {
-            if (variant.existing_main_document_id) {
-                variant.gallery_remove_ids.push(variant.existing_main_document_id);
-            }
-            variant.existing_main_document_id = null;
-            variant.new_main_image = null;
-            variant.preview = null;
+        calculateProfit(variant) {
+            return Math.max(0, (variant.price || 0) - (variant.cost || 0));
         },
 
-        // 🧾 Serialize and attach variant/options data before submit/autosave
+        calculateMargin(variant) {
+            if (!variant.price || variant.price <= 0) return 0;
+            const profit = this.calculateProfit(variant);
+            return ((profit / variant.price) * 100).toFixed(1);
+        },
+
+        updateProfit(variant) {
+            // This function is called when price or cost changes
+            // The profit display will automatically update due to Alpine's reactivity
+        },
+
+        applyToAll(field, value) {
+            if (value === null || value === undefined || value === '') return;
+            
+            this.variants.forEach(variant => {
+                if (field === 'price' || field === 'compare_at_price' || field === 'cost') {
+                    variant[field] = parseFloat(value);
+                } else if (field === 'quantity') {
+                    variant[field] = parseInt(value);
+                } else if (field === 'taxable' || field === 'track_quantity') {
+                    variant[field] = Boolean(value);
+                }
+            });
+        },
+
+        clearAllQuickActions() {
+            this.quickActions = {
+                price: '',
+                compare_at_price: '',
+                cost: '',
+                quantity: '',
+                track_quantity: 'true',
+                taxable: 'true'
+            };
+        },
+
+        applyAllQuickActions() {
+            if (this.quickActions.price) this.applyToAll('price', this.quickActions.price);
+            if (this.quickActions.compare_at_price) this.applyToAll('compare_at_price', this.quickActions.compare_at_price);
+            if (this.quickActions.cost) this.applyToAll('cost', this.quickActions.cost);
+            if (this.quickActions.quantity) this.applyToAll('quantity', this.quickActions.quantity);
+            this.applyToAll('track_quantity', this.quickActions.track_quantity === 'true');
+            this.applyToAll('taxable', this.quickActions.taxable === 'true');
+        },
+
         prepareSubmission(form) {
             const sanitizedVariants = this.variants.map(v => ({
                 id: v.id,
                 title: v.title,
-                sku: v.sku, // will be ignored or regenerated on backend
+                sku: v.sku,
                 barcode: v.barcode,
                 price: parseFloat(v.price || 0),
                 compare_at_price: parseFloat(v.compare_at_price || 0),
                 cost: parseFloat(v.cost || 0),
-                stock_quantity: parseInt(v.stock_quantity || 0),
+                quantity: parseInt(v.quantity || 0),
                 track_quantity: !!v.track_quantity,
                 taxable: !!v.taxable,
                 options: v.options || {},
-                existing_main_document_id: v.existing_main_document_id,
-                gallery_remove_ids: v.gallery_remove_ids,
-                existing_gallery_ids: v.existing_gallery_ids,
+                image_id: v.image_id,
             }));
 
-            const sanitizedOptions = this.options.map(o => ({
-                name: o.name.trim(),
-                values: o.values.split(',').map(v => v.trim()).filter(Boolean),
-            }));
+            const sanitizedOptions = this.options
+                .filter(opt => this.getOptionName(opt) && opt.values.length > 0)
+                .map(opt => ({
+                    name: this.getOptionName(opt),
+                    values: opt.values
+                }));
 
             form.querySelector('[x-ref="variantsJson"]').value = JSON.stringify(sanitizedVariants);
             form.querySelector('[x-ref="optionsJson"]').value = JSON.stringify(sanitizedOptions);
         },
     };
 }
-
 </script>

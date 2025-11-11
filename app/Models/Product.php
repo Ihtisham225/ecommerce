@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -173,6 +174,16 @@ class Product extends Model
         return $this->belongsToMany(Category::class, 'product_category');
     }
 
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'product_tag');
+    }
+
+    public function collections(): BelongsToMany
+    {
+        return $this->belongsToMany(Collection::class, 'product_collection');
+    }
+
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
@@ -181,6 +192,11 @@ class Product extends Model
     public function options(): HasMany
     {
         return $this->hasMany(ProductOption::class);
+    }
+
+    public function shipping(): HasOne
+    {
+        return $this->hasOne(ProductShipping::class);
     }
 
     // ... other relations left as-is
@@ -205,5 +221,25 @@ class Product extends Model
     {
         return $query->whereNotNull('published_at')
                      ->where('published_at', '<=', now());
+    }
+
+    public function scopeByBrand($query, $brandId)
+    {
+        return $query->where('brand_id', $brandId);
+    }
+
+    public function scopeByCategory($query, $categoryId)
+    {
+        return $query->whereHas('categories', fn($q) => $q->where('categories.id', $categoryId));
+    }
+
+    public function scopeByCollection($query, $collectionId)
+    {
+        return $query->whereHas('collections', fn($q) => $q->where('collections.id', $collectionId));
+    }
+
+    public function scopeWithTags($query, array $tags)
+    {
+        return $query->withAnyTags($tags);
     }
 }

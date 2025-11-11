@@ -1,4 +1,12 @@
-<aside class="w-full lg:w-80 space-y-6 lg:sticky lg:top-24 self-start" x-data="organizationSidebar()">
+<aside class="w-full lg:w-80 space-y-6 lg:sticky lg:top-24 self-start" 
+x-data="organizationSidebar({
+    category_id: {{ $product->category_id ?? 'null' }},
+    brand_id: {{ $product->brand_id ?? 'null' }},
+    collection_id: {{ $product->collection_id ?? 'null' }},
+    tags: @js($product->tags ?? null),
+    is_active: {{ $product->is_active ? 'true' : 'false' }},
+    is_featured: {{ $product->is_featured ? 'true' : 'false' }},
+})">
 
     {{-- 🏷️ ORGANIZATION --}}
     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -22,7 +30,7 @@
                     Add New
                 </button>
             </div>
-            <select name="category_id"
+            <select x-model="category_id" name="category_id"
                 class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
                 x-init="$watch('$store.dropdowns.categories', () => {})">
             <option value="">-- Select Category --</option>
@@ -53,7 +61,7 @@
                     Add New
                 </button>
             </div>
-            <select name="brand_id"
+            <select x-model="brand_id" name="brand_id"
                 class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
                 x-init="$watch('$store.dropdowns.brands', () => {})">
             <option value="">-- Select Brand --</option>
@@ -84,7 +92,7 @@
                     Add New
                 </button>
             </div>
-            <select name="collection_id"
+            <select x-model="collection_id" name="collection_id"
                 class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border"
                 x-init="$watch('$store.dropdowns.collections', () => {})">
             <option value="">-- Select Collection --</option>
@@ -103,12 +111,28 @@
         </div>
 
         {{-- Tags --}}
-        <div class="mb-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
-            <input type="text" name="tags" value="{{ $product->tags ?? '' }}"
-                placeholder="Comma separated (e.g. summer, cotton, new-arrival)"
-                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2.5 px-3 transition-colors border placeholder-gray-400">
+        <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <div class="border border-gray-300 rounded-md p-2 min-h-[42px] focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                <div class="flex flex-wrap gap-1 mb-1">
+                    <template x-for="(tag, index) in tags" :key="index">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            <span x-text="tag"></span>
+                            <button type="button" @click="removeTag(index)" class="ml-1 text-indigo-600 hover:text-indigo-800">
+                                ×
+                            </button>
+                        </span>
+                    </template>
+                </div>
+                <input type="text"
+                    placeholder="Type a tag and press Enter"
+                    class="w-full border-0 p-0 focus:ring-0 text-sm"
+                    @keydown.enter.prevent="addTag($event)"
+                    @blur="if($event.target.value) addTag($event)">
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Press Enter to add tags</p>
         </div>
+
     </div>
 
     {{-- ⚙️ STATUS --}}
@@ -123,7 +147,7 @@
         <div class="space-y-4">
             <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
                 <div class="relative">
-                    <input type="checkbox" name="is_active" value="1" {{ $product->is_active ? 'checked' : '' }}
+                    <input type="checkbox" name="is_active" x-model="is_active" value="1" {{ $product->is_active ? 'checked' : '' }}
                            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                 </div>
                 <div>
@@ -134,7 +158,7 @@
 
             <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
                 <div class="relative">
-                    <input type="checkbox" name="is_featured" value="1" {{ $product->is_featured ? 'checked' : '' }}
+                    <input type="checkbox" name="is_featured" x-model="is_featured" value="1" {{ $product->is_featured ? 'checked' : '' }}
                            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                 </div>
                 <div>
@@ -341,181 +365,130 @@
 </aside>
 
 <script>
-    function organizationSidebar() {
-        return {
-            modalOpen: false,
-            modalType: '',
-            loading: false,
-            newCategory: {
-                name: '',
-                parent_id: '',
-                is_active: true
-            },
-            newBrand: {
-                name: '',
-                description: '',
-                is_active: true
-            },
-            newCollection: {
-                title: '',
-                description: '',
-                is_active: true
-            },
+function organizationSidebar(initialData = {}) {
+    return {
+        // ---------- Core Organization State ----------
+        category_id: initialData.category_id ?? '',
+        brand_id: initialData.brand_id ?? '',
+        collection_id: initialData.collection_id ?? '',
+        is_active: initialData.is_active ?? true,
+        is_featured: initialData.is_featured ?? false,
 
-            openModal(type) {
-                this.modalType = type;
-                this.modalOpen = true;
-                // Reset form data
-                if (type === 'category') {
-                    this.newCategory = { name: '', parent_id: '', is_active: true };
-                } else if (type === 'brand') {
-                    this.newBrand = { name: '', description: '', is_active: true };
-                } else if (type === 'collection') {
-                    this.newCollection = { title: '', description: '', is_active: true };
-                }
-            },
+        // ---------- Tags ----------
+        tags: Array.isArray(initialData.tags)
+            ? initialData.tags
+            : (initialData.tags ? initialData.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
 
-            async saveCategory() {
-                if (!this.newCategory.name.trim()) {
-                    this.showNotification('Please enter a category name', 'error');
-                    return;
-                }
+        newTag: '',
 
-                this.loading = true;
-                try {
-                    const response = await fetch('/admin/categories/quick-add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(this.newCategory)
-                    });
+        // ---------- Modal & Form State ----------
+        modalOpen: false,
+        modalType: '',
+        loading: false,
 
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        this.showNotification('Category created successfully!', 'success');
-                        this.modalOpen = false;
+        newCategory: { name: '', parent_id: '', is_active: true },
+        newBrand: { name: '', description: '', is_active: true },
+        newCollection: { title: '', description: '', is_active: true },
 
-                        window.dispatchEvent(new CustomEvent('dropdown:add', {
-                            detail: { type: 'categories', item: data.data }
-                        }));
-                        document.querySelector('select[name="category_id"]').value = data.data.id;
-                    } else {
-                        throw new Error(data.message || 'Failed to create category');
-                    }
-                } catch (error) {
-                    this.showNotification(error.message, 'error');
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            async saveBrand() {
-                if (!this.newBrand.name.trim()) {
-                    this.showNotification('Please enter a brand name', 'error');
-                    return;
-                }
-
-                this.loading = true;
-                try {
-                    const response = await fetch('/admin/brands/quick-add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(this.newBrand)
-                    });
-
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        this.showNotification('Brand created successfully!', 'success');
-                        this.modalOpen = false;
-
-                        window.dispatchEvent(new CustomEvent('dropdown:add', {
-                            detail: { type: 'brands', item: data.data }
-                        }));
-                        document.querySelector('select[name="brand_id"]').value = data.data.id;
-                    } else {
-                        throw new Error(data.message || 'Failed to create brand');
-                    }
-                } catch (error) {
-                    this.showNotification(error.message, 'error');
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            async saveCollection() {
-                if (!this.newCollection.title.trim()) {
-                    this.showNotification('Please enter a collection title', 'error');
-                    return;
-                }
-
-                this.loading = true;
-                try {
-                    const response = await fetch('/admin/collections/quick-add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(this.newCollection)
-                    });
-
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        if (response.ok) {
-                            this.showNotification('Collection created successfully!', 'success');
-                            this.modalOpen = false;
-
-                            window.dispatchEvent(new CustomEvent('dropdown:add', {
-                                detail: { type: 'collections', item: data.data }
-                            }));
-                            document.querySelector('select[name="collection_id"]').value = data.data.id;
-                        }
-                    } else {
-                        throw new Error(data.message || 'Failed to create collection');
-                    }
-                } catch (error) {
-                    this.showNotification(error.message, 'error');
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            showNotification(message, type = 'info') {
-                const notification = document.createElement('div');
-                notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
-                    type === 'success' ? 'bg-green-500 text-white' : 
-                    type === 'error' ? 'bg-red-500 text-white' : 
-                    'bg-blue-500 text-white'
-                }`;
-                notification.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
-                            type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' :
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'}
-                        </svg>
-                        <span>${message}</span>
-                    </div>
-                `;
-                
-                document.body.appendChild(notification);
-                
-                setTimeout(() => {
-                    notification.style.transform = 'translateX(100%)';
-                    setTimeout(() => notification.remove(), 300);
-                }, 5000);
+        // ---------- Tag Logic ----------
+        addTag(event) {
+            const value = event.target.value.trim();
+            if (value && !this.tags.includes(value)) {
+                this.tags.push(value);
             }
-        };
-    }
+            event.target.value = '';
+        },
+        removeTag(index) {
+            this.tags.splice(index, 1);
+        },
+
+        // ---------- Modal Logic ----------
+        openModal(type) {
+            this.modalType = type;
+            this.modalOpen = true;
+
+            if (type === 'category') this.newCategory = { name: '', parent_id: '', is_active: true };
+            else if (type === 'brand') this.newBrand = { name: '', description: '', is_active: true };
+            else if (type === 'collection') this.newCollection = { title: '', description: '', is_active: true };
+        },
+        closeModal() {
+            this.modalOpen = false;
+        },
+
+        // ---------- Save New Items ----------
+        async saveCategory() {
+            if (!this.newCategory.name.trim()) return this.showNotification('Please enter a category name', 'error');
+            await this._submitQuickAdd('/admin/categories/quick-add', this.newCategory, 'categories', 'category_id');
+        },
+        async saveBrand() {
+            if (!this.newBrand.name.trim()) return this.showNotification('Please enter a brand name', 'error');
+            await this._submitQuickAdd('/admin/brands/quick-add', this.newBrand, 'brands', 'brand_id');
+        },
+        async saveCollection() {
+            if (!this.newCollection.title.trim()) return this.showNotification('Please enter a collection title', 'error');
+            await this._submitQuickAdd('/admin/collections/quick-add', this.newCollection, 'collections', 'collection_id');
+        },
+
+        // ---------- Private AJAX Helper ----------
+        async _submitQuickAdd(url, data, type, fieldName) {
+            this.loading = true;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const resData = await response.json();
+                if (!response.ok) throw new Error(resData.message || `Failed to create ${type.slice(0, -1)}`);
+
+                this.showNotification(`${type.slice(0, -1)} created successfully!`, 'success');
+                this.modalOpen = false;
+
+                window.dispatchEvent(new CustomEvent('dropdown:add', {
+                    detail: { type, item: resData.data }
+                }));
+
+                this[fieldName] = resData.data.id;
+            } catch (err) {
+                this.showNotification(err.message, 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ---------- Export for productForm ----------
+        getOrganizationData() {
+            return {
+                category_id: this.category_id || null,
+                brand_id: this.brand_id || null,
+                collection_id: this.collection_id || null,
+                is_active: this.is_active ? 1 : 0,
+                is_featured: this.is_featured ? 1 : 0,
+                tags: this.tags.join(','), // ✅ clean comma-separated for backend
+            };
+        },
+
+        // ---------- Simple Notification ----------
+        showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `
+                fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300
+                ${type === 'success' ? 'bg-green-600 text-white' :
+                  type === 'error' ? 'bg-red-600 text-white' :
+                  'bg-blue-600 text-white'}
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        },
+    };
+}
 </script>

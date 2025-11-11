@@ -34,7 +34,6 @@ return new class extends Migration
             // Status & Visibility
             $table->boolean('has_options')->default(false);
             $table->boolean('charge_tax')->default(false);
-            $table->boolean('requires_shipping')->default(true);
             $table->boolean('is_active')->default(true);
             $table->boolean('is_featured')->default(false);
             $table->boolean('is_published')->default(false);

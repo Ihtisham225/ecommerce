@@ -24,6 +24,7 @@ return new class extends Migration
             $table->boolean('track_quantity')->default(true);
             $table->boolean('taxable')->default(true);
             $table->json('options')->nullable();
+            $table->foreignId('image_id')->constrained('documents')->onDelete('cascade');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

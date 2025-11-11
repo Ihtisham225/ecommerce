@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class ProductVariant extends Model
@@ -20,6 +20,7 @@ class ProductVariant extends Model
         'cost',
         'stock_quantity',
         'track_quantity',
+        'image_id',
         'taxable',
         'options',
         'is_active',
@@ -75,8 +76,13 @@ class ProductVariant extends Model
         return $this->hasMany(InventoryStock::class);
     }
 
-    public function documents(): MorphMany
+    public function image(): BelongsTo
     {
-        return $this->morphMany(Document::class, 'documentable');
+        return $this->belongsTo(Document::class, 'image_id');
+    }
+
+    public function shipping(): HasOne
+    {
+        return $this->hasOne(ProductShipping::class);
     }
 }
