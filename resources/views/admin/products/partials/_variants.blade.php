@@ -5,7 +5,9 @@
             'values' => $opt->values,
         ]) ?? []) }},
         {{ json_encode($product->variants ?? []) }},
-        {{ json_encode($product->documents ?? []) }}
+        {{ json_encode($product->documents ?? []) }},
+        '{{ $storeSetting?->currency_code ?? 'USD' }}',
+        '{{ $currencySymbol }}'
     )"
     @submit.prevent="prepareSubmission($el)">
 
@@ -125,9 +127,17 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" step="0.01" x-model="quickActions.price" @input.debounce.1000ms="triggerAutosave()"
-                                placeholder="0.00"
-                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 text-xs" x-text="currencySymbol"></span>
+                                </div>
+                                <input type="number" 
+                                       :step="stepValue"
+                                       x-model="quickActions.price" 
+                                       @input.debounce.1000ms="triggerAutosave()"
+                                       placeholder="0.00"
+                                       class="w-full pl-6 border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            </div>
                             <button type="button"
                                 @click="applyToAll('price', quickActions.price)"
                                 class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
@@ -140,9 +150,17 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Compare at Price</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" step="0.01" x-model="quickActions.compare_at_price" @input.debounce.1000ms="triggerAutosave()"
-                                placeholder="0.00"
-                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 text-xs" x-text="currencySymbol"></span>
+                                </div>
+                                <input type="number" 
+                                       :step="stepValue"
+                                       x-model="quickActions.compare_at_price" 
+                                       @input.debounce.1000ms="triggerAutosave()"
+                                       placeholder="0.00"
+                                       class="w-full pl-6 border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            </div>
                             <button type="button"
                                 @click="applyToAll('compare_at_price', quickActions.compare_at_price)"
                                 class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
@@ -155,9 +173,17 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Cost</label>
                         <div class="flex items-center gap-2">
-                            <input type="number" step="0.01" x-model="quickActions.cost" @input.debounce.1000ms="triggerAutosave()"
-                                placeholder="0.00"
-                                class="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 text-xs" x-text="currencySymbol"></span>
+                                </div>
+                                <input type="number" 
+                                       :step="stepValue"
+                                       x-model="quickActions.cost" 
+                                       @input.debounce.1000ms="triggerAutosave()"
+                                       placeholder="0.00"
+                                       class="w-full pl-6 border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-2.5 border bg-white">
+                            </div>
                             <button type="button"
                                 @click="applyToAll('cost', quickActions.cost)"
                                 class="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium whitespace-nowrap">
@@ -236,7 +262,6 @@
                     </div>
                 </div>
             </div>
-
 
             {{-- VARIANTS TABLE --}}
             <div class="overflow-x-auto border border-gray-200 rounded-lg">
@@ -343,19 +368,43 @@
                                 
                                 <!-- Pricing -->
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="number" step="0.01" x-model="variant.price" @input.debounce.1000ms="triggerAutosave()"
-                                            class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
-                                            @input="updateProfit(variant)">
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 text-xs" x-text="currencySymbol"></span>
+                                        </div>
+                                        <input type="number" 
+                                               :step="stepValue"
+                                               x-model="variant.price" 
+                                               @input.debounce.1000ms="triggerAutosave()"
+                                               class="w-20 pl-6 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
+                                               @input="updateProfit(variant)">
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="number" step="0.01" x-model="variant.compare_at_price" @input.debounce.1000ms="triggerAutosave()"
-                                            class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
-                                            placeholder="0.00">
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 text-xs" x-text="currencySymbol"></span>
+                                        </div>
+                                        <input type="number" 
+                                               :step="stepValue"
+                                               x-model="variant.compare_at_price" 
+                                               @input.debounce.1000ms="triggerAutosave()"
+                                               placeholder="0.00"
+                                               class="w-20 pl-6 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border">
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <input type="number" step="0.01" x-model="variant.cost" @input.debounce.1000ms="triggerAutosave()"
-                                            class="w-20 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
-                                            @input="updateProfit(variant)">
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 text-xs" x-text="currencySymbol"></span>
+                                        </div>
+                                        <input type="number" 
+                                               :step="stepValue"
+                                               x-model="variant.cost" 
+                                               @input.debounce.1000ms="triggerAutosave()"
+                                               class="w-20 pl-6 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2 border"
+                                               @input="updateProfit(variant)">
+                                    </div>
                                 </td>
                                 
                                 <!-- Profit & Margin -->
@@ -363,7 +412,7 @@
                                     <template x-if="variant.price > 0 && variant.cost > 0">
                                         <div class="text-xs">
                                             <div class="font-semibold text-green-600" 
-                                                 x-text="`$${calculateProfit(variant).toFixed(2)}`"></div>
+                                                 x-text="`${currencySymbol}${calculateProfit(variant).toFixed(maxDecimals)}`"></div>
                                             <div class="text-gray-500" 
                                                  x-text="`${calculateMargin(variant)}%`"></div>
                                         </div>
@@ -405,7 +454,7 @@
                     <span x-text="variants.length"></span> variants
                 </div>
                 <div class="text-sm text-gray-600" x-show="totalProfit > 0">
-                    Total Profit: <span class="font-semibold text-green-600" x-text="`$${totalProfit.toFixed(2)}`"></span>
+                    Total Profit: <span class="font-semibold text-green-600" x-text="`${currencySymbol}${totalProfit.toFixed(maxDecimals)}`"></span>
                 </div>
             </div>
         </div>
@@ -413,7 +462,7 @@
 </div>
 
 <script>
-function variantManager(initialOptions = [], initialVariants = [], productMedia = []) {
+function variantManager(initialOptions = [], initialVariants = [], productMedia = [], currencyCode = 'USD', currencySymbol = '$') {
     return {
         options: initialOptions.length ? initialOptions.map(opt => ({
             name: opt.name,
@@ -437,6 +486,16 @@ function variantManager(initialOptions = [], initialVariants = [], productMedia 
         })) : [],
 
         productMedia: productMedia || [],
+        currencyCode: currencyCode,
+        currencySymbol: currencySymbol,
+
+        // Currency-aware properties
+        get maxDecimals() {
+            return this.currencyCode === 'KWD' ? 3 : 2;
+        },
+        get stepValue() {
+            return this.currencyCode === 'KWD' ? 0.001 : 0.01;
+        },
 
         // Quick Actions State
         quickActions: {

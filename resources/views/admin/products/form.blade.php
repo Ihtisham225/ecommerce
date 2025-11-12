@@ -159,6 +159,10 @@
                 autosaveTimer: null,
                 saving: false,
 
+                // Add currency info
+                currencyCode: '{{ $storeSetting?->currency_code ?? 'USD' }}',
+                currencySymbol: '{{ $currencySymbol }}',
+
                 // 🧮 Computed fields
                 get profit() {
                     if (!this.price || !this.cost) return 0;
@@ -169,7 +173,8 @@
                     return ((this.price - this.cost) / this.price) * 100;
                 },
                 get formattedProfit() {
-                    return this.profit ? `$${this.profit.toFixed(2)}` : '$0.00';
+                    const decimals = this.currencyCode === 'KWD' ? 3 : 2;
+                    return this.profit ? `${this.currencySymbol}${this.profit.toFixed(decimals)}` : `${this.currencySymbol}0.${'0'.repeat(decimals)}`;
                 },
                 get formattedMargin() {
                     return this.margin ? `${this.margin.toFixed(1)}%` : '0%';

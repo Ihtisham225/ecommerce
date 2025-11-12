@@ -216,6 +216,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::get('products/create', [AdminProductController::class,'create'])->name('products.create');
     Route::get('products/{product}/edit', [AdminProductController::class,'edit'])->name('products.edit');
     Route::get('products/{product}/show', [AdminProductController::class,'show'])->name('products.show');
+    Route::delete('products/{product}', [AdminProductController::class,'destroy'])->name('products.destroy');
 
     // autosave - uses POST to allow FormData
     Route::post('products/{product}/autosave', [AdminProductController::class,'autosave'])->name('products.autosave');
@@ -429,6 +430,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/store-settings', [ProfileController::class, 'updateStore'])->name('profile.store-settings.update');
 });
 
 require __DIR__.'/auth.php';

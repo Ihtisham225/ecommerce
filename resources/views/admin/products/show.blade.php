@@ -30,19 +30,50 @@
         </div>
     </x-slot>
 
+    @php
+        $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
+        $currencyCode = $storeSetting?->currency_code ?? 'USD';
+        $currencySymbols = [
+            'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'JPY' => '¥', 
+            'CAD' => 'C$', 'AUD' => 'A$', 'CHF' => 'CHF', 'CNY' => '¥',
+            'INR' => '₹', 'KWD' => 'KD', 'SAR' => 'SR', 'AED' => 'AED'
+        ];
+        $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
+        $decimals = $currencyCode === 'KWD' ? 3 : 2;
+        
+        // Get all product images including main and gallery
+        $allImages = collect();
+        if ($product->mainImage()->exists()) {
+            $allImages->push($product->mainImage()->first());
+        }
+        $allImages = $allImages->merge($product->galleryImages);
+    @endphp
+
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-xl sm:rounded-2xl overflow-hidden">
                 {{-- Header: image + core details --}}
                 <div class="p-8 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex flex-col lg:flex-row gap-8">
-                        {{-- Main Image --}}
+                        {{-- Main Image with Interactive Gallery --}}
                         <div class="w-full lg:w-2/5">
-                            <div class="space-y-4">
-                                @php $mainImage = $product->mainImage()->first(); @endphp
-                                @if($mainImage)
-                                    <div class="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-700">
-                                        <img src="{{ $mainImage->url }}" alt="Main Image" class="w-full h-80 lg:h-96 object-cover">
+                            <div class="space-y-4" x-data="{ 
+                                mainImage: '{{ $allImages->first() ? $allImages->first()->url : '' }}',
+                                showImageModal: false,
+                                modalImage: ''
+                            }">
+                                {{-- Main Image Display --}}
+                                @if($allImages->count())
+                                    <div class="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-700 cursor-pointer"
+                                         @click="showImageModal = true; modalImage = mainImage">
+                                        <img :src="mainImage" alt="Main Image" 
+                                             class="w-full h-80 lg:h-96 object-cover transition-opacity duration-300">
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+                                            <svg class="w-12 h-12 text-white opacity-0 hover:opacity-70 transition-opacity duration-300" 
+                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v0m0 0v0m0 0v0"></path>
+                                            </svg>
+                                        </div>
                                     </div>
                                 @else
                                     <div class="w-full h-80 lg:h-96 bg-gray-100 dark:bg-gray-700 flex items-center justify-center rounded-2xl">
@@ -55,16 +86,40 @@
                                     </div>
                                 @endif
 
-                                {{-- Gallery --}}
-                                @if($product->galleryImages->count())
+                                {{-- Interactive Gallery --}}
+                                @if($allImages->count() > 1)
                                     <div class="flex space-x-3 overflow-x-auto pb-2">
-                                        @foreach($product->galleryImages as $img)
+                                        @foreach($allImages as $index => $img)
                                             <div class="flex-shrink-0">
-                                                <img src="{{ $img->url }}" class="w-20 h-20 rounded-xl object-cover shadow-sm border-2 border-transparent hover:border-indigo-500 transition duration-150">
+                                                <img src="{{ $img->url }}" 
+                                                     @click="mainImage = '{{ $img->url }}'"
+                                                     :class="mainImage === '{{ $img->url }}' ? 'border-2 border-indigo-500' : 'border-2 border-transparent'"
+                                                     class="w-20 h-20 rounded-xl object-cover shadow-sm hover:border-indigo-500 transition-all duration-200 cursor-pointer">
                                             </div>
                                         @endforeach
                                     </div>
                                 @endif
+
+                                {{-- Image Modal --}}
+                                <div x-show="showImageModal" 
+                                     x-transition:enter="transition ease-out duration-300"
+                                     x-transition:enter-start="opacity-0"
+                                     x-transition:enter-end="opacity-100"
+                                     x-transition:leave="transition ease-in duration-200"
+                                     x-transition:leave-start="opacity-100"
+                                     x-transition:leave-end="opacity-0"
+                                     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
+                                     @click="showImageModal = false">
+                                    <div class="relative max-w-4xl max-h-full" @click.stop>
+                                        <button @click="showImageModal = false"
+                                                class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors">
+                                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                        <img :src="modalImage" class="max-w-full max-h-full object-contain rounded-lg">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -108,23 +163,39 @@
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600 dark:text-gray-400">Price</span>
                                             <span class="text-2xl font-bold text-gray-900 dark:text-white">
-                                                ${{ number_format($product->price ?? 0, 2) }}
+                                                {{ $currencySymbol }}{{ number_format($product->price ?? 0, $decimals) }}
                                             </span>
                                         </div>
                                         @if($product->compare_at_price)
                                             <div class="flex justify-between items-center">
                                                 <span class="text-gray-600 dark:text-gray-400">Compare at</span>
                                                 <span class="text-lg text-red-600 dark:text-red-400 line-through">
-                                                    ${{ number_format($product->compare_at_price ?? 0, 2) }}
+                                                    {{ $currencySymbol }}{{ number_format($product->compare_at_price ?? 0, $decimals) }}
                                                 </span>
                                             </div>
                                         @endif
                                         @if($product->cost)
                                             <div class="flex justify-between items-center">
                                                 <span class="text-gray-600 dark:text-gray-400">Cost</span>
-                                                <span class="text-lg text-blue-600 dark:text-red-400">
-                                                    ${{ number_format($product->cost ?? 0, 2) }}
+                                                <span class="text-lg text-blue-600 dark:text-blue-400">
+                                                    {{ $currencySymbol }}{{ number_format($product->cost ?? 0, $decimals) }}
                                                 </span>
+                                            </div>
+                                            {{-- Profit Calculation --}}
+                                            @php
+                                                $profit = $product->price - $product->cost;
+                                                $margin = $product->price > 0 ? ($profit / $product->price) * 100 : 0;
+                                            @endphp
+                                            <div class="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                <span class="text-gray-600 dark:text-gray-400">Profit</span>
+                                                <div class="text-right">
+                                                    <div class="text-lg font-semibold text-green-600 dark:text-green-400">
+                                                        {{ $currencySymbol }}{{ number_format($profit, $decimals) }}
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                        {{ number_format($margin, 1) }}% margin
+                                                    </div>
+                                                </div>
                                             </div>
                                         @endif
                                     </div>
@@ -294,12 +365,18 @@
                                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Variant</th>
                                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">SKU</th>
                                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Price</th>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cost</th>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Profit</th>
                                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock</th>
                                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                             @foreach($product->variants as $variant)
+                                                @php
+                                                    $variantProfit = $variant->price - $variant->cost;
+                                                    $variantMargin = $variant->price > 0 ? ($variantProfit / $variant->price) * 100 : 0;
+                                                @endphp
                                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="flex items-center space-x-3">
@@ -311,9 +388,30 @@
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">{{ $variant->sku }}</td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">${{ number_format($variant->price ?? 0, 2) }}</div>
+                                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                                                            {{ $currencySymbol }}{{ number_format($variant->price ?? 0, $decimals) }}
+                                                        </div>
                                                         @if($variant->compare_at_price)
-                                                            <div class="text-xs text-red-600 dark:text-red-400 line-through">${{ number_format($variant->compare_at_price ?? 0, 2) }}</div>
+                                                            <div class="text-xs text-red-600 dark:text-red-400 line-through">
+                                                                {{ $currencySymbol }}{{ number_format($variant->compare_at_price ?? 0, $decimals) }}
+                                                            </div>
+                                                        @endif
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                                            {{ $currencySymbol }}{{ number_format($variant->cost ?? 0, $decimals) }}
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        @if($variant->price > 0 && $variant->cost > 0)
+                                                            <div class="text-sm font-semibold text-green-600 dark:text-green-400">
+                                                                {{ $currencySymbol }}{{ number_format($variantProfit, $decimals) }}
+                                                            </div>
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                                {{ number_format($variantMargin, 1) }}%
+                                                            </div>
+                                                        @else
+                                                            <span class="text-gray-400 text-sm">—</span>
                                                         @endif
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">

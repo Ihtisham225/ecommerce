@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained()->cascadeOnDelete();
 
             // Optional link to a specific variant
-            $table->foreignId('variant_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->foreignId('variant_id')->nullable()->constrained('product_variants')->cascadeOnDelete();
 
             // Core shipping fields
             $table->boolean('requires_shipping')->default(true);
