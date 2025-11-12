@@ -223,8 +223,11 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     // publish endpoint (save + publish)
     Route::post('products/{product}/publish', [AdminProductController::class,'publish'])->name('products.publish');
 
-    // bulk action route (existing)
-    Route::post('products/bulk-action', [AdminProductController::class,'bulkAction'])->name('products.bulk');
+    // ✅ Bulk actions
+    Route::post('products/bulk', [AdminProductController::class, 'bulk'])->name('products.bulk');
+
+    // ✅ Toggle single field (status or featured)
+    Route::post('products/{product}/toggle', [AdminProductController::class, 'toggle'])->name('products.toggle');
 
 
     // -------------------------
@@ -255,8 +258,11 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     // ✅ Product Media (Documents / Images)
     // -------------------------
     Route::get('products/{product}/media', [AdminProductMediaController::class, 'index'])->name('products.media.index');
-    Route::post('products/{product}/media', [AdminProductMediaController::class, 'store'])->name('products.media.store');
-    Route::delete('products/{product}/media/{media}', [AdminProductMediaController::class, 'destroy'])->name('products.media.destroy');
+    Route::delete('documents/ajax-delete/{document}', [AdminProductMediaController::class, 'ajaxDestroy'])->name('documents.ajaxDestroy');
+    Route::post('documents/ajax-upload', [AdminProductMediaController::class, 'ajaxUpload'])->name('documents.ajaxUpload');
+    Route::post('documents/set-as-main/{document}', [AdminProductMediaController::class, 'setAsMain'])->name('documents.set-as-main');
+    Route::post('products/{product}/attach-existing-images', [AdminProductMediaController::class, 'attachExistingImages'])->name('products.attach-existing-images');
+    Route::get('documents/unattached', [AdminProductMediaController::class, 'getUnattachedImages'])->name('documents.unattached');
 
     // -------------------------
     // ✅ Product Pricing Rules

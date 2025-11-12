@@ -24,6 +24,11 @@
                 </svg>
                 <span x-text="saving ? 'Saving...' : 'Save'"></span>
             </button>
+
+            <a href="{{ route('admin.products.index') }}"
+                class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md">
+                Back to List
+            </a>
         </div>
     </div>
 </div>

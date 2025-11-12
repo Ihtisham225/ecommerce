@@ -19,25 +19,163 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $products = Product::query()->select(['id', 'sku', 'price', 'is_active', 'is_featured', 'created_at']);
+            $products = Product::query()
+                ->select(['id', 'title', 'is_active', 'is_featured', 'created_at'])->latest();
+                
+            // Status filter
+            if ($request->filled('status')) {
+                if ($request->status === 'active') {
+                    $products->where(function ($q) {
+                        $q->where('is_active', true)
+                        ->orWhere('is_active', 1)
+                        ->orWhere('is_active', '1');
+                    });
+                } elseif ($request->status === 'draft') {
+                    $products->where(function ($q) {
+                        $q->where('is_active', false)
+                        ->orWhere('is_active', 0)
+                        ->orWhere('is_active', '0');
+                    });
+                }
+            }
+            // Featured filter
+            if ($request->filled('featured')) {
+                if ($request->featured == 1 || $request->featured === '1' || $request->featured === true) {
+                    $products->where(function ($q) {
+                        $q->whereIn('is_featured', [true, 1, '1']);
+                    });
+                } elseif ($request->featured == 0 || $request->featured === '0' || $request->featured === false) {
+                    $products->where(function ($q) {
+                        $q->whereIn('is_featured', [false, 0, '0']);
+                    });
+                }
+            }
+            
+            // Date range filter
+            if ($request->has('date_range') && $request->date_range !== '') {
+                $now = now();
+                switch ($request->date_range) {
+                    case 'today':
+                        $products->whereDate('created_at', $now->toDateString());
+                        break;
+                    case 'yesterday':
+                        $products->whereDate('created_at', $now->subDay()->toDateString());
+                        break;
+                    case 'week':
+                        $products->whereBetween('created_at', [
+                            $now->startOfWeek(),
+                            $now->endOfWeek()
+                        ]);
+                        break;
+                    case 'month':
+                        $products->whereBetween('created_at', [
+                            $now->startOfMonth(),
+                            $now->endOfMonth()
+                        ]);
+                        break;
+                    case 'year':
+                        $products->whereBetween('created_at', [
+                            $now->startOfYear(),
+                            $now->endOfYear()
+                        ]);
+                        break;
+                }
+            }
+            
             return DataTables::of($products)
                 ->addColumn('title', function ($row) {
-                    return $row->translate('title') ?? 'Untitled';
+                    try {
+                        $title = $row->translate('title');
+                    } catch (\Throwable $e) {
+                        $title = $row->title ?? null;
+                    }
+                    return e($title ?: 'Untitled');
                 })
                 ->addColumn('status', function ($row) {
-                    if ($row->is_active) {
-                        return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Active</span>';
-                    }
-                    return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">Draft</span>';
+                    $isActive = (bool) $row->is_active;
+                    $label = $isActive ? 'Active' : 'Draft';
+                    $color = $isActive ? 'green' : 'gray';
+                    $icon = $isActive
+                        ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+                        : 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
+
+                    return <<<HTML
+                        <button data-id="{$row->id}" data-type="status"
+                                class="toggle-status inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium 
+                                    bg-{$color}-100 text-{$color}-800 dark:bg-{$color}-900 dark:text-{$color}-200 
+                                    hover:bg-{$color}-200 dark:hover:bg-{$color}-800 transition duration-150 ease-in-out">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{$icon}"></path>
+                            </svg>
+                            {$label}
+                        </button>
+                    HTML;
                 })
                 ->addColumn('featured', function ($row) {
-                    return $row->is_featured ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Featured</span>' : '';
+                    $isFeatured = (bool) $row->is_featured;
+                    $label = $isFeatured ? 'Featured' : 'Standard';
+                    $color = $isFeatured ? 'yellow' : 'gray';
+                    $icon = $isFeatured
+                        ? 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z'
+                        : 'M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z';
+
+                    return <<<HTML
+                        <button data-id="{$row->id}" data-type="featured"
+                                class="toggle-feature inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium 
+                                    bg-{$color}-100 text-{$color}-800 dark:bg-{$color}-900 dark:text-{$color}-200 
+                                    hover:bg-{$color}-200 dark:hover:bg-{$color}-800 transition duration-150 ease-in-out">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{$icon}"></path>
+                            </svg>
+                            {$label}
+                        </button>
+                    HTML;
                 })
                 ->addColumn('actions', function ($row) {
+                    $showUrl = route('admin.products.show', $row->id);
                     $editUrl = route('admin.products.edit', $row->id);
-                    return view('admin.products.partials._datatable_actions', compact('editUrl','row'))->render();
+
+                    return <<<HTML
+                        <div class="flex justify-center gap-2">
+                            <a href="{$showUrl}" 
+                            class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition duration-150 ease-in-out">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 
+                                        9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 
+                                        0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                View
+                            </a>
+                            <a href="{$editUrl}" 
+                            class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition duration-150 ease-in-out">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 
+                                        2h11a2 2 0 002-2v-5m-1.414-9.414a2 
+                                        2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Edit
+                            </a>
+                            <button data-id="{$row->id}" 
+                                    class="delete-btn inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition duration-150 ease-in-out">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 
+                                        21H7.862a2 2 0 01-1.995-1.858L5 
+                                        7m5 4v6m4-6v6m1-10V4a1 1 
+                                        0 00-1-1h-4a1 1 0 00-1 
+                                        1v3M4 7h16"></path>
+                                </svg>
+                                Delete
+                            </button>
+                        </div>
+                    HTML;
                 })
-                ->rawColumns(['status','featured','actions'])
+                ->editColumn('created_at', fn($row) => $row->created_at?->format('Y-m-d H:i'))
+                ->rawColumns(['status', 'featured', 'actions'])
                 ->make(true);
         }
 
@@ -46,15 +184,6 @@ class ProductController extends Controller
 
     public function create()
     {
-        $existing = Product::where('is_active', 0)
-            ->where('created_by', Auth::id())
-            ->latest()
-            ->first();
-
-        if ($existing) {
-            return redirect()->route('admin.products.edit', $existing->id);
-        }
-
         $draft = Product::create([
             'title' => ['en' => 'Untitled Product'], // minimal JSON
             'is_active' => 0,
@@ -62,6 +191,23 @@ class ProductController extends Controller
         ]);
 
         return redirect()->route('admin.products.edit', $draft->id);
+    }
+
+    public function show(Product $product)
+    {
+        $product->load([
+            'categories:id,name',
+            'brand:id,name',
+            'collections:id,title',
+            'variants:id,product_id,title,sku,barcode,price,compare_at_price,cost,stock_quantity,track_quantity,taxable,options,image_id',
+            'variants.image:id,file_path',
+            'documents',
+            'options:id,product_id,name,values',
+            'shipping',
+            'tags:id,name,slug',
+        ]);
+
+        return view('admin.products.show', compact('product'));
     }
 
     public function edit(Product $product)
@@ -117,6 +263,23 @@ class ProductController extends Controller
             }
         }
         
+        // convert empty strings to nulls
+        foreach (['weight', 'width', 'height', 'length'] as $f) {
+            if ($request->has($f) && in_array($request->$f, ['null', ''])) {
+                $request->merge([$f => null]);
+            }
+        }
+
+        //organization data
+        if ($request->has('organizationData') && is_string($request->organizationData)) {
+            $decoded = json_decode($request->organizationData, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $request->merge(['organizationData' => $decoded]);
+            } else {
+                $request->merge(['organizationData' => []]);
+            }
+        }
+
         $validated = $request->validate([
             'title' => 'nullable|array',
             'title.*' => 'nullable|string|max:191',
@@ -125,6 +288,7 @@ class ProductController extends Controller
             'sku' => ['nullable', 'string', Rule::unique('products', 'sku')->ignore($product->id)],
             'price' => 'nullable|numeric|min:0',
             'compare_at_price' => 'nullable|numeric|min:0',
+            'cost' => 'nullable|numeric|min:0',
             'stock_quantity' => 'nullable|integer|min:0',
             'track_stock' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
@@ -139,15 +303,6 @@ class ProductController extends Controller
             'width' => 'nullable|numeric|min:0',
             'height' => 'nullable|numeric|min:0',
             'length' => 'nullable|numeric|min:0',
-
-            // Images
-            'new_main_image' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
-            'new_gallery.*'  => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
-            'gallery_remove_ids' => 'nullable|array',
-            'gallery_remove_ids.*' => 'integer|exists:documents,id',
-            'existing_main_document_id' => 'nullable|integer|exists:documents,id',
-            'existing_gallery_ids' => 'nullable|array',
-            'existing_gallery_ids.*' => 'integer|exists:documents,id',
 
             //variants and options
             'options_json' => 'nullable|string',
@@ -189,6 +344,7 @@ class ProductController extends Controller
                 'slug' => $skuAndSlug['slug'],
                 'price' => $validated['price'] ?? $product->price,
                 'compare_at_price' => $validated['compare_at_price'] ?? $product->compare_at_price,
+                'cost' => $validated['cost'] ?? $product->cost,
                 'stock_quantity' => $validated['stock_quantity'] ?? $product->stock_quantity,
                 'track_stock' => (bool) ($validated['track_stock'] ?? $product->track_stock),
                 'brand_id'       => $brandId,
@@ -249,9 +405,6 @@ class ProductController extends Controller
             if ($request->filled('category_id')) {
                 $product->categories()->sync([$request->input('category_id')]);
             }
-
-            // 🔹 Images
-            $this->syncProductImages($product, $request, $validated);
 
             // 🔹 Variants + Options
             $variants = json_decode($request->input('variants_json', '[]'), true);
@@ -426,80 +579,93 @@ class ProductController extends Controller
         }
     }
 
-    private function syncProductImages(Product $product, Request $request, array $validated): void
+    public function bulk(Request $request)
     {
-        // 1️⃣ Remove selected gallery images
-        if (!empty($validated['gallery_remove_ids'])) {
-            $docsToRemove = Document::whereIn('id', $validated['gallery_remove_ids'])
-                ->where('documentable_type', Product::class)
-                ->where('documentable_id', $product->id)
-                ->get();
+        $validated = $request->validate([
+            'action' => 'required|string|in:publish,unpublish,feature,unfeature,delete',
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:products,id',
+        ]);
 
-            foreach ($docsToRemove as $doc) {
-                if ($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
-                    Storage::disk('public')->delete($doc->file_path);
-                }
-                $doc->delete();
+        $action = $validated['action'];
+        $ids = $validated['ids'];
+
+        // optional: authorize admin actions here
+        // $this->authorize('update', Product::class);
+
+        DB::beginTransaction();
+
+        try {
+            switch ($action) {
+                case 'publish':
+                    Product::whereIn('id', $ids)->update(['is_active' => true]);
+                    $message = 'Selected products have been published.';
+                    break;
+
+                case 'unpublish':
+                    Product::whereIn('id', $ids)->update(['is_active' => false]);
+                    $message = 'Selected products have been unpublished.';
+                    break;
+
+                case 'feature':
+                    Product::whereIn('id', $ids)->update(['is_featured' => true]);
+                    $message = 'Selected products are now featured.';
+                    break;
+
+                case 'unfeature':
+                    Product::whereIn('id', $ids)->update(['is_featured' => false]);
+                    $message = 'Selected products have been unfeatured.';
+                    break;
+
+                case 'delete':
+                    Product::whereIn('id', $ids)->delete();
+                    $message = 'Selected products have been deleted.';
+                    break;
+
+                default:
+                    return response()->json(['success' => false, 'message' => 'Invalid action.']);
             }
-        }
 
-        // 2️⃣ Reassign existing main image
-        if (!empty($validated['existing_main_document_id'])) {
-            $product->documents()->where('document_type', 'main')->update(['document_type' => 'gallery']);
-            Document::where('id', $validated['existing_main_document_id'])
-                ->update([
-                    'documentable_id' => $product->id,
-                    'documentable_type' => Product::class,
-                    'document_type' => 'main',
-                ]);
-        }
+            DB::commit();
 
-        // 3️⃣ Upload new main image
-        if ($request->hasFile('new_main_image')) {
-            if ($oldMain = $product->documents()->where('document_type', 'main')->first()) {
-                if ($oldMain->file_path && Storage::disk('public')->exists($oldMain->file_path)) {
-                    Storage::disk('public')->delete($oldMain->file_path);
-                }
-                $oldMain->delete();
-            }
-
-            $file = $request->file('new_main_image');
-            $path = $file->store('documents', 'public');
-
-            $product->documents()->create([
-                'name' => $file->getClientOriginalName(),
-                'file_path' => $path,
-                'file_type' => $file->getClientOriginalExtension(),
-                'size' => $file->getSize(),
-                'mime_type' => $file->getMimeType(),
-                'document_type' => 'main',
+            return response()->json([
+                'success' => true,
+                'message' => $message,
             ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while performing the action.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle a single product’s "active" or "featured" status
+     */
+    public function toggle(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'type' => 'required|string|in:status,featured',
+        ]);
+
+        $type = $validated['type'];
+
+        if ($type === 'status') {
+            $product->is_active = !$product->is_active;
+        } elseif ($type === 'featured') {
+            $product->is_featured = !$product->is_featured;
         }
 
-        // 4️⃣ Upload new gallery images
-        if ($request->hasFile('new_gallery')) {
-            foreach ($request->file('new_gallery') as $file) {
-                $path = $file->store('documents', 'public');
+        $product->save();
 
-                $product->documents()->create([
-                    'name' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_type' => $file->getClientOriginalExtension(),
-                    'size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'document_type' => 'gallery',
-                ]);
-            }
-        }
-
-        // 5️⃣ Attach existing gallery images
-        if (!empty($validated['existing_gallery_ids'])) {
-            Document::whereIn('id', $validated['existing_gallery_ids'])
-                ->update([
-                    'documentable_id' => $product->id,
-                    'documentable_type' => Product::class,
-                    'document_type' => 'gallery',
-                ]);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($type) . ' updated successfully.',
+            'product' => $product,
+        ]);
     }
 }

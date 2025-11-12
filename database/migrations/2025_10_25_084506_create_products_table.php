@@ -25,6 +25,7 @@ return new class extends Migration
             // Pricing
             $table->decimal('price', 15, 3)->nullable();
             $table->decimal('compare_at_price', 15, 3)->nullable();
+            $table->decimal('cost', 15, 3)->nullable();
 
             // Inventory
             $table->integer('stock_quantity')->nullable();
