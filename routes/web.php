@@ -2,6 +2,7 @@
 
 //admin
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\ProductImportController as AdminProductImportController;
 use App\Http\Controllers\Admin\ProductAttributeController as AdminProductAttributeController;
 use App\Http\Controllers\Admin\ProductMediaController as AdminProductMediaController;
 use App\Http\Controllers\Admin\ProductMetaController as AdminProductMetaController;
@@ -229,6 +230,11 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
 
     // ✅ Toggle single field (status or featured)
     Route::post('products/{product}/toggle', [AdminProductController::class, 'toggle'])->name('products.toggle');
+
+    // Import products
+    Route::post('products/import/upload', [AdminProductImportController::class, 'upload'])->name('products.import.upload');
+
+    Route::post('products/import/process-chunk', [AdminProductImportController::class, 'processChunk'])->name('products.import.processChunk');
 
 
     // -------------------------

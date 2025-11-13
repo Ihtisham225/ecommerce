@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\Document;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +13,6 @@ use Illuminate\Support\Str;
 use Yajra\DataTables\DataTables;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
-
 
 class ProductController extends Controller
 {
@@ -149,7 +147,6 @@ class ProductController extends Controller
                                         9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 
                                         0-8.268-2.943-9.542-7z"></path>
                                 </svg>
-                                View
                             </a>
                             <a href="{$editUrl}" 
                             class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition duration-150 ease-in-out">
@@ -159,7 +156,6 @@ class ProductController extends Controller
                                         2h11a2 2 0 002-2v-5m-1.414-9.414a2 
                                         2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
-                                Edit
                             </a>
                             <button data-id="{$row->id}" 
                                     class="delete-btn inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition duration-150 ease-in-out">
@@ -171,7 +167,6 @@ class ProductController extends Controller
                                         0 00-1-1h-4a1 1 0 00-1 
                                         1v3M4 7h16"></path>
                                 </svg>
-                                Delete
                             </button>
                         </div>
                     HTML;
@@ -642,7 +637,7 @@ class ProductController extends Controller
                     break;
 
                 case 'delete':
-                    Product::whereIn('id', $ids)->delete();
+                    Product::whereIn('id', $ids)->forceDelete();
                     $message = 'Selected products have been deleted.';
                     break;
 
@@ -698,166 +693,67 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            // Store product name for success message
             $productName = $product->translate('title', 'en') ?? 'Product';
-            $variantCount = $product->variants()->count();
 
-            Log::info("Starting product deletion", [
+            Log::info("Deleting product and all related files", [
                 'product_id' => $product->id,
                 'product_name' => $productName,
-                'variant_count' => $variantCount
             ]);
 
-            // Arrays to collect file paths for cleanup
-            $filesToDelete = [];
-            $directoriesToCleanup = [];
+            // --- Delete product documents from storage and DB ---
+            if ($product->documents()->exists()) {
+                foreach ($product->documents as $document) {
+                    if (!empty($document->file_path) && Storage::exists($document->file_path)) {
+                        Storage::delete($document->file_path);
+                        Log::info("Deleted document file", ['path' => $document->file_path]);
+                    }
+                    $document->delete();
+                }
+            }
 
-            // Delete variants and their related data
+            // --- Delete variants and their images ---
             if ($product->variants()->exists()) {
-                Log::info("Processing variants for deletion", [
-                    'product_id' => $product->id,
-                    'variant_count' => $product->variants()->count()
-                ]);
-                
-                $product->variants()->each(function ($variant) use (&$filesToDelete, &$directoriesToCleanup) {
-                    Log::info("Processing variant", [
-                        'variant_id' => $variant->id,
-                        'variant_title' => $variant->title,
-                        'has_image' => !is_null($variant->image)
-                    ]);
-
-                    // Delete variant-specific images
-                    if ($variant->image) {
-                        Log::info("Variant has image, collecting files", [
-                            'variant_id' => $variant->id,
-                            'image_id' => $variant->image->id
-                        ]);
-                        
-                        $this->collectDocumentFiles($variant->image, $filesToDelete);
-                        
-                        // Track directories for potential cleanup
-                        if ($variant->image->path) {
-                            $dir = dirname($variant->image->path);
-                            if (!in_array($dir, $directoriesToCleanup)) {
-                                $directoriesToCleanup[] = $dir;
-                            }
-                        }
-                        
-                        // Delete the image record from database
+                foreach ($product->variants as $variant) {
+                    if ($variant->image && !empty($variant->image->file_path) && Storage::exists($variant->image->file_path)) {
+                        Storage::delete($variant->image->file_path);
+                        Log::info("Deleted variant image", ['path' => $variant->image->file_path]);
                         $variant->image->delete();
-                        Log::info("Variant image record deleted", [
-                            'variant_id' => $variant->id,
-                            'image_id' => $variant->image->id
-                        ]);
                     }
-                    
-                    // Delete variant stock records
-                    if ($variant->stock()->exists()) {
-                        $variant->stock()->delete();
-                    }
-                    
+
+                    $variant->stock()?->delete();
                     $variant->delete();
-                    Log::info("Variant deleted", ['variant_id' => $variant->id]);
-                });
+                }
             }
 
-            // Delete product options
-            if ($product->options()->exists()) {
-                $product->options()->delete();
-                Log::info("Product options deleted", ['product_id' => $product->id]);
-            }
-
-            // Delete product shipping information
-            if ($product->shipping) {
-                $product->shipping->delete();
-                Log::info("Product shipping deleted", ['product_id' => $product->id]);
-            }
-
-            // Detach relationships (many-to-many)
+            // --- Delete options, shipping, and relationships ---
+            $product->options()->delete();
+            $product->shipping()?->delete();
             $product->tags()->detach();
             $product->categories()->detach();
             $product->collections()->detach();
-            Log::info("Relationships detached", ['product_id' => $product->id]);
+            $product->translations()->delete();
 
-            // Delete product images/documents and collect file paths
-            if ($product->documents()->exists()) {
-                $documentCount = $product->documents()->count();
-                Log::info("Processing product documents", [
-                    'product_id' => $product->id,
-                    'document_count' => $documentCount
-                ]);
-                
-                $product->documents()->each(function ($document) use (&$filesToDelete, &$directoriesToCleanup) {
-                    Log::info("Processing document", [
-                        'document_id' => $document->id,
-                        'document_type' => $document->document_type,
-                        'path' => $document->path
-                    ]);
-                    
-                    $this->collectDocumentFiles($document, $filesToDelete);
-                    
-                    // Track directories for potential cleanup
-                    if ($document->path) {
-                        $dir = dirname($document->path);
-                        if (!in_array($dir, $directoriesToCleanup)) {
-                            $directoriesToCleanup[] = $dir;
-                        }
-                    }
-                    
-                    $document->delete();
-                    Log::info("Document record deleted", ['document_id' => $document->id]);
-                });
-            } else {
-                Log::info("No documents found for product", ['product_id' => $product->id]);
-            }
-
-            // Delete translations
-            if ($product->translations()->exists()) {
-                $product->translations()->delete();
-                Log::info("Translations deleted", ['product_id' => $product->id]);
-            }
-
-            // Delete the product itself
-            $product->delete();
-            Log::info("Product record deleted", ['product_id' => $product->id]);
+            // --- Delete the product itself ---
+            $product->forceDelete();
 
             DB::commit();
-            Log::info("Database transaction committed", ['product_id' => $product->id]);
 
-            // Log collected files before deletion
-            Log::info("Files collected for deletion", [
+            Log::info("Product and all related data deleted successfully", [
                 'product_id' => $product->id,
-                'file_count' => count($filesToDelete),
-                'files' => $filesToDelete
-            ]);
-
-            // Now delete all collected files from storage
-            $deletionResult = $this->deleteFilesFromStorage($filesToDelete);
-            
-            // Optional: Clean up empty directories
-            $this->cleanupEmptyDirectories($directoriesToCleanup);
-
-            Log::info("Product deletion completed", [
-                'product_id' => $product->id,
-                'files_deleted' => $deletionResult['deleted_count'],
-                'files_failed' => $deletionResult['failed_count']
+                'product_name' => $productName,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Product '{$productName}' and all related data deleted successfully.",
-                'files_deleted' => $deletionResult['deleted_count'],
-                'files_failed' => $deletionResult['failed_count'],
-                'variants_deleted' => $variantCount,
+                'message' => "Product '{$productName}' and all related files deleted successfully.",
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Product deletion failed', [
                 'product_id' => $product->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -867,128 +763,4 @@ class ProductController extends Controller
         }
     }
 
-    /**
-     * Collect all file paths from a document
-     */
-    private function collectDocumentFiles($document, array &$filesToDelete)
-    {
-        $fileFields = ['path', 'thumbnail_path', 'original_path', 'small_path', 'medium_path', 'large_path'];
-        
-        foreach ($fileFields as $field) {
-            if (!empty($document->{$field})) {
-                $filesToDelete[] = $document->{$field};
-                Log::info("Collected file path", [
-                    'document_id' => $document->id,
-                    'field' => $field,
-                    'path' => $document->{$field}
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Delete files from storage with detailed reporting
-     */
-    private function deleteFilesFromStorage(array $files): array
-    {
-        $result = [
-            'deleted_count' => 0,
-            'failed_count' => 0,
-            'failed_files' => []
-        ];
-
-        if (empty($files)) {
-            Log::info("No files to delete from storage");
-            return $result;
-        }
-
-        // Remove duplicates
-        $files = array_unique($files);
-        
-        Log::info("Starting file deletion from storage", [
-            'total_files' => count($files),
-            'files' => $files
-        ]);
-
-        // Check storage disk configuration
-        $disk = config('filesystems.default');
-        Log::info("Storage disk configuration", [
-            'default_disk' => $disk,
-            'disks' => config('filesystems.disks.'.$disk)
-        ]);
-
-        foreach ($files as $filePath) {
-            try {
-                // Skip empty paths
-                if (empty($filePath)) {
-                    Log::warning("Skipping empty file path");
-                    continue;
-                }
-
-                Log::info("Attempting to delete file", ['file_path' => $filePath]);
-
-                // Check if file exists and delete it
-                if (Storage::exists($filePath)) {
-                    Log::info("File exists, deleting", ['file_path' => $filePath]);
-                    Storage::delete($filePath);
-                    $result['deleted_count']++;
-                    Log::info("File deleted successfully", ['file_path' => $filePath]);
-                } else {
-                    Log::warning("File does not exist in storage", ['file_path' => $filePath]);
-                }
-            } catch (\Exception $e) {
-                Log::error("Failed to delete file", [
-                    'file_path' => $filePath,
-                    'error' => $e->getMessage()
-                ]);
-                $result['failed_count']++;
-                $result['failed_files'][] = $filePath;
-            }
-        }
-
-        Log::info("File deletion completed", [
-            'deleted_count' => $result['deleted_count'],
-            'failed_count' => $result['failed_count'],
-            'failed_files' => $result['failed_files']
-        ]);
-
-        return $result;
-    }
-
-    /**
-     * Clean up empty directories
-     */
-    private function cleanupEmptyDirectories(array $directories)
-    {
-        Log::info("Starting directory cleanup", ['directories' => $directories]);
-        
-        foreach ($directories as $directory) {
-            try {
-                Log::info("Checking directory", ['directory' => $directory]);
-                
-                // Check if directory exists and is empty
-                if (Storage::exists($directory)) {
-                    $allFiles = Storage::allFiles($directory);
-                    Log::info("Directory contents", [
-                        'directory' => $directory,
-                        'file_count' => count($allFiles)
-                    ]);
-                    
-                    if (empty($allFiles)) {
-                        Storage::deleteDirectory($directory);
-                        Log::info("Directory deleted", ['directory' => $directory]);
-                    } else {
-                        Log::info("Directory not empty, skipping", ['directory' => $directory]);
-                    }
-                } else {
-                    Log::info("Directory does not exist", ['directory' => $directory]);
-                }
-            } catch (\Exception $e) {
-                Log::error("Failed to cleanup directory", [
-                    'directory' => $directory,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
-    }
 }
