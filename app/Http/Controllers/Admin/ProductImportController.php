@@ -931,4 +931,65 @@ class ProductImportController extends Controller
 
         return null;
     }
+
+    public function cleanupImportFiles(Request $request)
+    {
+        $request->validate([
+            'path' => 'required|string',
+        ]);
+
+        try {
+            $csvPath = $request->input('path'); // e.g. 'imports/filename.csv'
+
+            // ---------------------------
+            // Delete the CSV itself
+            // ---------------------------
+            if (Storage::disk('public')->exists($csvPath)) {
+                Storage::disk('public')->delete($csvPath);
+            }
+
+            // ---------------------------
+            // Build pending JSON file name
+            // ---------------------------
+            $pendingFile = 'pending_variations_' .
+                preg_replace('/[^A-Za-z0-9_\-]/', '_', basename($csvPath)) .
+                '.json';
+
+            // ---------------------------
+            // Delete from: storage/app/imports/
+            // ---------------------------
+            $pathA = storage_path('app/imports/' . $pendingFile);
+            if (file_exists($pathA)) {
+                unlink($pathA);
+            }
+
+            // ---------------------------
+            // Delete from: storage/app/private/imports/
+            // ---------------------------
+            $pathB = storage_path('app/private/imports/' . $pendingFile);
+            if (file_exists($pathB)) {
+                unlink($pathB);
+            }
+
+            // ---------------------------
+            // Delete from: storage/app/public/imports/
+            // ---------------------------
+            $pathC = storage_path('app/public/imports/' . $pendingFile);
+            if (file_exists($pathC)) {
+                unlink($pathC);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Import files deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete import files: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

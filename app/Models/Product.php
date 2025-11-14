@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Product extends Model
@@ -241,5 +243,50 @@ class Product extends Model
     public function scopeWithTags($query, array $tags)
     {
         return $query->withAnyTags($tags);
+    }
+
+    public function deleteCompletely()
+    {
+        DB::beginTransaction();
+
+        try {
+            // Delete product documents
+            foreach ($this->documents as $document) {
+                if (!empty($document->file_path) && Storage::disk('public')->exists($document->file_path)) {
+                    Storage::disk('public')->delete($document->file_path);
+                }
+                $document->delete();
+            }
+
+            // Delete variants + images + stock
+            foreach ($this->variants as $variant) {
+                if ($variant->image && !empty($variant->image->file_path) &&
+                    Storage::disk('public')->exists($variant->image->file_path)) {
+                    Storage::disk('public')->delete($variant->image->file_path);
+                    $variant->image->delete();
+                }
+
+                $variant->stock()?->delete();
+                $variant->delete();
+            }
+
+            // Delete other relations
+            $this->options()->delete();
+            $this->shipping()?->delete();
+            $this->translations()->delete();
+
+            $this->tags()->detach();
+            $this->categories()->detach();
+            $this->collections()->detach();
+
+            // Delete product
+            $this->forceDelete();
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 }

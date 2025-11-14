@@ -637,7 +637,12 @@ class ProductController extends Controller
                     break;
 
                 case 'delete':
-                    Product::whereIn('id', $ids)->forceDelete();
+                    $products = Product::whereIn('id', $ids)->get();
+
+                    foreach ($products as $product) {
+                        $product->deleteCompletely();
+                    }
+
                     $message = 'Selected products have been deleted.';
                     break;
 
@@ -690,77 +695,6 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        try {
-            DB::beginTransaction();
-
-            $productName = $product->translate('title', 'en') ?? 'Product';
-
-            Log::info("Deleting product and all related files", [
-                'product_id' => $product->id,
-                'product_name' => $productName,
-            ]);
-
-            // --- Delete product documents from storage and DB ---
-            if ($product->documents()->exists()) {
-                foreach ($product->documents as $document) {
-                    if (!empty($document->file_path) && Storage::exists($document->file_path)) {
-                        Storage::delete($document->file_path);
-                        Log::info("Deleted document file", ['path' => $document->file_path]);
-                    }
-                    $document->delete();
-                }
-            }
-
-            // --- Delete variants and their images ---
-            if ($product->variants()->exists()) {
-                foreach ($product->variants as $variant) {
-                    if ($variant->image && !empty($variant->image->file_path) && Storage::exists($variant->image->file_path)) {
-                        Storage::delete($variant->image->file_path);
-                        Log::info("Deleted variant image", ['path' => $variant->image->file_path]);
-                        $variant->image->delete();
-                    }
-
-                    $variant->stock()?->delete();
-                    $variant->delete();
-                }
-            }
-
-            // --- Delete options, shipping, and relationships ---
-            $product->options()->delete();
-            $product->shipping()?->delete();
-            $product->tags()->detach();
-            $product->categories()->detach();
-            $product->collections()->detach();
-            $product->translations()->delete();
-
-            // --- Delete the product itself ---
-            $product->forceDelete();
-
-            DB::commit();
-
-            Log::info("Product and all related data deleted successfully", [
-                'product_id' => $product->id,
-                'product_name' => $productName,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Product '{$productName}' and all related files deleted successfully.",
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Product deletion failed', [
-                'product_id' => $product->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete product. Please try again.',
-            ], 500);
-        }
+        $product->deleteCompletely(); 
     }
-
 }

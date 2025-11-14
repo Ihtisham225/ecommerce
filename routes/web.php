@@ -235,6 +235,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::post('products/import/upload', [AdminProductImportController::class, 'upload'])->name('products.import.upload');
 
     Route::post('products/import/process-chunk', [AdminProductImportController::class, 'processChunk'])->name('products.import.processChunk');
+    Route::post('products/import/cleanup', [AdminProductImportController::class, 'cleanupImportFiles'])->name('products.import.cleanup');
 
 
     // -------------------------
