@@ -129,6 +129,8 @@
                                 <option value="unpublish">{{ __('Unpublish') }}</option>
                                 <option value="feature">{{ __('Feature') }}</option>
                                 <option value="unfeature">{{ __('Unfeature') }}</option>
+                                <option value="out_of_stock">{{ __('Out Of Stock') }}</option>
+                                <option value="in_stock">{{ __('In Stock') }}</option>
                                 <option value="delete">{{ __('Delete') }}</option>
                             </select>
                             <button id="apply-bulk" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition duration-150 ease-in-out">
@@ -156,6 +158,13 @@
                             <option value="">{{ __('All') }}</option>
                             <option value="1">{{ __('Featured') }}</option>
                             <option value="0">{{ __('Not Featured') }}</option>
+                        </select>
+
+                        <!-- Add Stock Status Filter -->
+                        <select id="stock-status-filter" class="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            <option value="">{{ __('All Stock Status') }}</option>
+                            <option value="in_stock">{{ __('In Stock') }}</option>
+                            <option value="out_of_stock">{{ __('Out of Stock') }}</option>
                         </select>
 
                         <select id="date-filter" class="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
@@ -192,6 +201,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Featured</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock Status</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
                                 <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -375,17 +385,19 @@
             #products-table th:nth-child(4),
             #products-table td:nth-child(4),
             #products-table th:nth-child(5),
-            #products-table td:nth-child(5) {
+            #products-table td:nth-child(5),
+            #products-table th:nth-child(6), /* Add stock status column */
+            #products-table td:nth-child(6) {
                 @apply w-32;
             }
 
-            #products-table th:nth-child(6),
-            #products-table td:nth-child(6) {
+            #products-table th:nth-child(7), /* Updated from 6 to 7 */
+            #products-table td:nth-child(7) {
                 @apply w-40;
             }
 
-            #products-table th:nth-child(7),
-            #products-table td:nth-child(7) {
+            #products-table th:nth-child(8), /* Updated from 7 to 8 */
+            #products-table td:nth-child(8) {
                 @apply w-48;
             }
 
@@ -414,6 +426,7 @@
                     data: function (d) {
                         d.status = $('#status-filter').val();
                         d.featured = $('#featured-filter').val();
+                        d.stock_status = $('#stock-status-filter').val(); // Add this line
                         d.date_range = $('#date-filter').val();
                     }
                 },
@@ -437,16 +450,23 @@
                     {
                         data: null,
                         render: function (data, type, row, meta) {
-                            return meta.row + 1; // simple incremental number starting from 1
+                            return meta.row + 1;
                         },
                         className: 'px-4 py-3 text-sm font-medium text-gray-900 dark:text-white',
                         orderable: false
                     },
-                    { 
-                        data: 'title', 
-                        name: 'title', 
-                        render: data => `<div class="font-medium text-gray-900 dark:text-white truncate" title="${escapeHtml(data)}">${escapeHtml(data)}</div>`,
-                        className: 'px-4 py-3' 
+                    {
+                        data: 'title',
+                        name: 'title',
+                        render: data => {
+                            const decoded = $("<div>").html(data).text();
+                            return `
+                                <div class="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug max-w-xs">
+                                    ${decoded}
+                                </div>
+                            `;
+                        },
+                        className: 'px-4 py-3'
                     },
                     { 
                         data: 'status', 
@@ -456,6 +476,12 @@
                     },
                     { 
                         data: 'featured', 
+                        orderable: false, 
+                        searchable: false,
+                        className: 'px-4 py-3' 
+                    },
+                    { 
+                        data: 'stock_status', // Add this column
                         orderable: false, 
                         searchable: false,
                         className: 'px-4 py-3' 
@@ -598,6 +624,7 @@
             $('#reset-filters').on('click', function() {
                 $('#status-filter').val('');
                 $('#featured-filter').val('');
+                $('#stock-status-filter').val(''); // Add this line
                 $('#date-filter').val('');
                 table.ajax.reload();
             });
@@ -609,17 +636,19 @@
                 }
             });
 
-            // ✅ Toggle active/featured instantly
-            $('#products-table').on('click', '.toggle-status, .toggle-feature', function (e) {
+            // ✅ Toggle active/featured/stock_status instantly
+            $('#products-table').on('click', '.toggle-status, .toggle-feature, .toggle-stock-status', function (e) {
                 e.stopPropagation();
                 const id = $(this).data('id');
                 const type = $(this).data('type');
 
                 $.post(`/admin/products/${id}/toggle`, {
                     type, _token: "{{ csrf_token() }}"
-                }).done(() => {
+                }).done((response) => {
                     table.ajax.reload(null, false);
-                    showToast('Status updated successfully.');
+                    showToast(response.message || `${type} updated successfully.`);
+                }).fail(() => {
+                    showToast('Failed to update status.', 'error');
                 });
             });
 

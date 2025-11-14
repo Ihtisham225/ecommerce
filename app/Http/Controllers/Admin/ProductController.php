@@ -20,7 +20,7 @@ class ProductController extends Controller
     {
         if ($request->ajax()) {
             $products = Product::query()
-                ->select(['id', 'title', 'is_active', 'is_featured', 'created_at'])->latest();
+                ->select(['id', 'title', 'is_active', 'is_featured', 'stock_status', 'created_at'])->latest();
                 
             // Status filter
             if ($request->filled('status')) {
@@ -38,6 +38,7 @@ class ProductController extends Controller
                     });
                 }
             }
+            
             // Featured filter
             if ($request->filled('featured')) {
                 if ($request->featured == 1 || $request->featured === '1' || $request->featured === true) {
@@ -49,6 +50,11 @@ class ProductController extends Controller
                         $q->whereIn('is_featured', [false, 0, '0']);
                     });
                 }
+            }
+            
+            // Stock status filter
+            if ($request->filled('stock_status')) {
+                $products->where('stock_status', $request->stock_status);
             }
             
             // Date range filter
@@ -131,6 +137,26 @@ class ProductController extends Controller
                         </button>
                     HTML;
                 })
+                ->addColumn('stock_status', function ($row) {
+                    $isInStock = $row->stock_status === 'in_stock';
+                    $label = $isInStock ? 'In Stock' : 'Out of Stock';
+                    $color = $isInStock ? 'green' : 'red';
+                    $icon = $isInStock
+                        ? 'M5 13l4 4L19 7'
+                        : 'M6 18L18 6M6 6l12 12';
+
+                    return <<<HTML
+                        <button data-id="{$row->id}" data-type="stock_status"
+                                class="toggle-stock-status inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium 
+                                    bg-{$color}-100 text-{$color}-800 dark:bg-{$color}-900 dark:text-{$color}-200 
+                                    hover:bg-{$color}-200 dark:hover:bg-{$color}-800 transition duration-150 ease-in-out">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{$icon}"></path>
+                            </svg>
+                            {$label}
+                        </button>
+                    HTML;
+                })
                 ->addColumn('actions', function ($row) {
                     $showUrl = route('admin.products.show', $row->id);
                     $editUrl = route('admin.products.edit', $row->id);
@@ -172,7 +198,7 @@ class ProductController extends Controller
                     HTML;
                 })
                 ->editColumn('created_at', fn($row) => $row->created_at?->format('Y-m-d H:i'))
-                ->rawColumns(['status', 'featured', 'actions'])
+                ->rawColumns(['status', 'featured', 'stock_status', 'actions'])
                 ->make(true);
         }
 
@@ -601,7 +627,7 @@ class ProductController extends Controller
     public function bulk(Request $request)
     {
         $validated = $request->validate([
-            'action' => 'required|string|in:publish,unpublish,feature,unfeature,delete',
+            'action' => 'required|string|in:publish,unpublish,feature,unfeature,out_of_stock,in_stock,delete',
             'ids' => 'required|array',
             'ids.*' => 'integer|exists:products,id',
         ]);
@@ -634,6 +660,16 @@ class ProductController extends Controller
                 case 'unfeature':
                     Product::whereIn('id', $ids)->update(['is_featured' => false]);
                     $message = 'Selected products have been unfeatured.';
+                    break;
+
+                case 'out_of_stock':
+                    Product::whereIn('id', $ids)->update(['stock_status' => 'out_of_stock']);
+                    $message = 'Selected products have been marked as out of stock.';
+                    break;
+                
+                case 'in_stock':
+                    Product::whereIn('id', $ids)->update(['stock_status' => 'in_stock']);
+                    $message = 'Selected products have been marked as in stock.';
                     break;
 
                 case 'delete':
@@ -673,7 +709,7 @@ class ProductController extends Controller
     public function toggle(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'type' => 'required|string|in:status,featured',
+            'type' => 'required|string|in:status,featured,stock_status', // Add stock_status
         ]);
 
         $type = $validated['type'];
@@ -682,6 +718,9 @@ class ProductController extends Controller
             $product->is_active = !$product->is_active;
         } elseif ($type === 'featured') {
             $product->is_featured = !$product->is_featured;
+        } elseif ($type === 'stock_status') {
+            // Toggle between in_stock and out_of_stock
+            $product->stock_status = $product->stock_status === 'in_stock' ? 'out_of_stock' : 'in_stock';
         }
 
         $product->save();
