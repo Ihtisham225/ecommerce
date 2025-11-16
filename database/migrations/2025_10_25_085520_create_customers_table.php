@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('country')->nullable();
             $table->boolean('is_guest')->default(false);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

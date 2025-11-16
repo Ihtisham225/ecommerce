@@ -201,6 +201,11 @@ class Product extends Model
         return $this->hasOne(ProductShipping::class);
     }
 
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     // ... other relations left as-is
 
     // ---------- Scopes ----------
@@ -244,6 +249,27 @@ class Product extends Model
     {
         return $query->withAnyTags($tags);
     }
+
+    public function getTotalStockAttribute()
+    {
+        return $this->variants()->sum('stock_quantity');
+    }
+
+    public function getEffectivePriceAttribute()
+    {
+        return $this->compare_at_price && $this->compare_at_price > $this->price
+            ? $this->price
+            : $this->price;
+    }
+
+    public function isAvailable()
+    {
+        if (!$this->is_active) return false;
+        if ($this->track_stock && $this->total_stock <= 0) return false;
+
+        return true;
+    }
+
 
     public function deleteCompletely()
     {

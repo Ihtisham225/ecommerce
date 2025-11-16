@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StoreSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -286,7 +287,7 @@ class ProductController extends Controller
             'KWD' => 'K.D',
         ];
 
-        $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
@@ -735,5 +736,143 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $product->deleteCompletely(); 
+    }
+
+    /**
+     * Enhanced search products for order items
+     */
+    public function search(Request $request)
+    {
+        $query = $request->get('q');
+        
+        if (empty($query) || strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $searchTerm = '%' . $query . '%';
+
+        // Use raw SQL for better JSON searching if needed
+        $products = Product::with(['variants', 'mainImage'])
+            ->where(function($q) use ($searchTerm) {
+                // Search in product title (handles JSON and translations)
+                $q->where(function($q2) use ($searchTerm) {
+                    // Direct JSON field search
+                    $q2->where('title->en', 'LIKE', $searchTerm)
+                       ->orWhere('title->ar', 'LIKE', $searchTerm);
+                })
+                ->orWhere('sku', 'LIKE', $searchTerm)
+                ->orWhereHas('translations', function($q2) use ($searchTerm) {
+                    // Search in translations table
+                    $q2->where('field', 'title')
+                       ->where('value', 'LIKE', $searchTerm);
+                });
+            })
+            ->orWhereHas('variants', function($q) use ($searchTerm) {
+                // Search in variant titles, SKUs, and barcodes
+                $q->where('title', 'LIKE', $searchTerm)
+                  ->orWhere('sku', 'LIKE', $searchTerm)
+                  ->orWhere('barcode', 'LIKE', $searchTerm);
+            })
+            ->active()
+            ->orderByRaw("
+                CASE 
+                    WHEN sku LIKE ? THEN 1
+                    WHEN title->>'$.en' LIKE ? THEN 2
+                    ELSE 3
+                END
+            ", [$query . '%', $query . '%'])
+            ->limit(50)
+            ->get()
+            ->map(function($product) {
+                return $this->formatProductForSearch($product);
+            });
+
+        return response()->json($products);
+    }
+
+    /**
+     * Format product data for search results
+     */
+    private function formatProductForSearch(Product $product)
+    {
+        // Get main image URL
+        $imageUrl = null;
+        if ($product->mainImage && $product->mainImage->first()) {
+            $imageUrl = $product->mainImage->first()->file_url;
+        }
+
+        // Format variants with additional data
+        $variants = $product->variants->map(function($variant) use ($product) {
+            $variantImage = $variant->image ? $variant->image->file_url : null;
+            
+            return [
+                'id' => $variant->id,
+                'title' => $variant->title,
+                'sku' => $variant->sku,
+                'barcode' => $variant->barcode,
+                'price' => $variant->price ?? $product->price,
+                'compare_at_price' => $variant->compare_at_price ?? $product->compare_at_price,
+                'cost' => $variant->cost ?? $product->cost,
+                'stock_quantity' => $variant->stock_quantity ?? $product->stock_quantity,
+                'track_quantity' => $variant->track_quantity ?? $product->track_stock,
+                'image' => $variantImage ?: null,
+                'options' => $variant->options ?? [],
+            ];
+        });
+
+        return [
+            'id' => $product->id,
+            'title' => $product->translate('title') ?? 'Untitled Product',
+            'sku' => $product->sku,
+            'price' => (float) $product->price,
+            'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
+            'cost' => $product->cost ? (float) $product->cost : null,
+            'stock_quantity' => (int) $product->stock_quantity,
+            'track_stock' => (bool) $product->track_stock,
+            'has_options' => (bool) $product->has_options,
+            'image' => $imageUrl,
+            'variants' => $variants,
+            'requires_shipping' => (bool) $product->requires_shipping,
+            'charge_tax' => (bool) $product->charge_tax,
+            'status' => $product->is_active ? 'active' : 'inactive',
+        ];
+    }
+
+    /**
+     * Quick search for products (minimal data for autocomplete)
+     */
+    public function quickSearch(Request $request)
+    {
+        $q = $request->input('q');
+
+        $products = Product::with(['variants' => function($query) {
+            $query->select('id', 'product_id', 'title as name', 'sku', 'price', 'stock_quantity');
+        }])
+        ->where('title', 'like', "%{$q}%")
+        ->orWhereHas('variants', function($query) use ($q) {
+            $query->where('sku', 'like', "%{$q}%")
+                ->orWhere('title', 'like', "%{$q}%");
+        })
+        ->select('id', 'title', 'sku', 'price', 'stock_quantity') // parent product fields
+        ->limit(20)
+        ->get()
+        ->map(function($product) {
+            return [
+                'id' => $product->id,
+                'title' => $product->title,
+                'sku' => $product->sku,
+                'price' => $product->price,
+                'stock_quantity' => $product->stock_quantity,
+                'variants' => $product->variants->map(fn($v) => [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'sku' => $v->sku,
+                    'price' => $v->price,
+                    'stock_quantity' => $v->stock_quantity,
+                ])->toArray()
+            ];
+        });
+
+        return response()->json($products);
     }
 }

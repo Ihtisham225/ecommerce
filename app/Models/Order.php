@@ -10,11 +10,10 @@ class Order extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'order_number', 'customer_id', 'status', 'currency_id',
-        'subtotal', 'discount_total', 'tax_total',
-        'shipping_total', 'grand_total',
-        'payment_status', 'shipping_status',
-        'notes'
+        'order_number', 'customer_id', 'status', 'source', 'platform', 'external_id',
+        'subtotal', 'discount_total', 'tax_total', 'shipping_total', 'grand_total',
+        'payment_status', 'shipping_status', 'notes', 'admin_notes',
+        'shipping_method', 'created_by', 'cancelled_at', 'completed_at', 'raw_data'
     ];
 
     protected $casts = [
@@ -23,8 +22,22 @@ class Order extends Model
         'tax_total' => 'decimal:3',
         'shipping_total' => 'decimal:3',
         'grand_total' => 'decimal:3',
-        'currency_id' => 'integer',
+        'cancelled_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'raw_data' => 'array',
     ];
+
+    protected static function booted()
+    {
+        static::saving(function ($order) {
+            $order->subtotal = $order->items()->sum(DB::raw('price * quantity'));
+            $order->discount_total = $order->adjustments()
+                ->where('type', 'discount')
+                ->sum('amount');
+            $order->tax_total = $order->items()->sum('tax');
+            $order->grand_total = $order->subtotal + $order->shipping_total + $order->tax_total - $order->discount_total;
+        });
+    }
 
     /** Relations */
     public function customer()
@@ -44,7 +57,7 @@ class Order extends Model
 
     public function addresses()
     {
-        return $this->hasMany(OrderAddress::class);
+        return $this->morphMany(Address::class, 'addressable');
     }
 
     public function history()
@@ -52,14 +65,80 @@ class Order extends Model
         return $this->hasMany(OrderStatusHistory::class);
     }
 
-    /** Scopes */
-    public function scopePaid($q)
+    public function createdBy()
     {
-        return $q->where('payment_status', 'paid');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function currency()
+    public function adjustments()
     {
-        return $this->belongsTo(Currency::class);
+        return $this->hasMany(OrderAdjustment::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(OrderTransaction::class);
+    }
+
+    public function fulfillments()
+    {
+        return $this->hasMany(Fulfillment::class);
+    }
+
+    /** Scopes */
+    public function scopeOnline($query)
+    {
+        return $query->where('source', 'online');
+    }
+
+    public function scopeInStore($query)
+    {
+        return $query->where('source', 'in_store');
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('payment_status', 'paid');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    /** Methods */
+    public function getBillingAddressAttribute()
+    {
+        return $this->addresses()->where('type', 'billing')->first();
+    }
+
+    public function getShippingAddressAttribute()
+    {
+        return $this->addresses()->where('type', 'shipping')->first();
+    }
+
+    public function getTotalPaidAttribute()
+    {
+        return $this->payments()->where('status', 'completed')->sum('amount');
+    }
+
+    public function getBalanceDueAttribute()
+    {
+        return (float)$this->grand_total - (float)$this->total_paid;
+    }
+
+    public function isPaid()
+    {
+        return $this->payment_status === 'paid';
+    }
+
+    public function isPending()
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isFulfilled()
+    {
+        return $this->shipping_status === 'fulfilled';
     }
 }

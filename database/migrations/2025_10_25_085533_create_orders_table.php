@@ -15,14 +15,34 @@ return new class extends Migration
             $table->id();
             $table->string('order_number')->unique();
             $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('currency_id')->constrained();
+            $table->enum('status', ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'])->default('pending');
+            $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'])->default('pending');
+            $table->enum('shipping_status', ['pending', 'ready_for_shipment', 'shipped', 'delivered'])->default('pending');
+            $table->enum('source', ['online', 'in_store'])->default('online');
+            
+            // Pricing
             $table->decimal('subtotal', 15, 3)->default(0);
-            $table->decimal('discount', 15, 3)->default(0);
-            $table->decimal('tax', 15, 3)->default(0);
-            $table->decimal('shipping', 15, 3)->default(0);
-            $table->decimal('total', 15, 3)->default(0);
-            $table->foreignId('currency_id')->references('id')->on('currencies');
-            $table->enum('status', ['pending', 'processing', 'shipped', 'completed', 'cancelled'])->default('pending');
+            $table->decimal('discount_total', 15, 3)->default(0);
+            $table->decimal('tax_total', 15, 3)->default(0);
+            $table->decimal('shipping_total', 15, 3)->default(0);
+            $table->decimal('grand_total', 15, 3)->default(0);
+            
+            // Shipping
             $table->foreignId('shipping_rate_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('shipping_method')->nullable();
+            
+            // Additional fields
+            $table->text('platform')->nullable();
+            $table->text('external_id')->nullable();
+            $table->json('raw_data')->nullable();
+            $table->text('notes')->nullable();
+            $table->text('admin_notes')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            
+            $table->softDeletes();
             $table->timestamps();
         });
     }

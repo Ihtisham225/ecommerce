@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\ProductMetaController as AdminProductMetaControll
 use App\Http\Controllers\Admin\ProductPricingRuleController as AdminProductPricingRuleController;
 use App\Http\Controllers\Admin\ProductRelationController as AdminProductRelationController;
 use App\Http\Controllers\Admin\ProductVariantController as AdminProductVariantController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\OrderImportController as AdminOrderImportController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\BrandController as AdminBrandController;
 use App\Http\Controllers\Admin\CollectionController as AdminCollectionController;
@@ -237,6 +239,10 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::post('products/import/process-chunk', [AdminProductImportController::class, 'processChunk'])->name('products.import.processChunk');
     Route::post('products/import/cleanup', [AdminProductImportController::class, 'cleanupImportFiles'])->name('products.import.cleanup');
 
+    //product search ajax for order route
+    Route::get('products/search', [AdminProductController::class, 'search'])->name('products.search');
+    Route::get('products/quick-search', [AdminProductController::class, 'quickSearch'])->name('products.quick-search');
+
 
     // -------------------------
     // ✅ Product Variants
@@ -305,8 +311,27 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::resource('/collections', AdminCollectionController::class);
     Route::post('/collections/quick-add', [AdminCollectionController::class, 'quickAdd'])->name('admin.collections.quick-add');
 
-    // Instructors
-    Route::resource('instructors', AdminInstructorController::class);
+    // -------------------------
+    // ✅ Orders Routes
+    // -------------------------
+        Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [AdminOrderController::class, 'index'])->name('index');
+        Route::get('/create', [AdminOrderController::class, 'create'])->name('create');
+        Route::get('/{order}/edit', [AdminOrderController::class, 'edit'])->name('edit');
+        Route::get('/{order}/show', [AdminOrderController::class, 'show'])->name('show');
+        Route::put('/{order}', [AdminOrderController::class, 'autoSave'])->name('update');
+        Route::delete('/{order}', [AdminOrderController::class, 'destroy'])->name('destroy');
+        
+        // Bulk actions
+        Route::post('/bulk', [AdminOrderController::class, 'bulk'])->name('bulk');
+        
+        // Toggle actions
+        Route::post('/{order}/toggle', [AdminOrderController::class, 'toggle'])->name('toggle');
+
+        Route::post('import/upload', [AdminOrderImportController::class, 'upload'])->name('import.upload');
+        Route::post('import/process-chunk', [AdminOrderImportController::class, 'processChunk'])->name('import.processChunk');
+        Route::post('import/cleanup', [AdminOrderImportController::class, 'cleanupImportFiles'])->name('import.cleanup');
+    });
 
     // Documents
     Route::resource('documents', AdminDocumentController::class);
