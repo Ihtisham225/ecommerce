@@ -31,7 +31,7 @@
                                                    class="sr-only" @change.debounce.1000ms="triggerAutosave()">
                                             <div class="flex items-center justify-center w-full px-4 py-3 border rounded-lg text-sm font-medium transition-all"
                                                  :class="form.status === status.value 
-                                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm' 
+                                                    ? status.classes 
                                                     : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'">
                                                 <span x-text="status.label"></span>
                                             </div>
@@ -89,46 +89,6 @@
 
                 {{-- RIGHT SIDE --}}
                 <div class="lg:w-80 space-y-6">
-                    {{-- Order Actions --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
-                        <div class="p-4 border-b border-gray-200">
-                            <h3 class="text-lg font-bold text-gray-900">Quick Actions</h3>
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <button type="button" 
-                                    class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Mark as Fulfilled
-                            </button>
-                            
-                            <button type="button" 
-                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Add Note
-                            </button>
-                            
-                            <button type="button" 
-                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                                </svg>
-                                Capture Payment
-                            </button>
-                            
-                            <button type="button" 
-                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                Cancel Order
-                            </button>
-                        </div>
-                    </div>
-
                     {{-- Order Summary --}}
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200">
                         <div class="p-4 border-b border-gray-200">
@@ -160,65 +120,96 @@
                         </div>
                     </div>
 
-                    {{-- Shipping & Billing --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
-                        <div class="p-4 border-b border-gray-200">
-                            <h3 class="text-lg font-bold text-gray-900">Addresses</h3>
-                        </div>
-                        <div class="p-4 space-y-4">
-                            {{-- Shipping Address --}}
+                    {{-- Shipping Address --}}
+                    <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                        <h4 class="font-semibold text-base text-gray-900 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Shipping Address
+                            <span x-show="form.customer_id" class="text-xs font-normal text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                Also saving to customer profile
+                            </span>
+                            <span x-show="!form.customer_id" class="text-xs font-normal text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                                Guest order only
+                            </span>
+                        </h4>
+
+                        <div class="space-y-3">
                             <div>
-                                <h4 class="text-sm font-medium text-gray-900 mb-2">Shipping Address</h4>
-                                <div class="text-sm text-gray-600 space-y-1" x-html="shippingAddressDisplay"></div>
-                                <button type="button" class="mt-2 text-sm text-indigo-600 hover:text-indigo-500 font-medium">
-                                    Edit Shipping
-                                </button>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
+                                <input type="text"
+                                    placeholder="Street address, P.O. box, company name"
+                                    x-model="form.shipping_address.address_line_1"
+                                    @input.debounce.600ms="if(form.sameAsShipping) applySameAsShipping(); triggerAutosave()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                             </div>
-                            
-                            <div class="border-t border-gray-200 pt-4">
-                                <h4 class="text-sm font-medium text-gray-900 mb-2">Billing Address</h4>
-                                <div class="text-sm text-gray-600 space-y-1" x-html="billingAddressDisplay"></div>
-                                <button type="button" class="mt-2 text-sm text-indigo-600 hover:text-indigo-500 font-medium">
-                                    Edit Billing
-                                </button>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                                <input type="text"
+                                    placeholder="Apartment, suite, unit, building, floor, etc."
+                                    x-model="form.shipping_address.address_line_2"
+                                    @input.debounce.600ms="if(form.sameAsShipping) applySameAsShipping(); triggerAutosave()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                             </div>
                         </div>
                     </div>
 
-                    {{-- Timeline --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
-                        <div class="p-4 border-b border-gray-200">
-                            <h3 class="text-lg font-bold text-gray-900">Recent Activity</h3>
-                        </div>
-                        <div class="p-4">
-                            <div class="flow-root">
-                                <ul class="-mb-8">
-                                    <template x-for="(event, index) in recentActivity" :key="index">
-                                        <li>
-                                            <div class="relative pb-8">
-                                                <template x-if="index !== recentActivity.length - 1">
-                                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                                                </template>
-                                                <div class="relative flex space-x-3">
-                                                    <div>
-                                                        <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white"
-                                                              :class="event.iconBackground">
-                                                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path :d="event.icon" fill-rule="evenodd" clip-rule="evenodd"></path>
-                                                            </svg>
-                                                        </span>
-                                                    </div>
-                                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                                        <div>
-                                                            <p class="text-sm text-gray-500" x-html="event.content"></p>
-                                                        </div>
-                                                        <div class="text-right text-sm whitespace-nowrap text-gray-500" x-text="event.time"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    </template>
-                                </ul>
+                    {{-- Billing Address --}}
+                    <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mt-6">
+                        <h4 class="font-semibold text-base text-gray-900 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                            </svg>
+                            Billing Address
+                            <span x-show="form.customer_id" class="text-xs font-normal text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                Also saving to customer profile
+                            </span>
+                            <span x-show="!form.customer_id" class="text-xs font-normal text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                                Guest order only
+                            </span>
+                        </h4>
+
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors">
+                                <input type="checkbox"
+                                    x-model="form.sameAsShipping"
+                                    @change="applySameAsShipping(); triggerAutosave()"
+                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm font-medium text-blue-900">Use shipping address as billing address</span>
+                            </label>
+
+                            <div x-show="!form.sameAsShipping" x-transition>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
+                                    <input type="text"
+                                        placeholder="Street address, P.O. box, company name"
+                                        x-model="form.billing_address.address_line_1"
+                                        @input.debounce.600ms="triggerAutosave()"
+                                        :disabled="form.sameAsShipping"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed">
+                                </div>
+
+                                <div class="mt-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                                    <input type="text"
+                                        placeholder="Apartment, suite, unit, building, floor, etc."
+                                        x-model="form.billing_address.address_line_2"
+                                        @input.debounce.600ms="triggerAutosave()"
+                                        :disabled="form.sameAsShipping"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed">
+                                </div>
+                            </div>
+
+                            <div x-show="form.sameAsShipping" x-transition class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p class="text-sm text-green-800 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Billing address will be the same as shipping address
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -266,8 +257,17 @@
                         ])->values()
                     ),
 
-                    billing_address_raw: @js(optional($order->billingAddress)?->address_line_1),
-                    shipping_address_raw: @js(optional($order->shippingAddress)?->address_line_1),
+                    shipping_address: {
+                        address_line_1: @js(optional($defaultShipping)?->address_line_1),
+                        address_line_2: @js(optional($defaultShipping)?->address_line_2),
+                    },
+
+                    billing_address: {
+                        address_line_1: @js(optional($defaultBilling)?->address_line_1),
+                        address_line_2: @js(optional($defaultBilling)?->address_line_2),
+                    },
+
+                    sameAsShipping: @js(optional($defaultBilling)?->same_as_shipping ?? false),
 
                     payment: {
                         method: @js(optional($order->payments->first())->method),
@@ -294,14 +294,33 @@
                 },
 
                 /* --------------------------------
-                Customer Event Handlers
+                UPDATED: Customer Event Handlers with Address Support
                 -------------------------------- */
                 onCustomerSelected(detail) {
                     // Update the form with the selected customer
                     this.form.customer_id = detail.customer_id;
                     this.customerName = detail.customer.first_name + ' ' + detail.customer.last_name;
                     
-                    // Trigger autosave
+                    // Update addresses if provided
+                    if (detail.shipping_address) {
+                        this.form.shipping_address.address_line_1 = detail.shipping_address.address_line_1 || '';
+                        this.form.shipping_address.address_line_2 = detail.shipping_address.address_line_2 || '';
+                    }
+                    
+                    if (detail.billing_address) {
+                        this.form.billing_address.address_line_1 = detail.billing_address.address_line_1 || '';
+                        this.form.billing_address.address_line_2 = detail.billing_address.address_line_2 || '';
+                        this.form.sameAsShipping = detail.billing_address.same_as_shipping || false;
+                    } else {
+                        // If no billing address, automatically set same as shipping
+                        this.form.sameAsShipping = true;
+                        this.applySameAsShipping();
+                    }
+                    
+                    // Show notification
+                    this.showNotification('✅ Customer address loaded!', 'success');
+                    
+                    // Trigger autosave after customer selection
                     this.triggerAutosave();
                 },
 
@@ -310,7 +329,28 @@
                     this.form.customer_id = null;
                     this.customerName = 'Guest';
                     
-                    // Trigger autosave
+                    // Clear address data
+                    this.form.shipping_address = { address_line_1: '', address_line_2: '' };
+                    this.form.billing_address = { address_line_1: '', address_line_2: '' };
+                    this.form.sameAsShipping = false;
+                    
+                    this.$nextTick(() => {
+                        // Debug: List all inputs in the form
+                        const allInputs = this.$el.querySelectorAll('input');
+                        
+                        allInputs.forEach((input, index) => {
+                            const xModel = input.getAttribute('x-model');
+                            const placeholder = input.placeholder;
+                            
+                            // Clear any input that looks like an address field
+                            if (xModel && xModel.includes('address')) {
+                                input.value = '';
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        });
+                    });
+                    
+                    this.showNotification('✅ Customer removed from order!', 'success');
                     this.triggerAutosave();
                 },
 
@@ -325,10 +365,10 @@
                 Status Options
                 -------------------------------- */
                 orderStatuses: [
-                    { value: 'pending', label: 'Pending' },
-                    { value: 'processing', label: 'Processing' },
-                    { value: 'completed', label: 'Completed' },
-                    { value: 'cancelled', label: 'Cancelled' }
+                    { value: 'pending', label: 'Pending', classes: 'border-yellow-500 bg-yellow-50 text-yellow-700'  },
+                    { value: 'processing', label: 'Processing', classes: 'border-blue-500 bg-blue-50 text-blue-700' },
+                    { value: 'completed', label: 'Completed', classes: 'border-green-500 bg-green-50 text-green-700' },
+                    { value: 'cancelled', label: 'Cancelled', classes: 'border-red-500 bg-red-50 text-red-700' }
                 ],
 
                 paymentStatuses: [
@@ -379,14 +419,21 @@
                     if (!this.form.shipping_address_raw) {
                         return 'No shipping address';
                     }
-                    return this.form.shipping_address_raw;
+                    return this.form.shipping_address_raw.replace(/\n/g, '<br>');
                 },
 
                 get billingAddressDisplay() {
                     if (!this.form.billing_address_raw) {
                         return 'No billing address';
                     }
-                    return this.form.billing_address_raw;
+                    return this.form.billing_address_raw.replace(/\n/g, '<br>');
+                },
+
+                applySameAsShipping() {
+                    if (this.form.sameAsShipping) {
+                        this.form.billing_address.address_line_1 = this.form.shipping_address.address_line_1;
+                        this.form.billing_address.address_line_2 = this.form.shipping_address.address_line_2;
+                    }
                 },
 
                 /* --------------------------------

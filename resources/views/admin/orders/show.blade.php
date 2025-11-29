@@ -49,10 +49,8 @@
             'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
             'confirmed' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
             'processing' => 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-            'shipped' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-            'delivered' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            'completed' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
             'cancelled' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-            'refunded' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
         ];
         
         $paymentStatusColors = [
@@ -95,10 +93,8 @@
                                             {{ $order->status === 'pending' ? 'bg-yellow-500' : '' }}
                                             {{ $order->status === 'confirmed' ? 'bg-blue-500' : '' }}
                                             {{ $order->status === 'processing' ? 'bg-indigo-500' : '' }}
-                                            {{ $order->status === 'shipped' ? 'bg-purple-500' : '' }}
-                                            {{ $order->status === 'delivered' ? 'bg-green-500' : '' }}
+                                            {{ $order->status === 'completed' ? 'bg-green-500' : '' }}
                                             {{ $order->status === 'cancelled' ? 'bg-red-500' : '' }}
-                                            {{ $order->status === 'refunded' ? 'bg-gray-500' : '' }}
                                         "></span>
                                         {{ ucfirst($order->status) }}
                                     </span>
@@ -328,26 +324,53 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                                     </svg>
                                     Billing Address
+                                    @if($billingAddress && $billingAddress->getTable() === 'customers')
+                                        <span class="text-xs font-normal text-green-600 bg-green-100 px-2 py-1 rounded-full ml-2">
+                                            From Customer Profile
+                                        </span>
+                                    @elseif($billingAddress)
+                                        <span class="text-xs font-normal text-blue-600 bg-blue-100 px-2 py-1 rounded-full ml-2">
+                                            From Order
+                                        </span>
+                                    @endif
                                 </h3>
-                                @if($order->billingAddress)
+                                @if($billingAddress)
                                     <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-sm space-y-3">
                                         <p class="font-semibold text-gray-900 dark:text-white">
-                                            {{ $order->billingAddress->first_name }} {{ $order->billingAddress->last_name }}
+                                            {{ $billingAddress->first_name ?? $order->customer?->first_name }} {{ $billingAddress->last_name ?? $order->customer?->last_name }}
                                         </p>
-                                        @if($order->billingAddress->email)
-                                            <p class="text-gray-600 dark:text-gray-400">{{ $order->billingAddress->email }}</p>
+                                        @if($billingAddress->email ?? $order->customer?->email)
+                                            <p class="text-gray-600 dark:text-gray-400">{{ $billingAddress->email ?? $order->customer?->email }}</p>
                                         @endif
-                                        @if($order->billingAddress->phone)
-                                            <p class="text-gray-600 dark:text-gray-400">{{ $order->billingAddress->phone }}</p>
+                                        @if($billingAddress->phone ?? $order->customer?->phone)
+                                            <p class="text-gray-600 dark:text-gray-400">{{ $billingAddress->phone ?? $order->customer?->phone }}</p>
                                         @endif
                                         <p class="text-gray-600 dark:text-gray-400">
-                                            {{ $order->billingAddress->address1 }}<br>
-                                            @if($order->billingAddress->address2)
-                                                {{ $order->billingAddress->address2 }}<br>
+                                            {{ $billingAddress->address_line_1 ?? $billingAddress->address1 }}<br>
+                                            @if($billingAddress->address_line_2 ?? $billingAddress->address2)
+                                                {{ $billingAddress->address_line_2 ?? $billingAddress->address2 }}<br>
                                             @endif
-                                            {{ $order->billingAddress->city }}, {{ $order->billingAddress->state }} {{ $order->billingAddress->postal_code }}<br>
-                                            {{ $order->billingAddress->country }}
+                                            @if($billingAddress->city)
+                                                {{ $billingAddress->city }},
+                                            @endif
+                                            @if($billingAddress->state)
+                                                {{ $billingAddress->state }}
+                                            @endif
+                                            @if($billingAddress->postal_code)
+                                                {{ $billingAddress->postal_code }}<br>
+                                            @endif
+                                            @if($billingAddress->country)
+                                                {{ $billingAddress->country }}
+                                            @endif
                                         </p>
+                                        @if($billingAddress->same_as_shipping)
+                                            <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                                Same as Shipping Address
+                                            </div>
+                                        @endif
                                     </div>
                                 @else
                                     <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 text-center">
@@ -366,22 +389,44 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                                     </svg>
                                     Shipping Address
+                                    @if($shippingAddress && $shippingAddress->getTable() === 'customers')
+                                        <span class="text-xs font-normal text-green-600 bg-green-100 px-2 py-1 rounded-full ml-2">
+                                            From Customer Profile
+                                        </span>
+                                    @elseif($shippingAddress)
+                                        <span class="text-xs font-normal text-blue-600 bg-blue-100 px-2 py-1 rounded-full ml-2">
+                                            From Order
+                                        </span>
+                                    @endif
                                 </h3>
-                                @if($order->shippingAddress)
+                                @if($shippingAddress)
                                     <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-sm space-y-3">
                                         <p class="font-semibold text-gray-900 dark:text-white">
-                                            {{ $order->shippingAddress->first_name }} {{ $order->shippingAddress->last_name }}
+                                            {{ $shippingAddress->first_name ?? $order->customer?->first_name }} {{ $shippingAddress->last_name ?? $order->customer?->last_name }}
                                         </p>
-                                        @if($order->shippingAddress->phone)
-                                            <p class="text-gray-600 dark:text-gray-400">{{ $order->shippingAddress->phone }}</p>
+                                        @if($billingAddress->email ?? $order->customer?->email)
+                                            <p class="text-gray-600 dark:text-gray-400">{{ $billingAddress->email ?? $order->customer?->email }}</p>
+                                        @endif
+                                        @if($shippingAddress->phone ?? $order->customer?->phone)
+                                            <p class="text-gray-600 dark:text-gray-400">{{ $shippingAddress->phone ?? $order->customer?->phone }}</p>
                                         @endif
                                         <p class="text-gray-600 dark:text-gray-400">
-                                            {{ $order->shippingAddress->address1 }}<br>
-                                            @if($order->shippingAddress->address2)
-                                                {{ $order->shippingAddress->address2 }}<br>
+                                            {{ $shippingAddress->address_line_1 ?? $shippingAddress->address1 }}<br>
+                                            @if($shippingAddress->address_line_2 ?? $shippingAddress->address2)
+                                                {{ $shippingAddress->address_line_2 ?? $shippingAddress->address2 }}<br>
                                             @endif
-                                            {{ $order->shippingAddress->city }}, {{ $order->shippingAddress->state }} {{ $order->shippingAddress->postal_code }}<br>
-                                            {{ $order->shippingAddress->country }}
+                                            @if($shippingAddress->city)
+                                                {{ $shippingAddress->city }},
+                                            @endif
+                                            @if($shippingAddress->state)
+                                                {{ $shippingAddress->state }}
+                                            @endif
+                                            @if($shippingAddress->postal_code)
+                                                {{ $shippingAddress->postal_code }}<br>
+                                            @endif
+                                            @if($shippingAddress->country)
+                                                {{ $shippingAddress->country }}
+                                            @endif
                                         </p>
                                     </div>
                                 @else

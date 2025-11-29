@@ -230,19 +230,20 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             // Customer basic info
-            'first_name' => 'required|string|max:120',
-            'last_name'  => 'required|string|max:120',
+            'first_name' => 'nullable|string|max:120',
+            'last_name'  => 'nullable|string|max:120',
             'phone'      => 'nullable|string|max:30',
             'email'      => 'nullable|email|max:255',
-            'is_guest'   => 'boolean',
+            'is_guest'   => 'nullable|boolean',
             
             // Addresses - simplified for minimal schema
             'addresses' => 'nullable|array',
             'addresses.*.id' => 'nullable|exists:addresses,id',
-            'addresses.*.type' => 'required|in:shipping,billing',
-            'addresses.*.address_line_1' => 'required|string|max:255',
+            'addresses.*.type' => 'nullable|in:shipping,billing',
+            'addresses.*.address_line_1' => 'nullable|string|max:255',
             'addresses.*.address_line_2' => 'nullable|string|max:255',
-            'addresses.*.is_default' => 'boolean',
+            'addresses.*.is_default' => 'nullable|boolean',
+            'addresses.*.same_as_shipping' => 'nullable|boolean', // This is per address
         ]);
 
         DB::beginTransaction();
@@ -305,21 +306,30 @@ class CustomerController extends Controller
         }
     }
 
-     /**
-     * Update customer addresses for minimal schema
+    /**
+     * Update customer addresses with same_as_shipping support
      */
     private function updateAddresses(Customer $customer, array $addresses)
     {
         $existingIds = [];
 
         foreach ($addresses as $addr) {
-
             $clean = [
                 'type' => $addr['type'],
                 'address_line_1' => $addr['address_line_1'],
                 'address_line_2' => $addr['address_line_2'] ?? null,
                 'is_default' => $addr['is_default'] ?? false,
+                'same_as_shipping' => $addr['same_as_shipping'] ?? false, // Use the value from the address
             ];
+
+            // If same_as_shipping is enabled for billing address, copy data from shipping address
+            if ($clean['same_as_shipping'] && $addr['type'] === 'billing') {
+                $shippingAddress = collect($addresses)->firstWhere('type', 'shipping');
+                if ($shippingAddress) {
+                    $clean['address_line_1'] = $shippingAddress['address_line_1'];
+                    $clean['address_line_2'] = $shippingAddress['address_line_2'] ?? null;
+                }
+            }
 
             if (!empty($addr['id'])) {
                 // update existing
@@ -335,7 +345,7 @@ class CustomerController extends Controller
             } else {
                 // create new
                 $address = new Address($clean);
-                $customer->addresses()->save($address);   // <--- important fix
+                $customer->addresses()->save($address);
                 $existingIds[] = $address->id;
             }
         }

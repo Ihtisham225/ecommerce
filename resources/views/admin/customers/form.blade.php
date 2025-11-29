@@ -199,7 +199,11 @@
                                     <div class="flex gap-2">
                                         <button type="button" 
                                                 @click="addNewAddress('shipping')"
-                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                :disabled="hasShippingAddress()"
+                                                :class="hasShippingAddress() 
+                                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                                    : 'bg-blue-600 hover:bg-blue-700'"
+                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                             </svg>
@@ -207,7 +211,11 @@
                                         </button>
                                         <button type="button" 
                                                 @click="addNewAddress('billing')"
-                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                                :disabled="hasBillingAddress()"
+                                                :class="hasBillingAddress() 
+                                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                                    : 'bg-green-600 hover:bg-green-700'"
+                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                             </svg>
@@ -217,21 +225,41 @@
                                 </div>
                             </div>
                             <div class="p-6 space-y-4">
+                                {{-- Same as Shipping Address Toggle --}}
+                                <div x-show="hasShippingAndBillingAddresses()" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" 
+                                            x-model="getBillingAddressSameAsShipping()"
+                                            @change="handleSameAsShippingToggle"
+                                            :checked="getBillingAddressSameAsShipping()"
+                                            class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <div>
+                                            <span class="font-medium text-blue-900 dark:text-blue-100">Use shipping address for billing</span>
+                                            <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                                                When enabled, the shipping address will be used for billing purposes
+                                            </p>
+                                        </div>
+                                    </label>
+                                </div>
+
                                 <template x-for="(address, index) in form.addresses" :key="index">
                                     <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
                                         <div class="flex justify-between items-start mb-3">
                                             <div>
                                                 <h4 class="font-medium text-gray-900 dark:text-white">
                                                     <span x-text="address.type === 'shipping' ? 'Shipping Address' : 'Billing Address'"></span>
-                                                    <span x-text="' #' + (index + 1)"></span>
                                                 </h4>
                                                 <span x-show="address.is_default" class="inline-block mt-1 px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
                                                     Default
                                                 </span>
+                                                <span x-show="getBillingAddressSameAsShipping() && address.type === 'billing'" class="inline-block mt-1 px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                                                    Same as Shipping
+                                                </span>
                                             </div>
                                             <button type="button" 
                                                     @click="removeAddress(index)"
-                                                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                                                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                                    :disabled="form.addresses.length <= 1">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                 </svg>
@@ -239,18 +267,11 @@
                                         </div>
                                         
                                         <div class="space-y-3">
-                                            {{-- Address Type --}}
+                                            {{-- Address Type Display --}}
                                             <div class="flex items-center justify-between">
                                                 <div>
-                                                    <label class="inline-flex items-center">
-                                                        <input type="radio" 
-                                                            name="address_type"
-                                                            :value="address.type"
-                                                            x-model="address.type"
-                                                            @input="debounceSave"
-                                                            class="text-indigo-600 focus:ring-indigo-500">
-                                                        <span class="ml-2 text-sm font-medium" x-text="address.type === 'shipping' ? 'Shipping Address' : 'Billing Address'"></span>
-                                                    </label>
+                                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300" 
+                                                          x-text="address.type === 'shipping' ? 'Shipping Address' : 'Billing Address'"></span>
                                                 </div>
                                                 <label class="inline-flex items-center">
                                                     <input type="checkbox" 
@@ -269,8 +290,12 @@
                                                 </label>
                                                 <input type="text" 
                                                     x-model="address.address_line_1"
-                                                    @input="debounceSave"
-                                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    @input="handleAddressInput(index)"
+                                                    :readonly="getBillingAddressSameAsShipping() && address.type === 'billing'"
+                                                    :class="getBillingAddressSameAsShipping() && address.type === 'billing' 
+                                                        ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed border-gray-300' 
+                                                        : 'border-gray-300 dark:border-gray-600 dark:bg-gray-700'"
+                                                    class="w-full rounded-lg dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                                                     placeholder="Street address, P.O. box, company name">
                                             </div>
                                             <div>
@@ -279,8 +304,12 @@
                                                 </label>
                                                 <input type="text" 
                                                     x-model="address.address_line_2"
-                                                    @input="debounceSave"
-                                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    @input="handleAddressInput(index)"
+                                                    :readonly="getBillingAddressSameAsShipping() && address.type === 'billing'"
+                                                    :class="getBillingAddressSameAsShipping() && address.type === 'billing' 
+                                                        ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed border-gray-300' 
+                                                        : 'border-gray-300 dark:border-gray-600 dark:bg-gray-700'"
+                                                    class="w-full rounded-lg dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                                                     placeholder="Apartment, suite, unit, building, floor, etc.">
                                             </div>
                                         </div>
@@ -327,6 +356,10 @@
                                 <div class="flex justify-between">
                                     <span class="text-sm text-gray-600 dark:text-gray-400">Addresses:</span>
                                     <span class="text-sm font-medium" x-text="form.addresses.length"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">Same as Shipping:</span>
+                                    <span class="text-sm font-medium" x-text="form.same_as_shipping ? 'Yes' : 'No'"></span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-sm text-gray-600 dark:text-gray-400">Created:</span>
@@ -380,6 +413,7 @@
                         email: @js($customer->email ?? ''),
                         phone: @js($customer->phone ?? ''),
                         is_guest: @js($customer->is_guest ?? false),
+                        // Remove same_as_shipping from customer level
 
                         addresses: @js($customer->addresses->map(function($address) {
                             return [
@@ -388,6 +422,7 @@
                                 'address_line_1' => $address->address_line_1,
                                 'address_line_2' => $address->address_line_2,
                                 'is_default' => $address->is_default,
+                                'same_as_shipping' => $address->same_as_shipping, // Keep this on address level
                             ];
                         })->toArray() ?? []),
                     },
@@ -398,15 +433,27 @@
                     saving: false,
                     errors: {},
 
+                    init() {
+                        // Initialize addresses if empty
+                        if (this.form.addresses.length === 0) {
+                            this.addNewAddress('shipping');
+                        }
+                        
+                        // Apply same_as_shipping logic on initialization
+                        this.$nextTick(() => {
+                            this.applySameAsShippingLogic();
+                        });
+                    },
+
                     /* --------------------------------
-                    Debounce Logic (NEW)
+                    Debounce Logic
                     -------------------------------- */
                     saveTimer: null,
                     debounceSave() {
                         clearTimeout(this.saveTimer);
                         this.saveTimer = setTimeout(() => {
                             this.saveCustomer();
-                        }, 600); // ← adjust delay here (ms)
+                        }, 600);
                     },
 
                     /* --------------------------------
@@ -421,10 +468,8 @@
                                 ? `/admin/customers/${this.customerId}/autosave`
                                 : `/admin/customers/autosave`;
 
-                            const method = 'PUT';
-
                             const response = await fetch(url, {
-                                method: method,
+                                method: 'PUT',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -438,11 +483,10 @@
                             if (response.ok) {
                                 this.showNotification(data.message || 'Customer saved successfully!', 'success');
 
-                                // Redirect if new customer
+                                // Update customer ID if new customer was created
                                 if (!this.customerId && data.customer) {
-                                    setTimeout(() => {
-                                        window.location.href = `/admin/customers/${data.customer.id}/edit`;
-                                    }, 1000);
+                                    this.customerId = data.customer.id;
+                                    window.history.replaceState(null, '', `/admin/customers/${data.customer.id}/edit`);
                                 }
                             } else {
                                 if (data.errors) {
@@ -463,12 +507,59 @@
                     Address Management
                     -------------------------------- */
                     addNewAddress(type = 'shipping') {
-                        this.form.addresses.push({
+                        // Check if address type already exists
+                        if (this.hasAddressType(type)) {
+                            this.showNotification(`A ${type} address already exists.`, 'error');
+                            return;
+                        }
+
+                        const newAddress = {
                             type: type,
                             address_line_1: '',
                             address_line_2: '',
-                            is_default: this.form.addresses.length === 0
-                        });
+                            is_default: this.form.addresses.length === 0,
+                            same_as_shipping: type === 'billing' ? this.getBillingAddressSameAsShipping() : false
+                        };
+
+                        this.form.addresses.push(newAddress);
+                        
+                        // Apply same_as_shipping logic if needed
+                        if (type === 'billing' && this.getBillingAddressSameAsShipping()) {
+                            this.applySameAsShippingLogic();
+                        }
+                        
+                        this.debounceSave();
+                    },
+
+                    hasAddressType(type) {
+                        return this.form.addresses.some(addr => addr.type === type);
+                    },
+
+                    hasShippingAddress() {
+                        return this.hasAddressType('shipping');
+                    },
+
+                    hasBillingAddress() {
+                        return this.hasAddressType('billing');
+                    },
+
+                    getBillingAddressSameAsShipping() {
+                        const billingAddress = this.form.addresses.find(addr => addr.type === 'billing');
+                        return billingAddress ? billingAddress.same_as_shipping : false;
+                    },
+
+                    handleAddressInput(index) {
+                        const address = this.form.addresses[index];
+                        
+                        // If same as shipping is enabled and this is shipping address, update billing address
+                        if (this.getBillingAddressSameAsShipping() && address.type === 'shipping') {
+                            const billingAddress = this.form.addresses.find(addr => addr.type === 'billing');
+                            if (billingAddress) {
+                                billingAddress.address_line_1 = address.address_line_1;
+                                billingAddress.address_line_2 = address.address_line_2;
+                            }
+                        }
+                        
                         this.debounceSave();
                     },
 
@@ -487,10 +578,51 @@
                     },
 
                     removeAddress(index) {
-                        if (this.form.addresses.length > 0) {
-                            this.form.addresses.splice(index, 1);
+                        if (this.form.addresses.length <= 1) {
+                            this.showNotification('Cannot remove the last address.', 'error');
+                            return;
                         }
+
+                        const removedAddress = this.form.addresses[index];
+                        this.form.addresses.splice(index, 1);
+                        
                         this.debounceSave();
+                    },
+
+                    /* --------------------------------
+                    Same as Shipping Logic
+                    -------------------------------- */
+                    handleSameAsShippingToggle() {
+                        const billingAddress = this.form.addresses.find(addr => addr.type === 'billing');
+                        const shippingAddress = this.form.addresses.find(addr => addr.type === 'shipping');
+                        
+                        if (billingAddress && shippingAddress) {
+                            // Toggle the same_as_shipping flag on the billing address
+                            billingAddress.same_as_shipping = !billingAddress.same_as_shipping;
+                            
+                            if (billingAddress.same_as_shipping) {
+                                // Copy shipping address to billing address
+                                billingAddress.address_line_1 = shippingAddress.address_line_1;
+                                billingAddress.address_line_2 = shippingAddress.address_line_2;
+                            }
+                        }
+                        
+                        this.debounceSave();
+                    },
+
+                    applySameAsShippingLogic() {
+                        const billingAddress = this.form.addresses.find(addr => addr.type === 'billing');
+                        const shippingAddress = this.form.addresses.find(addr => addr.type === 'shipping');
+                        
+                        if (billingAddress && billingAddress.same_as_shipping && shippingAddress) {
+                            // Copy shipping address data to billing address
+                            billingAddress.address_line_1 = shippingAddress.address_line_1;
+                            billingAddress.address_line_2 = shippingAddress.address_line_2;
+                        }
+                    },
+
+                    hasShippingAndBillingAddresses() {
+                        return this.hasShippingAddress() && this.hasBillingAddress();
                     },
 
                     formatDate(dateString) {
@@ -510,7 +642,7 @@
                             'bg-blue-600';
 
                         const notification = document.createElement('div');
-                        notification.className = `fixed bottom-6 right-6 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out translate-x-full z-50`;
+                        notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out translate-x-full z-50`;
                         notification.textContent = message;
 
                         document.body.appendChild(notification);
@@ -521,33 +653,6 @@
                             notification.classList.add('translate-x-full');
                             setTimeout(() => notification.remove(), 300);
                         }, 4000);
-                    },
-
-                    /* --------------------------------
-                    Additional Address Logic
-                    -------------------------------- */
-                    handleAddressDefaults(index) {
-                        const address = this.form.addresses[index];
-
-                        if (this.form.addresses.length === 1) {
-                            address.is_default_shipping = true;
-                            address.is_default_billing = true;
-                            return;
-                        }
-
-                        if (address.is_default_shipping) {
-                            this.form.addresses.forEach((addr, i) => {
-                                if (i !== index) addr.is_default_shipping = false;
-                            });
-                        }
-
-                        if (address.is_default_billing) {
-                            this.form.addresses.forEach((addr, i) => {
-                                if (i !== index) addr.is_default_billing = false;
-                            });
-                        }
-
-                        this.debounceSave();
                     }
                 };
             }

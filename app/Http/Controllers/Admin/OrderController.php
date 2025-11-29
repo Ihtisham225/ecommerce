@@ -215,7 +215,7 @@ class OrderController extends Controller
     {
         // Load all required relations
         $order->load([
-            'customer',
+            'customer.addresses', // Load customer addresses
             'items.product',
             'items.variant',
             'payments',
@@ -247,10 +247,19 @@ class OrderController extends Controller
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
+        // Get addresses - first from customer, then from order
+        $billingAddress = $order->customer?->addresses()->billing()->default()->first() 
+            ?? $order->addresses()->billing()->first();
+        
+        $shippingAddress = $order->customer?->addresses()->shipping()->default()->first() 
+            ?? $order->addresses()->shipping()->first();
+
         return view('admin.orders.show', compact(
             'order',
             'customers',
-            'currencySymbol'
+            'currencySymbol',
+            'billingAddress',
+            'shippingAddress'
         ));
     }
 
@@ -261,80 +270,70 @@ class OrderController extends Controller
             'items.product',
             'items.variant',
             'payments',
-            'addresses',
+            'addresses', // This loads polymorphic addresses
             'adjustments',
             'transactions',
             'fulfillments.items'
         ]);
 
         $customers = Customer::orderBy('first_name')->get();
-        
+
         // Get currency symbols
         $currencySymbols = [
-            'USD' => '$',
-            'EUR' => '€',
-            'GBP' => '£',
-            'PKR' => '₨',
-            'INR' => '₹',
-            'AED' => 'د.إ',
-            'SAR' => '﷼',
-            'CAD' => '$',
-            'AUD' => '$',
-            'KWD' => 'K.D',
+            'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'PKR' => '₨', 
+            'INR' => '₹', 'AED' => 'د.إ', 'SAR' => '﷼', 'CAD' => '$', 
+            'AUD' => '$', 'KWD' => 'K.D',
         ];
 
         $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
-        return view('admin.orders.form', compact('order', 'customers', 'currencySymbol'));
+        // Prepare default addresses from order's polymorphic addresses
+        $defaultShipping = $order->addresses->where('type', 'shipping')->first();
+        $defaultBilling = $order->addresses->where('type', 'billing')->first();
+
+        return view('admin.orders.form', compact(
+            'order', 
+            'customers', 
+            'currencySymbol', 
+            'defaultShipping', 
+            'defaultBilling'
+        ));
     }
 
     public function autoSave(Request $request, Order $order)
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
-            'status' => 'nullable|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
+            'status' => 'nullable|in:pending,confirmed,processing,completed,cancelled',
             'payment_status' => 'nullable|in:pending,paid,failed,refunded,partially_refunded',
             'shipping_status' => 'nullable|in:pending,ready_for_shipment,shipped,delivered',
             'source' => 'required|in:online,in_store',
-            
-            // Addresses
+
             'billing_address' => 'nullable|array',
-            'billing_address.first_name' => 'required_with:billing_address|string|max:255',
-            'billing_address.last_name' => 'required_with:billing_address|string|max:255',
-            'billing_address.email' => 'required_with:billing_address|email',
-            'billing_address.phone' => 'nullable|string|max:20',
-            'billing_address.address1' => 'required_with:billing_address|string|max:255',
-            'billing_address.city' => 'required_with:billing_address|string|max:255',
-            'billing_address.state' => 'required_with:billing_address|string|max:255',
-            'billing_address.postal_code' => 'required_with:billing_address|string|max:20',
-            'billing_address.country' => 'required_with:billing_address|string|max:255',
-            
+            'billing_address.address_line_1' => 'nullable|string|max:255',
+            'billing_address.address_line_2' => 'nullable|string|max:255',
+
+            'sameAsShipping' => 'nullable|boolean',
             'shipping_address' => 'nullable|array',
-            'shipping_address.first_name' => 'required_with:shipping_address|string|max:255',
-            'shipping_address.last_name' => 'required_with:shipping_address|string|max:255',
-            'shipping_address.phone' => 'nullable|string|max:20',
-            'shipping_address.address1' => 'required_with:shipping_address|string|max:255',
-            'shipping_address.city' => 'required_with:shipping_address|string|max:255',
-            'shipping_address.state' => 'required_with:shipping_address|string|max:255',
-            'shipping_address.postal_code' => 'required_with:shipping_address|string|max:20',
-            'shipping_address.country' => 'required_with:shipping_address|string|max:255',
-            
+            'shipping_address.address_line_1' => 'nullable|string|max:255',
+            'shipping_address.address_line_2' => 'nullable|string|max:255',
+
             // Payment
             'payment' => 'nullable|array',
             'payment.method' => 'nullable|string|max:255',
             'payment.amount' => 'nullable|numeric|min:0',
             'payment.transaction_id' => 'nullable|string|max:255',
-            
-            // Adjustments (discounts/refunds/manual)
+
+            // Adjustments
             'adjustments' => 'nullable|array',
             'adjustments.*.id' => 'nullable|exists:order_adjustments,id',
             'adjustments.*.type' => 'required_with:adjustments|string',
             'adjustments.*.title' => 'nullable|string',
             'adjustments.*.amount' => 'required_with:adjustments|numeric',
-            
-            // Transactions (gateway records)
+
+            // Transactions
             'transactions' => 'nullable|array',
             'transactions.*.id' => 'nullable|exists:order_transactions,id',
             'transactions.*.type' => 'required_with:transactions|string',
@@ -342,7 +341,7 @@ class OrderController extends Controller
             'transactions.*.amount' => 'required_with:transactions|numeric',
             'transactions.*.gateway' => 'nullable|string',
             'transactions.*.transaction_id' => 'nullable|string',
-            
+
             'notes' => 'nullable|string',
             'admin_notes' => 'nullable|string',
         ]);
@@ -351,16 +350,51 @@ class OrderController extends Controller
 
         try {
             $oldStatus = $order->status;
-            $oldPaymentStatus = $order->payment_status;
 
-            // 🔥 Auto-set statuses for in-store orders
+            /* ----------------------------------------------------
+            ⭐ Detect customer change
+            ---------------------------------------------------- */
+            $customerChanged = isset($validated['customer_id']) &&
+                            $validated['customer_id'] != $order->customer_id;
+
+            if ($customerChanged) {
+                $customer = Customer::find($validated['customer_id']);
+
+                // Remove existing order addresses when customer changes
+                $order->addresses()->delete();
+
+                // If customer has default addresses, copy them to order
+                $defaultShipping = $customer->addresses()->shipping()->default()->first();
+                $defaultBilling = $customer->addresses()->billing()->default()->first();
+
+                if ($defaultShipping) {
+                    $order->addresses()->create([
+                        'type' => 'shipping',
+                        'address_line_1' => $defaultShipping->address_line_1,
+                        'address_line_2' => $defaultShipping->address_line_2,
+                        'is_default' => true,
+                    ]);
+                }
+
+                if ($defaultBilling) {
+                    $order->addresses()->create([
+                        'type' => 'billing',
+                        'address_line_1' => $defaultBilling->address_line_1,
+                        'address_line_2' => $defaultBilling->address_line_2,
+                        'is_default' => true,
+                    ]);
+                }
+            }
+
+            /* ----------------------------------------------------
+            Update Order core fields
+            ---------------------------------------------------- */
             if (($validated['source'] ?? $order->source) === 'in_store') {
-                $validated['status'] = 'delivered';  
+                $validated['status'] = 'delivered';
                 $validated['payment_status'] = 'paid';
                 $validated['shipping_status'] = 'delivered';
             }
 
-            // Update order
             $order->update([
                 'customer_id' => $validated['customer_id'] ?? $order->customer_id,
                 'status' => $validated['status'],
@@ -371,31 +405,26 @@ class OrderController extends Controller
                 'admin_notes' => $validated['admin_notes'] ?? $order->admin_notes,
             ]);
 
-            // Update addresses
-            if (isset($validated['billing_address'])) {
-                $this->updateAddress($order, $validated['billing_address'], 'billing');
-            }
+            /* ----------------------------------------------------
+            ⭐ UPDATED: Polymorphic address handling
+            ---------------------------------------------------- */
+            $this->handleAddressUpdates($order, $validated);
 
-            if (isset($validated['shipping_address'])) {
-                $this->updateAddress($order, $validated['shipping_address'], 'shipping');
-            }
-
-            // Update payment (creates payment record if amount provided)
+            /* ----------------------------------------------------
+            Payment / Adjustments / Transactions
+            ---------------------------------------------------- */
             if (isset($validated['payment'])) {
                 $this->updatePayment($order, $validated['payment']);
             }
 
-            // Update adjustments (create/update/delete)
             if (isset($validated['adjustments'])) {
                 $this->updateAdjustments($order, $validated['adjustments']);
             }
 
-            // Update transactions (create/update/delete)
             if (isset($validated['transactions'])) {
                 $this->updateTransactions($order, $validated['transactions']);
             }
 
-            // Record status changes
             if ($oldStatus !== $order->status) {
                 OrderStatusHistory::create([
                     'order_id' => $order->id,
@@ -405,15 +434,19 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Recalculate totals
             $this->recalculateOrderTotals($order);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Order updated successfully.',
-                'order' => $order->fresh(['customer', 'items', 'addresses', 'payments', 'adjustments', 'transactions', 'fulfillments'])
+                'message' => 'Order updated successfully',
+                'shipping_address' => $order->shippingAddress,
+                'billing_address' => $order->billingAddress,
+                'order' => $order->fresh([
+                    'customer', 'items', 'addresses', 'payments',
+                    'adjustments', 'transactions', 'fulfillments'
+                ]),
             ]);
 
         } catch (\Throwable $e) {
@@ -424,6 +457,96 @@ class OrderController extends Controller
                 'message' => 'Failed to update order.',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Handle polymorphic address updates
+     */
+    private function handleAddressUpdates(Order $order, array $validated)
+    {
+        $isCustomerOrder = !empty($order->customer_id);
+        
+        // Handle shipping address
+        if (isset($validated['shipping_address'])) {
+            $this->updateOrCreateAddress($order, $validated['shipping_address'], 'shipping');
+            
+            // If customer order, also update customer's default shipping address
+            if ($isCustomerOrder) {
+                $this->updateCustomerDefaultAddress($order->customer, $validated['shipping_address'], 'shipping');
+            }
+        }
+
+        // Handle billing address
+        if (!empty($validated['sameAsShipping']) && $validated['sameAsShipping']) {
+            // Copy shipping to billing
+            $shippingAddress = $order->addresses()->shipping()->first();
+            if ($shippingAddress) {
+                $billingData = [
+                    'address_line_1' => $shippingAddress->address_line_1,
+                    'address_line_2' => $shippingAddress->address_line_2,
+                ];
+                
+                $this->updateOrCreateAddress($order, $billingData, 'billing', true);
+                
+                // If customer order, also update customer's default billing address
+                if ($isCustomerOrder) {
+                    $this->updateCustomerDefaultAddress($order->customer, $billingData, 'billing');
+                }
+            }
+        } elseif (isset($validated['billing_address'])) {
+            $this->updateOrCreateAddress($order, $validated['billing_address'], 'billing');
+            
+            // If customer order, also update customer's default billing address
+            if ($isCustomerOrder) {
+                $this->updateCustomerDefaultAddress($order->customer, $validated['billing_address'], 'billing');
+            }
+        }
+    }
+
+    /**
+     * Update or create address for polymorphic relation
+     */
+    private function updateOrCreateAddress(Order $order, array $data, string $type, bool $sameAsShipping = false)
+    {
+        $address = $order->addresses()->where('type', $type)->first();
+
+        $payload = [
+            'type' => $type,
+            'address_line_1' => $data['address_line_1'] ?? '',
+            'address_line_2' => $data['address_line_2'] ?? null,
+            'is_default' => true, // For orders, addresses are always default for that order
+            'same_as_shipping' => $sameAsShipping,
+        ];
+
+        if ($address) {
+            $address->update($payload);
+        } else {
+            $order->addresses()->create($payload);
+        }
+    }
+
+    /**
+     * Update customer's default address of given type
+     */
+    private function updateCustomerDefaultAddress(Customer $customer, array $data, string $type)
+    {
+        $customerAddress = $customer->addresses()
+            ->where('type', $type)
+            ->where('is_default', true)
+            ->first();
+
+        $payload = [
+            'type' => $type,
+            'address_line_1' => $data['address_line_1'] ?? '',
+            'address_line_2' => $data['address_line_2'] ?? null,
+            'is_default' => true,
+        ];
+
+        if ($customerAddress) {
+            $customerAddress->update($payload);
+        } else {
+            $customer->addresses()->create($payload);
         }
     }
 

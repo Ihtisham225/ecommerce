@@ -16,10 +16,12 @@ class Address extends Model
         'address_line_1',
         'address_line_2',
         'is_default',
+        'same_as_shipping',
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
+        'same_as_shipping' => 'boolean',
     ];
 
     /**
