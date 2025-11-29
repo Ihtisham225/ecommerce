@@ -1,5 +1,8 @@
 <x-app-layout>
-    <div x-data="orderForm()" @autosave-trigger.window="triggerAutosave()">
+    <div x-data="orderForm()" 
+         @customer-selected.window="onCustomerSelected($event.detail)"
+         @customer-removed.window="onCustomerRemoved()"
+         @autosave-trigger.window="triggerAutosave()">
         
         {{-- ✅ Sticky Header --}}
         @include('admin.orders.partials._header', ['order' => $order])
@@ -9,8 +12,11 @@
 
                 {{-- LEFT SIDE --}}
                 <div class="flex-1 space-y-6">
+                    {{-- Source --}}
+                    @include('admin.orders.partials._source', ['order' => $order])
+
                     {{-- Order Status Toggles --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
                         <div class="p-6 border-b border-gray-200">
                             <h3 class="text-lg font-bold text-gray-900">Order Status</h3>
                         </div>
@@ -74,35 +80,17 @@
                         </div>
                     </div>
 
-                    {{-- Source --}}
-                    @include('admin.orders.partials._source', ['order' => $order])
-
                     {{-- Customer Info --}}
                     @include('admin.orders.partials._customer', ['order' => $order, 'customers' => $customers])
 
                     {{-- Order Items --}}
                     @include('admin.orders.partials._items', ['order' => $order])
-
-                    {{-- Payment --}}
-                    @include('admin.orders.partials._payment', ['order' => $order])
-
-                    {{-- Notes --}}
-                    @include('admin.orders.partials._notes', ['order' => $order])
-
-                    {{-- Totals --}}
-                    @include('admin.orders.partials._totals', ['order' => $order])
-
-                    {{-- Order History --}}
-                    @include('admin.orders.partials._history', ['order' => $order])
-
-                    {{-- Summary --}}
-                    @include('admin.orders.partials._summary', ['order' => $order])
                 </div>
 
                 {{-- RIGHT SIDE --}}
                 <div class="lg:w-80 space-y-6">
                     {{-- Order Actions --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
                         <div class="p-4 border-b border-gray-200">
                             <h3 class="text-lg font-bold text-gray-900">Quick Actions</h3>
                         </div>
@@ -173,7 +161,7 @@
                     </div>
 
                     {{-- Shipping & Billing --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
                         <div class="p-4 border-b border-gray-200">
                             <h3 class="text-lg font-bold text-gray-900">Addresses</h3>
                         </div>
@@ -198,7 +186,7 @@
                     </div>
 
                     {{-- Timeline --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200" x-show="!isInStore()">
                         <div class="p-4 border-b border-gray-200">
                             <h3 class="text-lg font-bold text-gray-900">Recent Activity</h3>
                         </div>
@@ -237,48 +225,65 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    {{-- Alpine.js Logic --}}
-    <script>
+        {{-- Alpine.js Logic --}}
+        <script>
         function orderForm() {
             return {
+                /* --------------------------------
+                Basic Order Info
+                -------------------------------- */
                 orderId: {{ $order->id }},
                 orderDate: @js($order->created_at->format('Y-m-d H:i:s')),
-                customerName: @js($order->customer?->name ?? 'Guest'),
-                totalItems: {{ $order->items->sum('qty') }},
-                
+                customerName: @js($order->customer?->full_name ?? 'Guest'),
+                totalItems: {{ $order->items->sum('quantity') }},
+
+                /* --------------------------------
+                Main Form Data - Include ALL properties from old version
+                -------------------------------- */
                 form: {
                     customer_id: {{ $order->customer_id ?? 'null' }},
                     source: @js($order->source),
+
+                    // in-store fields
+                    first_name: @js($order->first_name),
+                    last_name: @js($order->last_name),
+                    phone: @js($order->phone),
+
                     status: @js($order->status),
                     payment_status: @js($order->payment_status),
                     shipping_status: @js($order->shipping_status),
+
                     items: @js(
                         $order->items->map(fn($i) => [
                             'id' => $i->id,
                             'product_id' => $i->product_id,
                             'title' => $i->title['en'] ?? $i->title,
                             'sku' => $i->sku,
-                            'qty' => $i->qty,
+                            'quantity' => $i->quantity,
                             'price' => $i->price,
                             'total' => $i->total,
                         ])->values()
                     ),
+
                     billing_address_raw: @js(optional($order->billingAddress)?->address_line_1),
                     shipping_address_raw: @js(optional($order->shippingAddress)?->address_line_1),
+
                     payment: {
                         method: @js(optional($order->payments->first())->method),
                         amount: @js(optional($order->payments->first())->amount),
                         transaction_id: @js(optional($order->payments->first())->transaction_id),
                     },
+
                     notes: @js($order->notes),
                     admin_notes: @js($order->admin_notes),
+
                     subtotal: @js($order->subtotal ?? 0),
                     discount_total: @js($order->discount_total ?? 0),
                     tax_total: @js($order->tax_total ?? 0),
                     shipping_total: @js($order->shipping_total ?? 0),
                     grand_total: @js($order->grand_total ?? 0),
+
                     history: @js($order->history->map(fn($h) => [
                         'id' => $h->id,
                         'old_status' => $h->old_status,
@@ -288,21 +293,51 @@
                     ])->values()),
                 },
 
-                // Status options with styling
+                /* --------------------------------
+                Customer Event Handlers
+                -------------------------------- */
+                onCustomerSelected(detail) {
+                    // Update the form with the selected customer
+                    this.form.customer_id = detail.customer_id;
+                    this.customerName = detail.customer.first_name + ' ' + detail.customer.last_name;
+                    
+                    // Trigger autosave
+                    this.triggerAutosave();
+                },
+
+                onCustomerRemoved() {
+                    // Clear customer from form
+                    this.form.customer_id = null;
+                    this.customerName = 'Guest';
+                    
+                    // Trigger autosave
+                    this.triggerAutosave();
+                },
+
+                /* --------------------------------
+                Helper - Check if In-Store
+                -------------------------------- */
+                isInStore() {
+                    return this.form.source === 'in_store';
+                },
+
+                /* --------------------------------
+                Status Options
+                -------------------------------- */
                 orderStatuses: [
                     { value: 'pending', label: 'Pending' },
                     { value: 'processing', label: 'Processing' },
                     { value: 'completed', label: 'Completed' },
                     { value: 'cancelled', label: 'Cancelled' }
                 ],
-                
+
                 paymentStatuses: [
                     { value: 'pending', label: 'Pending', classes: 'border-yellow-500 bg-yellow-50 text-yellow-700' },
                     { value: 'paid', label: 'Paid', classes: 'border-green-500 bg-green-50 text-green-700' },
                     { value: 'failed', label: 'Failed', classes: 'border-red-500 bg-red-50 text-red-700' },
                     { value: 'refunded', label: 'Refunded', classes: 'border-gray-500 bg-gray-50 text-gray-700' }
                 ],
-                
+
                 shippingStatuses: [
                     { value: 'pending', label: 'Pending', classes: 'border-yellow-500 bg-yellow-50 text-yellow-700' },
                     { value: 'shipped', label: 'Shipped', classes: 'border-blue-500 bg-blue-50 text-blue-700' },
@@ -310,63 +345,56 @@
                     { value: 'cancelled', label: 'Cancelled', classes: 'border-red-500 bg-red-50 text-red-700' }
                 ],
 
-                // Recent activity for timeline
+                /* --------------------------------
+                Recent Activity
+                -------------------------------- */
                 recentActivity: [
                     {
                         id: 1,
                         content: 'Order status changed to <span class="font-medium text-gray-900">Processing</span>',
-                        icon: 'M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092...',
+                        icon: 'M10 18a8 8 0 100-16 8 8 0...',
                         iconBackground: 'bg-green-500',
                         time: '10m ago'
                     },
                     {
                         id: 2,
                         content: 'Payment received via <span class="font-medium text-gray-900">Credit Card</span>',
-                        icon: 'M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z...',
+                        icon: 'M4 4a2 2 0 00-2 2v1h16V6...',
                         iconBackground: 'bg-blue-500',
                         time: '1h ago'
                     },
                     {
                         id: 3,
                         content: @js("Order <span class='font-medium text-gray-900'>#{$order->id}</span> was created"),
-                        icon: 'M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12...',
+                        icon: 'M6 2a1 1 0 00-1 1v1H4a2...',
                         iconBackground: 'bg-gray-400',
                         time: '{{ $order->created_at->diffForHumans() }}'
                     },
                 ],
 
-                autosaveTimer: null,
-                saving: false,
-                currencySymbol: '{{ $currencySymbol }}',
-
-                // Computed properties
+                /* --------------------------------
+                Address Display Helpers
+                -------------------------------- */
                 get shippingAddressDisplay() {
-                    if (!this.form.shipping_address_raw) return '<p class="text-gray-400">No shipping address</p>';
-                    
-                    const address = JSON.parse(this.form.shipping_address_raw);
-                    return `
-                        <p class="font-medium">${address.first_name} ${address.last_name}</p>
-                        <p>${address.address_line_1}</p>
-                        ${address.address_line_2 ? `<p>${address.address_line_2}</p>` : ''}
-                        <p>${address.city}, ${address.state} ${address.zip_code}</p>
-                        <p>${address.country}</p>
-                        ${address.phone ? `<p class="mt-1">📞 ${address.phone}</p>` : ''}
-                    `;
+                    if (!this.form.shipping_address_raw) {
+                        return 'No shipping address';
+                    }
+                    return this.form.shipping_address_raw;
                 },
 
                 get billingAddressDisplay() {
-                    if (!this.form.billing_address_raw) return '<p class="text-gray-400">No billing address</p>';
-                    
-                    const address = JSON.parse(this.form.billing_address_raw);
-                    return `
-                        <p class="font-medium">${address.first_name} ${address.last_name}</p>
-                        <p>${address.address_line_1}</p>
-                        ${address.address_line_2 ? `<p>${address.address_line_2}</p>` : ''}
-                        <p>${address.city}, ${address.state} ${address.zip_code}</p>
-                        <p>${address.country}</p>
-                        ${address.phone ? `<p class="mt-1">📞 ${address.phone}</p>` : ''}
-                    `;
+                    if (!this.form.billing_address_raw) {
+                        return 'No billing address';
+                    }
+                    return this.form.billing_address_raw;
                 },
+
+                /* --------------------------------
+                Autosave System
+                -------------------------------- */
+                autosaveTimer: null,
+                saving: false,
+                currencySymbol: '{{ $currencySymbol }}',
 
                 triggerAutosave() {
                     clearTimeout(this.autosaveTimer);
@@ -377,6 +405,7 @@
                     this.saving = true;
                     try {
                         const payload = JSON.stringify(this.form);
+
                         const response = await fetch(`/admin/orders/${this.orderId}`, {
                             method: 'PUT',
                             headers: {
@@ -386,12 +415,15 @@
                             },
                             body: payload,
                         });
+
                         const data = await response.json();
+
                         if (data.success) {
                             this.showNotification('✅ Order autosaved!', 'success');
                         } else {
                             this.showNotification(data.message || 'Autosave failed', 'error');
                         }
+
                     } catch (e) {
                         this.showNotification('Autosave error: ' + e.message, 'error');
                     } finally {
@@ -399,6 +431,9 @@
                     }
                 },
 
+                /* --------------------------------
+                Helpers
+                -------------------------------- */
                 formatCurrency(amount) {
                     const decimals = this.currencySymbol === 'KD' ? 3 : 2;
                     return `${this.currencySymbol}${parseFloat(amount).toFixed(decimals)}`;
@@ -406,24 +441,31 @@
 
                 formatDate(dateString) {
                     const date = new Date(dateString);
-                    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    return date.toLocaleDateString() + ' ' +
+                        date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 },
 
                 showNotification(message, type = 'info') {
                     const notification = document.createElement('div');
-                    notification.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${
-                        type === 'success' ? 'bg-green-600 text-white' : 
-                        type === 'error' ? 'bg-red-600 text-white' : 
-                        'bg-blue-600 text-white'
-                    }`;
+                    notification.className =
+                        `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+                            type === 'success'
+                                ? 'bg-green-600 text-white'
+                                : type === 'error'
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-blue-600 text-white'
+                        }`;
                     notification.textContent = message;
+
                     document.body.appendChild(notification);
+
                     setTimeout(() => {
                         notification.style.opacity = '0';
                         setTimeout(() => notification.remove(), 300);
                     }, 4000);
                 }
-            }
+            };
         }
-    </script>
+        </script>
+    </div>
 </x-app-layout>

@@ -15,7 +15,6 @@ class Customer extends Model
         'first_name',
         'last_name',
         'phone',
-        'country',
         'is_guest',
     ];
 
@@ -38,6 +37,14 @@ class Customer extends Model
     {
         return $this->morphMany(Address::class, 'addressable');
     }
+    
+    /**
+     * Relationship: A customer can have multiple orders.
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 
     /**
      * Helper: Full name accessor
@@ -57,14 +64,45 @@ class Customer extends Model
         return $this->hasOne(Wishlist::class);
     }
 
-    public function defaultShipping()
+    public function shippingAddresses()
     {
-        return $this->addresses()->where('is_default_shipping', 1)->first();
+        return $this->morphMany(Address::class, 'addressable')->where('type', 'shipping');
     }
 
-    public function defaultBilling()
+    public function billingAddresses()
     {
-        return $this->addresses()->where('is_default_billing', 1)->first();
+        return $this->morphMany(Address::class, 'addressable')->where('type', 'billing');
+    }
+
+    public function defaultShippingAddress()
+    {
+        return $this->shippingAddresses()->where('is_default', true)->first();
+    }
+
+    public function defaultBillingAddress()
+    {
+        return $this->billingAddresses()->where('is_default', true)->first();
+    }
+
+    // Helper methods
+    public function getDefaultShippingAttribute()
+    {
+        return $this->defaultShippingAddress();
+    }
+
+    public function getDefaultBillingAttribute()
+    {
+        return $this->defaultBillingAddress();
+    }
+
+    public function getShippingAddressesAttribute()
+    {
+        return $this->shippingAddresses()->get();
+    }
+
+    public function getBillingAddressesAttribute()
+    {
+        return $this->billingAddresses()->get();
     }
 
     /** Scopes */

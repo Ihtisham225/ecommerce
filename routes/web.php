@@ -10,10 +10,13 @@ use App\Http\Controllers\Admin\ProductPricingRuleController as AdminProductPrici
 use App\Http\Controllers\Admin\ProductRelationController as AdminProductRelationController;
 use App\Http\Controllers\Admin\ProductVariantController as AdminProductVariantController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\OrderItemController as AdminOrderItemController;
+use App\Http\Controllers\Admin\OrderCustomerController as AdminOrderCustomerController;
 use App\Http\Controllers\Admin\OrderImportController as AdminOrderImportController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\BrandController as AdminBrandController;
 use App\Http\Controllers\Admin\CollectionController as AdminCollectionController;
+use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 
 
 use App\Http\Controllers\Admin\BlogController as AdminBlogController;
@@ -241,7 +244,6 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
 
     //product search ajax for order route
     Route::get('products/search', [AdminProductController::class, 'search'])->name('products.search');
-    Route::get('products/quick-search', [AdminProductController::class, 'quickSearch'])->name('products.quick-search');
 
 
     // -------------------------
@@ -331,6 +333,49 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
         Route::post('import/upload', [AdminOrderImportController::class, 'upload'])->name('import.upload');
         Route::post('import/process-chunk', [AdminOrderImportController::class, 'processChunk'])->name('import.processChunk');
         Route::post('import/cleanup', [AdminOrderImportController::class, 'cleanupImportFiles'])->name('import.cleanup');
+    });
+
+    // -------------------------
+    // ✅ Orders Items Routes
+    // -------------------------
+    Route::prefix('orders/{order}/items')->group(function () {
+        Route::get('/', [AdminOrderItemController::class, 'index']);
+        Route::post('/', [AdminOrderItemController::class, 'store']);        // Add item
+        Route::put('/{item}', [AdminOrderItemController::class, 'update']);  // Update qty or price
+        Route::delete('/{item}', [AdminOrderItemController::class, 'destroy']); // Remove
+    });
+    
+    
+    // -------------------------
+    // ✅ Orders Customer Routes
+    // -------------------------
+    Route::prefix('orders/{order}/customer')->group(function () {
+        Route::post('/select', [AdminOrderCustomerController::class, 'select']);
+        Route::post('/remove', [AdminOrderCustomerController::class, 'remove']);
+        Route::post('/in-store', [AdminOrderCustomerController::class, 'updateInStore']);
+    });
+    
+    
+    // -------------------------
+    // ✅ Customers Routes
+    // -------------------------
+    Route::prefix('customers')->name('customers.')->group(function () {
+        Route::get('/', [AdminCustomerController::class, 'index'])->name('index');
+        Route::get('/create', [AdminCustomerController::class, 'create'])->name('create');
+        Route::get('/edit/{customer}', [AdminCustomerController::class, 'edit'])->name('edit');
+        Route::put('/{customer}/autosave', [AdminCustomerController::class, 'autoSave'])->name('customers.autosave');
+        Route::post('/autosave', [AdminCustomerController::class, 'storeAjax'])->name('customers.autosave-new');
+        Route::get('/show/{customer}', [AdminCustomerController::class, 'show'])->name('show');
+        Route::get('/search', [AdminCustomerController::class, 'search'])->name('search');
+        Route::post('/', [AdminCustomerController::class, 'storeAjax'])->name('store.ajax');
+
+        //bulk
+        Route::post('/bulk', [AdminCustomerController::class, 'bulk'])->name('bulk');
+
+        // Address management routes
+        Route::post('/{customer}/addresses/{address}/default-shipping', [AdminCustomerController::class, 'setDefaultShipping'])->name('addresses.set-shipping');
+        Route::post('/{customer}/addresses/{address}/default-billing', [AdminCustomerController::class, 'setDefaultBilling'])->name('addresses.set-billing');
+        Route::get('/{customer}/addresses', [AdminCustomerController::class, 'getAddresses'])->name('addresses.list');
     });
 
     // Documents

@@ -82,7 +82,7 @@ class OrderController extends Controller
                 $orders->where(function($q) use ($search) {
                     $q->where('order_number', 'like', "%{$search}%")
                       ->orWhereHas('customer', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%")
+                          $q->where('first_name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
                       });
                 });
@@ -94,7 +94,7 @@ class OrderController extends Controller
                 })
                 ->addColumn('customer', function ($row) {
                     if ($row->customer) {
-                        return e($row->customer->name) . '<br><small class="text-gray-500">' . e($row->customer->email) . '</small>';
+                        return e($row->customer->full_name) . '<br><small class="text-gray-500">' . e($row->customer->phone) . '</small>';
                     }
                     return '<span class="text-gray-500">Guest</span>';
                 })
@@ -175,7 +175,6 @@ class OrderController extends Controller
                                         9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 
                                         0-8.268-2.943-9.542-7z"></path>
                                 </svg>
-                                View
                             </a>
                             <a href="{$editUrl}" 
                             class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition duration-150 ease-in-out">
@@ -185,7 +184,6 @@ class OrderController extends Controller
                                         2h11a2 2 0 002-2v-5m-1.414-9.414a2 
                                         2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
-                                Edit
                             </a>
                         </div>
                     HTML;
@@ -215,18 +213,45 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
+        // Load all required relations
         $order->load([
             'customer',
-            'items',
+            'items.product',
+            'items.variant',
             'payments',
             'addresses',
-            'history',
             'adjustments',
             'transactions',
             'fulfillments.items'
         ]);
 
-        return view('admin.orders.show', compact('order'));
+        // Load customers if needed (for dropdowns / display)
+        $customers = Customer::orderBy('first_name')->get();
+
+        // Currency symbols
+        $currencySymbols = [
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'PKR' => '₨',
+            'INR' => '₹',
+            'AED' => 'د.إ',
+            'SAR' => '﷼',
+            'CAD' => '$',
+            'AUD' => '$',
+            'KWD' => 'K.D',
+        ];
+
+        // Get store setting
+        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $currencyCode = $storeSetting?->currency_code ?? 'USD';
+        $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
+
+        return view('admin.orders.show', compact(
+            'order',
+            'customers',
+            'currencySymbol'
+        ));
     }
 
     public function edit(Order $order)
@@ -237,7 +262,6 @@ class OrderController extends Controller
             'items.variant',
             'payments',
             'addresses',
-            'history.user',
             'adjustments',
             'transactions',
             'fulfillments.items'
@@ -270,9 +294,9 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
-            'status' => 'required|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
-            'payment_status' => 'required|in:pending,paid,failed,refunded,partially_refunded',
-            'shipping_status' => 'required|in:pending,ready_for_shipment,shipped,delivered',
+            'status' => 'nullable|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
+            'payment_status' => 'nullable|in:pending,paid,failed,refunded,partially_refunded',
+            'shipping_status' => 'nullable|in:pending,ready_for_shipment,shipped,delivered',
             'source' => 'required|in:online,in_store',
             
             // Addresses
@@ -296,13 +320,6 @@ class OrderController extends Controller
             'shipping_address.state' => 'required_with:shipping_address|string|max:255',
             'shipping_address.postal_code' => 'required_with:shipping_address|string|max:20',
             'shipping_address.country' => 'required_with:shipping_address|string|max:255',
-            
-            // Items
-            'items' => 'nullable|array',
-            'items.*.id' => 'nullable|exists:order_items,id',
-            'items.*.product_id' => 'required_with:items|exists:products,id',
-            'items.*.qty' => 'required_with:items|integer|min:1',
-            'items.*.price' => 'required_with:items|numeric|min:0',
             
             // Payment
             'payment' => 'nullable|array',
@@ -336,6 +353,13 @@ class OrderController extends Controller
             $oldStatus = $order->status;
             $oldPaymentStatus = $order->payment_status;
 
+            // 🔥 Auto-set statuses for in-store orders
+            if (($validated['source'] ?? $order->source) === 'in_store') {
+                $validated['status'] = 'delivered';  
+                $validated['payment_status'] = 'paid';
+                $validated['shipping_status'] = 'delivered';
+            }
+
             // Update order
             $order->update([
                 'customer_id' => $validated['customer_id'] ?? $order->customer_id,
@@ -354,11 +378,6 @@ class OrderController extends Controller
 
             if (isset($validated['shipping_address'])) {
                 $this->updateAddress($order, $validated['shipping_address'], 'shipping');
-            }
-
-            // Update items
-            if (isset($validated['items'])) {
-                $this->updateOrderItems($order, $validated['items']);
             }
 
             // Update payment (creates payment record if amount provided)
@@ -625,86 +644,6 @@ class OrderController extends Controller
     }
 
     /**
-     * Add item to order
-     */
-    public function addItem(Request $request, Order $order)
-    {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'qty' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $product = \App\Models\Product::find($validated['product_id']);
-            $total = $validated['price'] * $validated['qty'];
-
-            $order->items()->create([
-                'product_id' => $validated['product_id'],
-                'sku' => $product->sku ?? 'N/A',
-                'title' => is_array($product->title) ? ($product->title['en'] ?? reset($product->title)) : $product->title,
-                'price' => $validated['price'],
-                'qty' => $validated['qty'],
-                'total' => $total,
-            ]);
-
-            $this->recalculateOrderTotals($order);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Item added to order successfully.',
-                'order' => $order->fresh(['items']),
-            ]);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to add item to order.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Remove item from order
-     */
-    public function removeItem(Order $order, OrderItem $item)
-    {
-        if ($item->order_id !== $order->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Item does not belong to this order.',
-            ], 422);
-        }
-
-        DB::beginTransaction();
-        try {
-            $item->delete();
-            $this->recalculateOrderTotals($order);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Item removed from order successfully.',
-                'order' => $order->fresh(['items']),
-            ]);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to remove item from order.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
      * Add payment to order (also creates a transaction record)
      */
     public function addPayment(Request $request, Order $order)
@@ -894,46 +833,6 @@ class OrderController extends Controller
             ['type' => $type],
             array_merge($addressData, ['type' => $type])
         );
-    }
-
-    /**
-     * Update order items
-     */
-    private function updateOrderItems(Order $order, array $items)
-    {
-        $incomingIds = [];
-
-        foreach ($items as $itemData) {
-            $itemTotal = $itemData['price'] * $itemData['qty'];
-
-            if (isset($itemData['id'])) {
-                $item = OrderItem::find($itemData['id']);
-                if ($item && $item->order_id === $order->id) {
-                    $item->update([
-                        'qty' => $itemData['qty'],
-                        'price' => $itemData['price'],
-                        'total' => $itemTotal
-                    ]);
-                    $incomingIds[] = $item->id;
-                }
-            } else {
-                $product = \App\Models\Product::find($itemData['product_id']);
-                $newItem = $order->items()->create([
-                    'product_id' => $itemData['product_id'],
-                    'sku' => $product->sku ?? 'N/A',
-                    'title' => is_array($product->title) ? ($product->title['en'] ?? reset($product->title)) : $product->title,
-                    'price' => $itemData['price'],
-                    'qty' => $itemData['qty'],
-                    'total' => $itemTotal
-                ]);
-                $incomingIds[] = $newItem->id;
-            }
-        }
-
-        // Remove deleted items
-        if (!empty($incomingIds)) {
-            $order->items()->whereNotIn('id', $incomingIds)->delete();
-        }
     }
 
     /**

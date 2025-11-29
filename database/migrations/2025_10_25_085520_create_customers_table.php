@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('first_name');
             $table->string('last_name');
             $table->string('phone')->nullable();
-            $table->string('country')->nullable();
             $table->boolean('is_guest')->default(false);
             $table->timestamps();
             $table->softDeletes();

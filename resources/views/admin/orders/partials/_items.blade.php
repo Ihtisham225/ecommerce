@@ -1,6 +1,6 @@
 {{-- Order Items --}}
 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200" 
-     x-data="orderItemsManager()"
+     x-data="orderItemsManager({{ $order->id }})"
      @add-item-to-order.window="addItem($event.detail)">
     
     {{-- Header --}}
@@ -34,7 +34,7 @@
                 <tr>
                     <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Product</th>
                     <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">SKU</th>
-                    <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300 w-24">Qty</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300 w-24">quantity</th>
                     <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300 w-32">Price</th>
                     <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300 w-32">Total</th>
                     <th class="px-4 py-3 w-12"></th>
@@ -76,14 +76,14 @@
                             <span class="text-gray-600 dark:text-gray-300 font-mono text-sm" x-text="item.sku"></span>
                         </td>
 
-                        {{-- Qty --}}
+                        {{-- quantity --}}
                         <td class="px-4 py-3">
                             <input
                                 type="number"
                                 step="1"
                                 min="1"
                                 class="w-20 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                x-model.number="item.qty"
+                                x-model.number="item.quantity"
                                 @input.debounce.500ms="updateItemTotals()"
                             >
                         </td>
@@ -107,7 +107,7 @@
                         {{-- Total --}}
                         <td class="px-4 py-3">
                             <div class="font-medium text-gray-900 dark:text-white">
-                                <span x-text="(parseFloat(item.qty || 0) * parseFloat(item.price || 0)).toFixed(3)"></span>
+                                <span x-text="(parseFloat(item.quantity || 0) * parseFloat(item.price || 0)).toFixed(3)"></span>
                                 <span class="text-gray-500 text-sm ml-1">{{ $currencySymbol }}</span>
                             </div>
                         </td>
@@ -152,45 +152,83 @@
 </div>
 
 <script>
-function orderItemsManager() {
+function orderItemsManager(orderId) {
     return {
+        orderId,
         items: @js($order->items->map(fn($i) => [
             'id' => $i->id,
             'product_id' => $i->product_id,
             'title' => $i->product->title['en'] ?? 'Untitled',
             'sku' => $i->sku,
-            'qty' => $i->qty,
+            'quantity' => $i->quantity,
             'price' => $i->price,
             'total' => $i->total,
             'variant_name' => $i->variant_name ?? null,
         ])),
 
 
-        addItem(item) {
-            // Avoid duplicates if same product+variant already exists
-            const exists = this.items.find(i => i.product_id === item.product_id && i.product_variant_id === item.product_variant_id);
-            if (exists) {
-                exists.qty += 1;
-                exists.total = (exists.price * exists.qty).toFixed(3);
-            } else {
-                item.total = (item.price * item.qty).toFixed(3);
-                this.items.push(item);
+        async addItem(item) {
+            try {
+                const res = await fetch(`/admin/orders/${this.orderId}/items`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(item)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    this.items.push(data.item);
+                }
+
+            } catch (e) {
+                console.error("Add item error:", e);
             }
-            this.triggerAutosave();
         },
 
-        removeItem(index) {
-            if (confirm('Are you sure you want to remove this item?')) {
+        async removeItem(index) {
+            const item = this.items[index];
+
+            if (!item.id) {
                 this.items.splice(index, 1);
-                this.triggerAutosave();
+                return;
             }
+
+            await fetch(`/admin/orders/${this.orderId}/items/${item.id}`, {
+                method: "DELETE",
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            this.items.splice(index, 1);
+        },
+
+        async updateItem(item) {
+            await fetch(`/admin/orders/${this.orderId}/items/${item.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    quantity: item.quantity,
+                    price: item.price,
+                })
+            });
         },
 
         updateItemTotals() {
             this.items.forEach(item => {
-                item.total = (parseFloat(item.price || 0) * parseFloat(item.qty || 0)).toFixed(3);
+                item.total = (parseFloat(item.quantity || 0) * parseFloat(item.price || 0)).toFixed(3);
+
+                if (item.id) {
+                    this.updateItem(item);
+                }
             });
-            this.triggerAutosave();
         },
 
         calculateSubtotal() {
@@ -239,7 +277,7 @@ function addItemModal() {
             const currentSearch = this.searchCount;
 
             try {
-                const response = await fetch(`/admin/products/quick-search?q=${encodeURIComponent(this.search)}&t=${Date.now()}`);
+                const response = await fetch(`/admin/products/search?q=${encodeURIComponent(this.search)}&t=${Date.now()}`);
                 const data = await response.json();
                 if (currentSearch === this.searchCount) {
                     this.results = Array.isArray(data) ? data : [];
@@ -271,7 +309,7 @@ function addItemModal() {
                 title: this.selectedProduct.title['en'] || 'Untitled',
                 variant_name: this.selectedVariant ? this.selectedVariant.name : null,
                 price: parseFloat(this.selectedVariant ? this.selectedVariant.price : this.selectedProduct.price),
-                qty: 1
+                quantity: 1
             };
 
             window.dispatchEvent(new CustomEvent('add-item-to-order', { detail: item }));

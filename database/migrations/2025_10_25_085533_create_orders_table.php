@@ -15,10 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('order_number')->unique();
             $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('currency_id')->constrained();
-            $table->enum('status', ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'])->default('pending');
-            $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'])->default('pending');
-            $table->enum('shipping_status', ['pending', 'ready_for_shipment', 'shipped', 'delivered'])->default('pending');
+            $table->enum('status', ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'])->nullable()->default('pending');
+            $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'])->nullable()->default('pending');
+            $table->enum('shipping_status', ['pending', 'ready_for_shipment', 'shipped', 'delivered'])->nullable()->default('pending');
             $table->enum('source', ['online', 'in_store'])->default('online');
             
             // Pricing

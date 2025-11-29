@@ -125,7 +125,7 @@
                         <span x-text="`Selected: ${selectedVariant.name}`"></span>
                     </template>
                     <template x-if="!selectedVariant && selectedProduct">
-                        <span x-text="`Selected: ${selectedProduct.title}`"></span>
+                        <span x-text="`Selected: ${selectedProduct.title['en']}`"></span>
                     </template>
                 </div>
                 <div class="flex items-center gap-3">
@@ -137,7 +137,7 @@
                     </button>
                     <button
                         @click="addToOrder()"
-                        :disabled="!selectedProduct || (selectedProduct.variants?.length && !selectedVariant)"
+                        :disabled="!selectedProduct || (selectedProduct.has_options && !selectedVariant)"
                         class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Add to Order
@@ -199,9 +199,17 @@ function addItemModal() {
 
         selectProduct(product) {
             this.selectedProduct = product;
+
+            // Simple product (no options)
+            if (!product.has_options) {
+                this.selectedVariant = null; // simple item, no variant required
+                return;
+            }
+
+            // Variable product
             this.selectedVariant = null;
-            
-            // Auto-select if only one variant
+
+            // Auto select if only one variant exists
             if (product.variants?.length === 1) {
                 this.selectedVariant = product.variants[0];
             }
@@ -212,29 +220,27 @@ function addItemModal() {
         },
 
         addToOrder() {
-            const product = this.selectedProduct;
-            const variant = this.selectedVariant;
+            const p = this.selectedProduct;
 
-            if (!product) return;
+            if (!p) return;
+
+            const v = p.has_options ? this.selectedVariant : null;
+
+            const price = v ? parseFloat(v.price) : parseFloat(p.price);
 
             const item = {
-                product_id: product.id,
-                product_variant_id: variant ? variant.id : null,
-                sku: variant ? variant.sku : product.sku,
-                title: product.title['en'] || 'Untitled',
-                variant_name: variant ? variant.name : null,
-                price: variant ? parseFloat(variant.price) : parseFloat(product.price),
+                product_id: p.id,
+                product_variant_id: v ? v.id : null,
+                sku: v ? v.sku : p.sku,
+                title: p.title['en'] || 'Untitled Product',
+                variant_name: v ? v.name : null,
+                price: price,
                 qty: 1,
-                total: variant ? parseFloat(variant.price) : parseFloat(product.price),
+                total: price,
             };
 
-            // Add to parent component's items array
-            const parentComponent = this.$root._x_dataStack[0];
-            parentComponent.items.push(item);
-            parentComponent.triggerAutosave();
-            
+            window.dispatchEvent(new CustomEvent('add-item-to-order', { detail: item }));
             this.reset();
-            this.showNotification('✅ Item added to order');
         },
 
         formatCurrency(amount) {

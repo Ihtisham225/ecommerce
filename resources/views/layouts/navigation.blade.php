@@ -48,13 +48,26 @@
                             </a>
                         </x-nav-dropdown>
 
-                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                            {{ __('Users') }}
-                        </x-nav-link>
+                        <!-- Orders -->
+                        <x-nav-dropdown label="Orders">
+                            <a href="{{ route('admin.orders.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                All Orders
+                            </a>
 
-                        <x-nav-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')">
-                            {{ __('Orders') }}
-                        </x-nav-link>
+                            <a href="{{ route('admin.orders.create') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Create Order
+                            </a>
+
+                            <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+                            <a href="{{ route('admin.customers.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Customers
+                            </a>
+                        </x-nav-dropdown>
+
                         <x-nav-link :href="route('admin.blogs.index')" :active="request()->routeIs('admin.blogs.*')">
                             {{ __('Blogs') }}
                         </x-nav-link>
@@ -177,15 +190,71 @@
             </x-responsive-nav-link>
 
             @if(Auth::user()->hasRole(['admin','staff']))
-                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                    {{ __('Users') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')">
-                    {{ __('Products') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')">
-                    {{ __('Orders') }}
-                </x-responsive-nav-link>
+                <!-- Responsive Products Dropdown -->
+                <div x-data="{ open: false }">
+                    <button @click="open = !open"
+                        class="w-full flex justify-between items-center px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <span>Products</span>
+                        <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div x-show="open" x-collapse class="bg-gray-50 dark:bg-gray-800">
+                        <x-responsive-nav-link :href="route('admin.products.index')" 
+                            :active="request()->routeIs('admin.products.*')">
+                            All Products
+                        </x-responsive-nav-link>
+
+                        <x-responsive-nav-link :href="route('admin.brands.index')" 
+                            :active="request()->routeIs('admin.brands.*')">
+                            Brands
+                        </x-responsive-nav-link>
+
+                        <x-responsive-nav-link :href="route('admin.categories.index')" 
+                            :active="request()->routeIs('admin.categories.*')">
+                            Categories
+                        </x-responsive-nav-link>
+
+                        <x-responsive-nav-link :href="route('admin.collections.index')" 
+                            :active="request()->routeIs('admin.collections.*')">
+                            Collections
+                        </x-responsive-nav-link>
+                    </div>
+                </div>
+
+                <!-- Responsive Orders Dropdown -->
+                <div x-data="{ open: false }">
+                    <button @click="open = !open"
+                        class="w-full flex justify-between items-center px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <span>Orders</span>
+                        <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div x-show="open" x-collapse class="bg-gray-50 dark:bg-gray-800">
+                        <x-responsive-nav-link :href="route('admin.orders.index')" 
+                            :active="request()->routeIs('admin.orders.*')">
+                            All Orders
+                        </x-responsive-nav-link>
+
+                        <x-responsive-nav-link :href="route('admin.orders.create')" 
+                            :active="request()->routeIs('admin.orders.create')">
+                            Create Order
+                        </x-responsive-nav-link>
+
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+                        <x-responsive-nav-link :href="route('admin.customers.index')" 
+                            :active="request()->routeIs('admin.customers.*')">
+                            Customers
+                        </x-responsive-nav-link>
+                    </div>
+                </div>
+
                 <x-responsive-nav-link :href="route('admin.blogs.index')" :active="request()->routeIs('admin.blogs.*')">
                     {{ __('Blogs') }}
                 </x-responsive-nav-link>

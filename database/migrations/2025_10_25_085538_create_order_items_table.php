@@ -17,9 +17,12 @@ return new class extends Migration
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('product_variant_id')->nullable()->constrained()->nullOnDelete();
             $table->string('title');
+            $table->string('sku');
             $table->integer('quantity');
             $table->decimal('price', 15, 3);
-            $table->decimal('subtotal', 15, 3);
+            $table->decimal('subtotal', 15, 3)->nullable();
+            $table->decimal('total', 15, 3);
+            $table->decimal('tax', 15, 3);
             $table->timestamps();
         });
     }

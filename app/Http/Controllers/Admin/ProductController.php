@@ -837,42 +837,4 @@ class ProductController extends Controller
             'status' => $product->is_active ? 'active' : 'inactive',
         ];
     }
-
-    /**
-     * Quick search for products (minimal data for autocomplete)
-     */
-    public function quickSearch(Request $request)
-    {
-        $q = $request->input('q');
-
-        $products = Product::with(['variants' => function($query) {
-            $query->select('id', 'product_id', 'title as name', 'sku', 'price', 'stock_quantity');
-        }])
-        ->where('title', 'like', "%{$q}%")
-        ->orWhereHas('variants', function($query) use ($q) {
-            $query->where('sku', 'like', "%{$q}%")
-                ->orWhere('title', 'like', "%{$q}%");
-        })
-        ->select('id', 'title', 'sku', 'price', 'stock_quantity') // parent product fields
-        ->limit(20)
-        ->get()
-        ->map(function($product) {
-            return [
-                'id' => $product->id,
-                'title' => $product->title,
-                'sku' => $product->sku,
-                'price' => $product->price,
-                'stock_quantity' => $product->stock_quantity,
-                'variants' => $product->variants->map(fn($v) => [
-                    'id' => $v->id,
-                    'name' => $v->name,
-                    'sku' => $v->sku,
-                    'price' => $v->price,
-                    'stock_quantity' => $v->stock_quantity,
-                ])->toArray()
-            ];
-        });
-
-        return response()->json($products);
-    }
 }
