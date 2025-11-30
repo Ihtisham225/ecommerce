@@ -39,6 +39,11 @@ class OrderController extends Controller
             if ($request->filled('payment_status')) {
                 $orders->where('payment_status', $request->payment_status);
             }
+            
+            // Shipping status filter
+            if ($request->filled('shipping_status')) {
+                $orders->where('shipping_status', $request->shipping_status);
+            }
 
             // Source filter (online/in_store)
             if ($request->filled('source')) {
@@ -103,10 +108,8 @@ class OrderController extends Controller
                         'pending' => 'gray',
                         'confirmed' => 'blue',
                         'processing' => 'yellow',
-                        'shipped' => 'indigo',
-                        'delivered' => 'green',
+                        'completed' => 'green',
                         'cancelled' => 'red',
-                        'refunded' => 'purple'
                     ];
 
                     $color = $statusColors[$row->status] ?? 'gray';
@@ -130,6 +133,24 @@ class OrderController extends Controller
 
                     $color = $statusColors[$row->payment_status] ?? 'gray';
                     $label = ucfirst(str_replace('_', ' ', $row->payment_status));
+
+                    return <<<HTML
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                    bg-{$color}-100 text-{$color}-800 dark:bg-{$color}-900 dark:text-{$color}-200">
+                            {$label}
+                        </span>
+                    HTML;
+                })
+                ->addColumn('shipping_status', function ($row) {
+                    $statusColors = [
+                        'pending' => 'gray',
+                        'delivered' => 'green',
+                        'shipped' => 'purple',
+                        'ready_for_shipment' => 'yellow'
+                    ];
+
+                    $color = $statusColors[$row->shipping_status] ?? 'gray';
+                    $label = ucfirst(str_replace('_', ' ', $row->shipping_status));
 
                     return <<<HTML
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
@@ -189,7 +210,7 @@ class OrderController extends Controller
                     HTML;
                 })
                 ->editColumn('created_at', fn($row) => $row->created_at?->format('Y-m-d H:i'))
-                ->rawColumns(['order_number', 'customer', 'status', 'payment_status', 'source', 'total', 'actions'])
+                ->rawColumns(['order_number', 'customer', 'status', 'payment_status', 'shipping_status', 'source', 'total', 'actions'])
                 ->make(true);
         }
 

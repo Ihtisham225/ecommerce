@@ -169,6 +169,14 @@
                             <option value="partially_refunded">{{ __('Partially Refunded') }}</option>
                         </select>
 
+                        <select id="shipping-status-filter" class="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            <option value="">{{ __('All Shipping Status') }}</option>
+                            <option value="pending">{{ __('Pending') }}</option>
+                            <option value="ready_for_shipment">{{ __('Ready For Shipment') }}</option>
+                            <option value="shipped">{{ __('Shipped') }}</option>
+                            <option value="delivered">{{ __('Delivered') }}</option>
+                        </select>
+
                         <select id="source-filter" class="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             <option value="">{{ __('All Sources') }}</option>
                             <option value="online">{{ __('Online') }}</option>
@@ -210,6 +218,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Payment</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Shipment</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Source</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
@@ -445,6 +454,7 @@
                     data: function (d) {
                         d.status = $('#status-filter').val();
                         d.payment_status = $('#payment-status-filter').val();
+                        d.shipping_status = $('#shipping-status-filter').val();
                         d.source = $('#source-filter').val();
                         d.date_range = $('#date-filter').val();
                         d.search = $('.dataTables_filter input').val();
@@ -493,6 +503,12 @@
                     },
                     { 
                         data: 'payment_status', 
+                        orderable: false, 
+                        searchable: false,
+                        className: 'px-4 py-3' 
+                    },
+                    { 
+                        data: 'shipping_status', 
                         orderable: false, 
                         searchable: false,
                         className: 'px-4 py-3' 
@@ -640,6 +656,7 @@
             $('#reset-filters').on('click', function() {
                 $('#status-filter').val('');
                 $('#payment-status-filter').val('');
+                $('#shipping-status-filter').val('');
                 $('#source-filter').val('');
                 $('#date-filter').val('');
                 table.ajax.reload();
