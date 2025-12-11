@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OrderTransaction extends Model
 {
     protected $fillable = [
-        'order_id',
         'type',
         'status',
         'amount',
@@ -23,8 +22,9 @@ class OrderTransaction extends Model
         'meta' => 'array',
     ];
 
-    public function order(): BelongsTo
+    public function orders()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsToMany(Order::class, 'order_transaction_order')
+                    ->withTimestamps();
     }
 }

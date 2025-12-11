@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('order_payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
             $table->string('method')->nullable(); // stripe, paypal, cash_on_delivery
             $table->string('transaction_id')->nullable();
             $table->decimal('amount', 15, 3);
-            $table->enum('status', ['pending', 'paid', 'failed', 'refunded'])->default('pending');
+            $table->string('notes')->nullable(); 
+            $table->enum('status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded', 'partially_paid'])->default('pending');
             $table->json('details')->nullable(); // store gateway response
             $table->timestamps();
         });

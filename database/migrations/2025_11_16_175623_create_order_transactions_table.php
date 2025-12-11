@@ -14,12 +14,10 @@ return new class extends Migration
         Schema::create('order_transactions', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-
             $table->string('type');       
             // "authorization", "capture", "refund", "void", "sale"
 
-            $table->string('status')->default('pending'); 
+            $table->enum('status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded', 'partially_paid'])->default('pending'); 
             // pending, success, failed
 
             $table->decimal('amount', 10, 2);

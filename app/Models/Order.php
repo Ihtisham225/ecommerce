@@ -53,7 +53,14 @@ class Order extends Model
 
     public function payments()
     {
-        return $this->hasMany(OrderPayment::class);
+        return $this->belongsToMany(OrderPayment::class, 'order_payment_order')
+                    ->withTimestamps();
+    }
+
+    public function transactions()
+    {
+        return $this->belongsToMany(OrderTransaction::class, 'order_transaction_order')
+                    ->withTimestamps();
     }
 
     public function addresses()
@@ -74,11 +81,6 @@ class Order extends Model
     public function adjustments()
     {
         return $this->hasMany(OrderAdjustment::class);
-    }
-
-    public function transactions()
-    {
-        return $this->hasMany(OrderTransaction::class);
     }
 
     public function fulfillments()
@@ -120,12 +122,48 @@ class Order extends Model
 
     public function getTotalPaidAttribute()
     {
-        return $this->payments()->where('status', 'completed')->sum('amount');
+        return $this->payments()->sum('amount');
+    }
+
+    public function getIsFullyPaidAttribute()
+    {
+        return $this->total_paid >= $this->grand_total;
     }
 
     public function getBalanceDueAttribute()
     {
         return (float)$this->grand_total - (float)$this->total_paid;
+    }
+
+    /**
+     * Calculate remaining balance based on payments
+     */
+    public function calculateBalance(Order $order)
+    {
+        // Calculate total paid from all payments
+        $totalPaid = $order->payments()->sum('amount');
+        $grandTotal = (float) $order->grand_total;
+        $balance = $grandTotal - $totalPaid;
+        
+        // Determine payment status
+        if ($totalPaid >= $grandTotal) {
+            $paymentStatus = 'paid';
+        } elseif ($totalPaid > 0) {
+            $paymentStatus = 'partially_paid';
+        } else {
+            $paymentStatus = 'pending';
+        }
+        
+        return response()->json([
+            'success' => true,
+            'balance' => $balance,
+            'total_paid' => $totalPaid,
+            'grand_total' => $grandTotal,
+            'payment_status' => $paymentStatus,
+            'is_fully_paid' => $balance <= 0,
+            'is_partially_paid' => $totalPaid > 0 && $balance > 0,
+            'is_unpaid' => $totalPaid == 0,
+        ]);
     }
 
     public function isPaid()

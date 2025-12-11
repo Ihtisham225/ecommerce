@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\OrderAddress;
 use App\Models\OrderPayment;
 use App\Models\OrderStatusHistory;
 use App\Models\OrderAdjustment;
@@ -243,7 +241,8 @@ class OrderController extends Controller
             'addresses',
             'adjustments',
             'transactions',
-            'fulfillments.items'
+            'fulfillments.items',
+            'history', // Load status history with user
         ]);
 
         // Load customers if needed (for dropdowns / display)
@@ -275,12 +274,84 @@ class OrderController extends Controller
         $shippingAddress = $order->customer?->addresses()->shipping()->default()->first() 
             ?? $order->addresses()->shipping()->first();
 
+        // Calculate additional metrics
+        $remainingBalance = max(0, $order->grand_total - $order->paid_amount);
+        $paymentPercentage = $order->grand_total > 0 ? ($order->paid_amount / $order->grand_total) * 100 : 0;
+
+        // Get all related data counts
+        $dataCounts = [
+            'items' => $order->items->count(),
+            'payments' => $order->payments->count(),
+            'transactions' => $order->transactions->count(),
+            'adjustments' => $order->adjustments->count(),
+            'fulfillments' => $order->fulfillments->count(),
+            'returns' => $order->orderReturns ? $order->orderReturns->count() : 0,
+            'history' => $order->history->count(),
+        ];
+
+        // Get timeline events
+        $timelineEvents = collect();
+        
+        // Add order creation
+        $timelineEvents->push([
+            'type' => 'created',
+            'title' => 'Order Created',
+            'description' => 'Order was placed',
+            'date' => $order->created_at,
+            'icon' => 'shopping-cart',
+            'color' => 'blue'
+        ]);
+
+        // Add status changes
+        foreach ($order->history as $history) {
+            $timelineEvents->push([
+                'type' => 'status_change',
+                'title' => 'Status Updated',
+                'description' => "Changed from {$history->old_status} to {$history->new_status}",
+                'date' => $history->created_at,
+                'user' => $history->user,
+                'icon' => 'refresh',
+                'color' => 'indigo'
+            ]);
+        }
+
+        // Add payment events
+        foreach ($order->payments as $payment) {
+            $timelineEvents->push([
+                'type' => 'payment',
+                'title' => 'Payment Received',
+                'description' => "{$currencySymbol}" . number_format($payment->amount, 2) . " via " . ucfirst($payment->method),
+                'date' => $payment->created_at,
+                'icon' => 'credit-card',
+                'color' => 'green'
+            ]);
+        }
+
+        // Add fulfillment events
+        foreach ($order->fulfillments as $fulfillment) {
+            $timelineEvents->push([
+                'type' => 'fulfillment',
+                'title' => 'Fulfillment ' . ucfirst($fulfillment->status),
+                'description' => $fulfillment->tracking_number ? "Tracking: {$fulfillment->tracking_number}" : "Fulfillment processed",
+                'date' => $fulfillment->created_at,
+                'icon' => 'truck',
+                'color' => 'purple'
+            ]);
+        }
+
+        // Sort timeline by date
+        $timelineEvents = $timelineEvents->sortByDesc('date');
+
         return view('admin.orders.show', compact(
             'order',
             'customers',
             'currencySymbol',
             'billingAddress',
-            'shippingAddress'
+            'shippingAddress',
+            'remainingBalance',
+            'paymentPercentage',
+            'dataCounts',
+            'timelineEvents'
         ));
     }
 
@@ -328,7 +399,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'status' => 'nullable|in:pending,confirmed,processing,completed,cancelled',
-            'payment_status' => 'nullable|in:pending,paid,failed,refunded,partially_refunded',
+            'payment_status' => 'nullable|in:pending,paid,failed,refunded,partially_refunded,partially_paid',
             'shipping_status' => 'nullable|in:pending,ready_for_shipment,shipped,delivered',
             'source' => 'required|in:online,in_store',
 
@@ -340,37 +411,14 @@ class OrderController extends Controller
             'shipping_address' => 'nullable|array',
             'shipping_address.address_line_1' => 'nullable|string|max:255',
             'shipping_address.address_line_2' => 'nullable|string|max:255',
-
-            // Payment
-            'payment' => 'nullable|array',
-            'payment.method' => 'nullable|string|max:255',
-            'payment.amount' => 'nullable|numeric|min:0',
-            'payment.transaction_id' => 'nullable|string|max:255',
-
-            // Adjustments
-            'adjustments' => 'nullable|array',
-            'adjustments.*.id' => 'nullable|exists:order_adjustments,id',
-            'adjustments.*.type' => 'required_with:adjustments|string',
-            'adjustments.*.title' => 'nullable|string',
-            'adjustments.*.amount' => 'required_with:adjustments|numeric',
-
-            // Transactions
-            'transactions' => 'nullable|array',
-            'transactions.*.id' => 'nullable|exists:order_transactions,id',
-            'transactions.*.type' => 'required_with:transactions|string',
-            'transactions.*.status' => 'required_with:transactions|string',
-            'transactions.*.amount' => 'required_with:transactions|numeric',
-            'transactions.*.gateway' => 'nullable|string',
-            'transactions.*.transaction_id' => 'nullable|string',
-
-            'notes' => 'nullable|string',
-            'admin_notes' => 'nullable|string',
+            
         ]);
 
         DB::beginTransaction();
 
         try {
             $oldStatus = $order->status;
+            $oldPaymentStatus = $order->payment_status;
 
             /* ----------------------------------------------------
             ⭐ Detect customer change
@@ -408,22 +456,43 @@ class OrderController extends Controller
             }
 
             /* ----------------------------------------------------
-            Update Order core fields
+            PAYMENT STATUS LOGIC BASED ON PAYMENTS
             ---------------------------------------------------- */
-            if (($validated['source'] ?? $order->source) === 'in_store') {
-                $validated['status'] = 'delivered';
-                $validated['payment_status'] = 'paid';
-                $validated['shipping_status'] = 'delivered';
+            $totalPaid = $order->payments()->sum('amount');
+            $grandTotal = (float) $order->grand_total;
+
+            // Calculate payment status based on actual payments
+            if ($totalPaid >= $grandTotal) {
+                $paymentStatus = 'paid';
+            } elseif ($totalPaid > 0) {
+                $paymentStatus = 'partially_paid';
+            } else {
+                $paymentStatus = 'pending';
             }
 
+            /* ----------------------------------------------------
+            ORDER STATUS LOGIC
+            ---------------------------------------------------- */
+            $status = $validated['status'] ?? $order->status;
+
+            // For in-store orders, auto-complete when fully paid
+            if (($validated['source'] ?? $order->source) === 'in_store') {
+                if ($paymentStatus === 'paid') {
+                    $status = 'completed';
+                } elseif ($paymentStatus === 'partially_paid' && $status !== 'cancelled') {
+                    $status = $status !== 'processing' ? 'processing' : $status;
+                }
+            }
+
+            /* ----------------------------------------------------
+            UPDATE ORDER
+            ---------------------------------------------------- */
             $order->update([
                 'customer_id' => $validated['customer_id'] ?? $order->customer_id,
-                'status' => $validated['status'],
-                'payment_status' => $validated['payment_status'],
-                'shipping_status' => $validated['shipping_status'],
+                'status' => $status,
+                'payment_status' => $paymentStatus,
+                'shipping_status' => $validated['shipping_status'] ?? $order->shipping_status,
                 'source' => $validated['source'],
-                'notes' => $validated['notes'] ?? $order->notes,
-                'admin_notes' => $validated['admin_notes'] ?? $order->admin_notes,
             ]);
 
             /* ----------------------------------------------------
@@ -432,20 +501,13 @@ class OrderController extends Controller
             $this->handleAddressUpdates($order, $validated);
 
             /* ----------------------------------------------------
-            Payment / Adjustments / Transactions
+            REMOVED: Handle Transactions and Payments based on paid_amount
+            (Now handled by OrderPaymentController)
             ---------------------------------------------------- */
-            if (isset($validated['payment'])) {
-                $this->updatePayment($order, $validated['payment']);
-            }
 
-            if (isset($validated['adjustments'])) {
-                $this->updateAdjustments($order, $validated['adjustments']);
-            }
-
-            if (isset($validated['transactions'])) {
-                $this->updateTransactions($order, $validated['transactions']);
-            }
-
+            /* ----------------------------------------------------
+            Track Status Changes
+            ---------------------------------------------------- */
             if ($oldStatus !== $order->status) {
                 OrderStatusHistory::create([
                     'order_id' => $order->id,
@@ -455,6 +517,7 @@ class OrderController extends Controller
                 ]);
             }
 
+            // Recalculate totals
             $this->recalculateOrderTotals($order);
 
             DB::commit();
@@ -464,6 +527,9 @@ class OrderController extends Controller
                 'message' => 'Order updated successfully',
                 'shipping_address' => $order->shippingAddress,
                 'billing_address' => $order->billingAddress,
+                'total_paid' => $totalPaid,
+                'balance_due' => $grandTotal - $totalPaid,
+                'payment_status' => $paymentStatus,
                 'order' => $order->fresh([
                     'customer', 'items', 'addresses', 'payments',
                     'adjustments', 'transactions', 'fulfillments'
@@ -788,150 +854,6 @@ class OrderController extends Controller
     }
 
     /**
-     * Add payment to order (also creates a transaction record)
-     */
-    public function addPayment(Request $request, Order $order)
-    {
-        $validated = $request->validate([
-            'method' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
-            'transaction_id' => 'nullable|string|max:255',
-            'gateway' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $payment = $order->payments()->create([
-                'method' => $validated['method'],
-                'amount' => $validated['amount'],
-                'transaction_id' => $validated['transaction_id'] ?? null,
-                'status' => 'completed',
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            // Also create a transaction record for gateway visibility
-            $order->transactions()->create([
-                'type' => 'capture',
-                'status' => 'success',
-                'amount' => $validated['amount'],
-                'payment_method' => $validated['method'],
-                'gateway' => $validated['gateway'] ?? null,
-                'transaction_id' => $validated['transaction_id'] ?? null,
-                'meta' => null,
-            ]);
-
-            // Update payment status if fully paid
-            $totalPaid = $order->payments()->where('status', 'completed')->sum('amount');
-            if ($totalPaid >= $order->grand_total) {
-                $order->update(['payment_status' => 'paid']);
-            } elseif ($totalPaid > 0) {
-                $order->update(['payment_status' => 'partially_refunded']); // possibly 'partial' but keeping your logic
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment added successfully.',
-                'order' => $order->fresh(['payments', 'transactions']),
-            ]);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to add payment.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Process refund
-     */
-    public function processRefund(Request $request, Order $order)
-    {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:0|max:' . $order->grand_total,
-            'reason' => 'required|string|max:255',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            // Create refund payment record (negative)
-            $order->payments()->create([
-                'method' => 'refund',
-                'amount' => -abs($validated['amount']), // Negative amount for refund
-                'transaction_id' => 'REF_' . now()->timestamp,
-                'status' => 'completed',
-                'notes' => $validated['reason'],
-            ]);
-
-            // Create a transaction record for refund
-            $order->transactions()->create([
-                'type' => 'refund',
-                'status' => 'success',
-                'amount' => -abs($validated['amount']),
-                'payment_method' => 'refund',
-                'gateway' => null,
-                'transaction_id' => 'REF_' . now()->timestamp,
-                'meta' => ['reason' => $validated['reason']],
-            ]);
-
-            // Update order status
-            $totalRefunded = abs($order->payments()->where('method', 'refund')->where('status', 'completed')->sum('amount'));
-            if ($totalRefunded >= $order->grand_total) {
-                $order->update([
-                    'payment_status' => 'refunded',
-                    'status' => 'refunded'
-                ]);
-            } else {
-                $order->update(['payment_status' => 'partially_refunded']);
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Refund processed successfully.',
-                'order' => $order->fresh(['payments', 'transactions']),
-            ]);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to process refund.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Resend order confirmation
-     */
-    public function resendConfirmation(Order $order)
-    {
-        try {
-            // Here you would implement your email sending logic
-            // Mail::to($order->customer->email)->send(new OrderConfirmation($order));
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Order confirmation sent successfully.',
-            ]);
-
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send order confirmation.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
      * Generate invoice PDF
      */
     public function generateInvoice(Order $order)
@@ -969,118 +891,6 @@ class OrderController extends Controller
     }
 
     /**
-     * Update order address
-     */
-    private function updateAddress(Order $order, array $addressData, string $type)
-    {
-        $order->addresses()->updateOrCreate(
-            ['type' => $type],
-            array_merge($addressData, ['type' => $type])
-        );
-    }
-
-    /**
-     * Update payment information (single payment create)
-     */
-    private function updatePayment(Order $order, array $paymentData)
-    {
-        if (!empty($paymentData['amount']) && $paymentData['amount'] > 0) {
-            $order->payments()->create([
-                'method' => $paymentData['method'] ?? 'manual',
-                'amount' => $paymentData['amount'],
-                'transaction_id' => $paymentData['transaction_id'] ?? null,
-                'status' => 'completed'
-            ]);
-
-            // create basic transaction record as well
-            $order->transactions()->create([
-                'type' => 'capture',
-                'status' => 'success',
-                'amount' => $paymentData['amount'],
-                'payment_method' => $paymentData['method'] ?? null,
-                'gateway' => $paymentData['gateway'] ?? null,
-                'transaction_id' => $paymentData['transaction_id'] ?? null,
-                'meta' => null,
-            ]);
-        }
-    }
-
-    /**
-     * Update adjustments (create/update/delete)
-     */
-    private function updateAdjustments(Order $order, array $adjustments)
-    {
-        $incoming = [];
-        foreach ($adjustments as $adj) {
-            if (!empty($adj['id'])) {
-                $existing = OrderAdjustment::find($adj['id']);
-                if ($existing && $existing->order_id === $order->id) {
-                    $existing->update([
-                        'type' => $adj['type'],
-                        'title' => $adj['title'] ?? null,
-                        'amount' => $adj['amount'],
-                        'meta' => $adj['meta'] ?? null,
-                    ]);
-                    $incoming[] = $existing->id;
-                }
-            } else {
-                $created = $order->adjustments()->create([
-                    'type' => $adj['type'],
-                    'title' => $adj['title'] ?? null,
-                    'amount' => $adj['amount'],
-                    'meta' => $adj['meta'] ?? null,
-                ]);
-                $incoming[] = $created->id;
-            }
-        }
-
-        // remove adjustments not in incoming
-        if (!empty($incoming)) {
-            $order->adjustments()->whereNotIn('id', $incoming)->delete();
-        }
-    }
-
-    /**
-     * Update transactions (create/update/delete)
-     */
-    private function updateTransactions(Order $order, array $transactions)
-    {
-        $incoming = [];
-        foreach ($transactions as $t) {
-            if (!empty($t['id'])) {
-                $existing = OrderTransaction::find($t['id']);
-                if ($existing && $existing->order_id === $order->id) {
-                    $existing->update([
-                        'type' => $t['type'],
-                        'status' => $t['status'],
-                        'amount' => $t['amount'],
-                        'payment_method' => $t['payment_method'] ?? null,
-                        'gateway' => $t['gateway'] ?? null,
-                        'transaction_id' => $t['transaction_id'] ?? null,
-                        'meta' => $t['meta'] ?? null,
-                    ]);
-                    $incoming[] = $existing->id;
-                }
-            } else {
-                $created = $order->transactions()->create([
-                    'type' => $t['type'],
-                    'status' => $t['status'],
-                    'amount' => $t['amount'],
-                    'payment_method' => $t['payment_method'] ?? null,
-                    'gateway' => $t['gateway'] ?? null,
-                    'transaction_id' => $t['transaction_id'] ?? null,
-                    'meta' => $t['meta'] ?? null,
-                ]);
-                $incoming[] = $created->id;
-            }
-        }
-
-        if (!empty($incoming)) {
-            $order->transactions()->whereNotIn('id', $incoming)->delete();
-        }
-    }
-
-    /**
      * Recalculate order totals
      */
     private function recalculateOrderTotals(Order $order)
@@ -1097,10 +907,20 @@ class OrderController extends Controller
 
         $grand = $subtotal + $taxTotal + $shippingTotal - $discountTotal;
 
+        // Keep existing paid_amount if set, otherwise calculate from payments
+        $paidAmount = $order->paid_amount;
+        if ($paidAmount <= 0) {
+            $paidAmount = (float) $order->payments()
+                ->where('status', 'completed')
+                ->where('amount', '>', 0)
+                ->sum('amount');
+        }
+
         $order->update([
             'subtotal' => $subtotal,
             'discount_total' => $discountTotal,
             'grand_total' => $grand,
+            'paid_amount' => $paidAmount,
         ]);
     }
 }

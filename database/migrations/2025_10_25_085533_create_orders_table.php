@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('order_number')->unique();
             $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
             $table->enum('status', ['pending', 'confirmed', 'processing', 'completed', 'cancelled'])->nullable()->default('pending');
-            $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'])->nullable()->default('pending');
+            $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded', 'partially_refunded', 'partially_paid'])->nullable()->default('pending');
             $table->enum('shipping_status', ['pending', 'ready_for_shipment', 'shipped', 'delivered'])->nullable()->default('pending');
             $table->enum('source', ['online', 'in_store'])->default('online');
             

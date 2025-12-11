@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ProductRelationController as AdminProductRelation
 use App\Http\Controllers\Admin\ProductVariantController as AdminProductVariantController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\OrderItemController as AdminOrderItemController;
+use App\Http\Controllers\Admin\OrderPaymentController as AdminOrderPaymentController;
 use App\Http\Controllers\Admin\OrderCustomerController as AdminOrderCustomerController;
 use App\Http\Controllers\Admin\OrderImportController as AdminOrderImportController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
@@ -343,6 +344,15 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
         Route::post('/', [AdminOrderItemController::class, 'store']);        // Add item
         Route::put('/{item}', [AdminOrderItemController::class, 'update']);  // Update qty or price
         Route::delete('/{item}', [AdminOrderItemController::class, 'destroy']); // Remove
+    });
+
+    // -------------------------
+    // ✅ Orders Payments Routes
+    // -------------------------
+    Route::prefix('orders/{order}/payments')->group(function () {
+        Route::get('/', [AdminOrderPaymentController::class, 'index'])->name('orders.payments.index');
+        Route::post('/', [AdminOrderPaymentController::class, 'store'])->name('orders.payments.store');
+        Route::delete('/{payment}', [AdminOrderPaymentController::class, 'destroy'])->name('orders.payments.destroy');
     });
     
     

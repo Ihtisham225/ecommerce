@@ -7,16 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class OrderPayment extends Model
 {
     protected $fillable = [
-        'order_id', 'method', 'amount', 'transaction_id', 'status'
+        'method', 'amount', 'transaction_id', 'notes', 'status'
     ];
 
     protected $casts = [
         'amount' => 'decimal:3',
     ];
 
-    public function order()
+    public function orders()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsToMany(Order::class, 'order_payment_order')
+                    ->withTimestamps();
     }
 }
 
