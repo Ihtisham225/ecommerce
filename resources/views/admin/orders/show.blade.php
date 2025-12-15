@@ -31,6 +31,25 @@
                 </a>
             </div>
         </div>
+
+        <!-- Replace the complex invoice section with just these two buttons -->
+        <div class="flex flex-wrap gap-2 mt-4">
+            <a href="{{ route('admin.orders.invoice.pdf', $order) }}" 
+            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-150 ease-in-out shadow-sm hover:shadow-md">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Download PDF
+            </a>
+            
+            <a href="{{ route('admin.orders.invoice.thermal', $order) }}" target="_blank"
+            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition duration-150 ease-in-out shadow-sm hover:shadow-md">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                </svg>
+                Thermal Print
+            </a>
+        </div>
     </x-slot>
 
     @php
@@ -927,4 +946,32 @@
     <style>
         [x-cloak] { display: none !important; }
     </style>
+
+    <script>
+        function generateInvoice(orderId) {
+            if (confirm('Generate and store invoice for future access?')) {
+                fetch(`/admin/orders/${orderId}/invoice/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Invoice generated successfully!');
+                        if (data.download_url) {
+                            window.open(data.download_url, '_blank');
+                        }
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error generating invoice');
+                });
+            }
+        }
+    </script>
 </x-app-layout>

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\ProductVariantController as AdminProductVariantCo
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\OrderItemController as AdminOrderItemController;
 use App\Http\Controllers\Admin\OrderPaymentController as AdminOrderPaymentController;
+use App\Http\Controllers\Admin\OrderInvoiceController as AdminOrderInvoiceController;
 use App\Http\Controllers\Admin\OrderCustomerController as AdminOrderCustomerController;
 use App\Http\Controllers\Admin\OrderImportController as AdminOrderImportController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
@@ -353,6 +354,14 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
         Route::get('/', [AdminOrderPaymentController::class, 'index'])->name('orders.payments.index');
         Route::post('/', [AdminOrderPaymentController::class, 'store'])->name('orders.payments.store');
         Route::delete('/{payment}', [AdminOrderPaymentController::class, 'destroy'])->name('orders.payments.destroy');
+    });
+
+    // -------------------------
+    // ✅ Orders Invoices Routes
+    // -------------------------
+    Route::prefix('orders/{order}/invoice')->group(function () {
+        Route::get('/pdf', [AdminOrderInvoiceController::class, 'pdf'])->name('orders.invoice.pdf');
+        Route::get('/thermal', [AdminOrderInvoiceController::class, 'thermal'])->name('orders.invoice.thermal');
     });
     
     
