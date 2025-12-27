@@ -19,46 +19,44 @@ use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\BrandController as AdminBrandController;
 use App\Http\Controllers\Admin\CollectionController as AdminCollectionController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
-
-
 use App\Http\Controllers\Admin\BlogController as AdminBlogController;
 use App\Http\Controllers\Admin\BlogCategoryController as AdminBlogCategoryController;
 use App\Http\Controllers\Admin\BlogCommentController as AdminBlogCommentController;
-use App\Http\Controllers\Public\BlogController as PublicBlogController;
-use App\Http\Controllers\Public\BlogCommentController as PublicBlogCommentController;
-use App\Http\Controllers\CourseCategoryController;
-use App\Http\Controllers\Admin\CourseCategoryController as AdminCourseCategoryController;
-use App\Http\Controllers\Admin\InstructorController as AdminInstructorController;
 use App\Http\Controllers\Admin\ContactController as AdminContactController;
-use App\Http\Controllers\CountryController;
-use App\Http\Controllers\Admin\CountryController as AdminCountryController;
-use App\Http\Controllers\Public\CourseController as PublicCourseController;
-use App\Http\Controllers\Public\CourseCategoryController as PublicCourseCategoryController;
-use App\Http\Controllers\Public\CourseRegistrationController as PublicCourseRegistrationController;
-use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
-use App\Http\Controllers\Admin\GalleryController as AdminGalleryController;
-use App\Http\Controllers\Public\GalleryController as PublicGalleryController;
-use App\Http\Controllers\Public\PageController as PublicPageController;
-use App\Http\Controllers\Public\GlobalSearchController as PublicSearchController;
-use App\Http\Controllers\Admin\GlobalSearchController as AdminSearchController;
-use App\Http\Controllers\Public\ContactController as PublicConatactController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SponsorController;
-use App\Http\Controllers\Admin\SponsorController as AdminSponsorController;
-use App\Http\Controllers\Public\CourseEvaluationController as PublicCourseEvaluationController;
-use App\Http\Controllers\SubscriberController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\GlobalSearchController as AdminSearchController;
+use App\Http\Controllers\Admin\SubscriberController as AdminSubscriberController;
+use App\Http\Controllers\ProfileController;
+
+// Frontend
+use App\Http\Controllers\Frontend\ProductController as FrontendProductController;
+use App\Http\Controllers\Frontend\CategoryController as FrontendCategoryController;
+use App\Http\Controllers\Frontend\BrandController as FrontendBrandController;
+use App\Http\Controllers\Frontend\CollectionController as FrontendCollectionController;
+use App\Http\Controllers\Frontend\BlogController as FrontendBlogController;
+use App\Http\Controllers\Frontend\CartController as FrontendCartController;
+use App\Http\Controllers\Frontend\CheckoutController as FrontendCheckoutController;
+use App\Http\Controllers\Frontend\BlogCommentController as FrontendBlogCommentController;
+use App\Http\Controllers\Frontend\PageController as FrontendPageController;
+use App\Http\Controllers\Frontend\GlobalSearchController as FrontendSearchController;
+use App\Http\Controllers\Frontend\ContactController as FrontendContactController;
+use App\Http\Controllers\Frontend\SubscriberController as FrontendSubscriberController;
+
+// Customer
+use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
+use App\Http\Controllers\Customer\ContactController as CustomerContactController;
+
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [PublicPageController::class, 'welcome'])->name('home');
+Route::get('/', [FrontendPageController::class, 'welcome'])->name('home');
 
 // Dynamic page routes
 // Route::get('/{page:slug}', [PageController::class, 'show'])->name('page.show');
 
 /*
 |--------------------------------------------------------------------------------------------------------------------------------------------
-| Public Routes Starts
+| Frontend Routes Starts
 |--------------------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -72,8 +70,9 @@ Route::get('/', [PublicPageController::class, 'welcome'])->name('home');
 // Products Routes Starts
 // ===============================
 
-Route::get('/products', [PublicCourseController::class, 'index'])->name('products.index');
-Route::get('/products/featured', [PublicCourseController::class, 'featured'])->name('products.featured');
+Route::get('/products', [FrontendProductController::class, 'index'])->name('products.index');
+Route::get('/products/{slug}', [FrontendProductController::class, 'show'])->name('products.show');
+Route::get('/products/featured', [FrontendProductController::class, 'featured'])->name('products.featured');
 
 // ===============================
 // Products Routes Ends
@@ -83,7 +82,8 @@ Route::get('/products/featured', [PublicCourseController::class, 'featured'])->n
 // Category Routes Starts
 // ===============================
 
-Route::get('/categoriers', [PublicCourseController::class, 'index'])->name('categories.index');
+Route::get('/categories', [FrontendCategoryController::class, 'index'])->name('categories.index');
+Route::get('/categories/{slug}', [FrontendCategoryController::class, 'show'])->name('categories.show');
 
 // ===============================
 // Category Routes Ends
@@ -93,103 +93,66 @@ Route::get('/categoriers', [PublicCourseController::class, 'index'])->name('cate
 // Brand Routes Starts
 // ===============================
 
-Route::get('/brands', [PublicCourseController::class, 'index'])->name('brands.index');
+Route::get('/brands', [FrontendBrandController::class, 'index'])->name('brands.index');
+Route::get('/brands/{slug}', [FrontendBrandController::class, 'show'])->name('brands.show');
 
 // ===============================
 // Brand Routes Ends
 // ===============================
 
-// ===============================
-// Collection Routes Starts
-// ===============================
-
-Route::get('/collections', [PublicCourseController::class, 'index'])->name('collections.index');
-
-// ===============================
-// Collection Routes Ends
-// ===============================
-
-// ===============================
-// COURSE SCHEDULE REGISTRATION
-// ===============================
-Route::middleware(['auth'])->group(function () {
-    Route::get('course-schedules/{schedule}/register', [PublicCourseRegistrationController::class, 'create'])
-        ->name('schedules.register');
-
-    Route::post('course-schedules/{schedule}/register', [PublicCourseRegistrationController::class, 'store'])
-        ->name('schedules.register.store');
-});
-
-// ✅ Company Registration for a specific schedule
-Route::get('course-schedules/{schedule}/company-register', [PublicCourseRegistrationController::class, 'companyForm'])
-    ->name('schedules.company.form');
-
-Route::post('course-schedules/{schedule}/company-register', [PublicCourseRegistrationController::class, 'companyRegister'])
-    ->name('schedules.company.register');
-
-Route::get('/company-registration/{id}/details', [PublicCourseRegistrationController::class, 'getCompanyDetails'])
-    ->name('company.details');
-
-Route::get('/contact-person/{id}/details', [PublicCourseRegistrationController::class, 'getContactDetails'])
-    ->name('contact.details');
+// Collection Routes
+Route::get('/collections', [FrontendCollectionController::class, 'index'])->name('collections.index');
+Route::get('/collections/{slug}', [FrontendCollectionController::class, 'show'])->name('collections.show');
 
 
-// ===============================
-// COURSE SCHEDULE EVALUATION
-// ===============================
-Route::middleware(['auth'])->group(function () {
-    Route::get('course-schedules/{schedule}/evaluation', [PublicCourseEvaluationController::class, 'create'])
-        ->name('schedule.evaluation.create');
+// Cart Routes
+Route::get('/cart', [FrontendCartController::class, 'index'])->name('cart.index');
+Route::post('/cart/add', [FrontendCartController::class, 'add'])->name('cart.add');
+Route::post('/cart/update', [FrontendCartController::class, 'update'])->name('cart.update');
+Route::post('/cart/remove', [FrontendCartController::class, 'remove'])->name('cart.remove');
+Route::post('/cart/clear', [FrontendCartController::class, 'clear'])->name('cart.clear');
 
-    Route::post('course-schedules/{schedule}/evaluation', [PublicCourseEvaluationController::class, 'store'])
-        ->name('schedule.evaluation.store');
-});
 
-// Documents (public download)
-// Route::get('documents/{document}/download', [DocumentController::class, 'download'])
-//     ->name('documents.download');
+// Checkout Routes
+Route::get('/checkout', [FrontendCheckoutController::class, 'index'])->name('checkout.index');
+Route::post('/checkout/process', [FrontendCheckoutController::class, 'process'])->name('checkout.process');
+Route::post('/checkout/direct-purchase', [FrontendCheckoutController::class, 'directPurchase'])->name('checkout.direct-purchase');
 
-// Gallery
-Route::resource('galleries', PublicGalleryController::class)->only('index', 'show');
+
+// Policy Pages
+Route::get('/terms-condition', [FrontendPageController::class, 'termsCondition'])->name('terms.conditions');
+Route::get('/privacy-policy', [FrontendPageController::class, 'privacyPolicy'])->name('privacy.policy');
+
 
 // Subscribers (newsletter)
-// Route::get('subscribe', [SubscriberController::class, 'create'])->name('subscribers.create');
-// Route::post('subscribe', [SubscriberController::class, 'store'])->name('subscribers.store');
-// Route::get('subscribe/verify/{token}', [SubscriberController::class, 'verify'])->name('subscribers.verify');
-// Route::get('unsubscribe/{token}', [SubscriberController::class, 'unsubscribe'])->name('subscribers.unsubscribe');
+Route::get('subscribe', [FrontendSubscriberController::class, 'create'])->name('subscribers.create');
+Route::post('subscribe', [FrontendSubscriberController::class, 'store'])->name('subscribers.store');
+Route::get('subscribe/verify/{token}', [FrontendSubscriberController::class, 'verify'])->name('subscribers.verify');
+Route::get('unsubscribe/{token}', [FrontendSubscriberController::class, 'unsubscribe'])->name('subscribers.unsubscribe');
 
 // About Pages
-Route::get('/about/institute-profile', [PublicPageController::class, 'instituteProfile'])->name('about.institute-profile');
-Route::get('/about/who-we-are', [PublicPageController::class, 'whoWeAre'])->name('about.who-we-are');
-
-// Workshops
-Route::get('/workshops/qatar', [PublicPageController::class, 'qatar'])->name('workshops.qatar');
-Route::get('/workshops/process-plant-shutdown', [PublicPageController::class, 'processPlantShutdown'])->name('workshops.process-plant-shutdown');
-
-// Schedules
-Route::get('/schedules/2025-2026', [PublicCourseController::class, 'schedule2025'])->name('schedules.2025-2026');
-Route::get('/schedules/2024-2025', [PublicCourseController::class, 'schedule2024'])->name('schedules.2024-2025');
+Route::get('/about', [FrontendPageController::class, 'about'])->name('about');
 
 // Contact Us
-Route::get('/contact-us', [PublicConatactController::class, 'index'])->name('contact.us');
-Route::post('/contact-us/send-message', [PublicConatactController::class, 'sendMessage'])->name('contact.send');
+Route::get('/contact-us', [FrontendContactController::class, 'index'])->name('contact.us');
+Route::post('/contact-us/send-message', [FrontendContactController::class, 'sendMessage'])->name('contact.send');
 
 
 // Blogs
-Route::resource('blogs', PublicBlogController::class)->only('index', 'show');
+Route::resource('blogs', FrontendBlogController::class)->only('index', 'show');
 
-// Public routes
+// Blog Comments
 Route::prefix('blogs')->name('blog-')->group(function () {
-    Route::post('{slug}/comments', [PublicBlogCommentController::class, 'store'])->name('comments.store');
-    Route::post('{slug}/comments/{comment}/reply', [PublicBlogCommentController::class, 'storeReply'])->name('comments.reply');
-    Route::get('{slug}/comments/{comment}/edit', [PublicBlogCommentController::class, 'edit'])->name('comments.edit');
-    Route::put('{slug}/comments/{comment}', [PublicBlogCommentController::class, 'update'])->name('comments.update');
+    Route::post('{slug}/comments', [FrontendBlogCommentController::class, 'store'])->name('comments.store');
+    Route::post('{slug}/comments/{comment}/reply', [FrontendBlogCommentController::class, 'storeReply'])->name('comments.reply');
+    Route::get('{slug}/comments/{comment}/edit', [FrontendBlogCommentController::class, 'edit'])->name('comments.edit');
+    Route::put('{slug}/comments/{comment}', [FrontendBlogCommentController::class, 'update'])->name('comments.update');
 });
 
 // Global search routes
-Route::get('/global-search', [PublicSearchController::class, 'search'])
+Route::get('/global-search', [FrontendSearchController::class, 'search'])
     ->name('global-search');
-Route::get('/search/all', [PublicSearchController::class, 'fullSearch'])
+Route::get('/search/all', [FrontendSearchController::class, 'fullSearch'])
     ->name('search.all');
 
 // Language Switch
@@ -203,7 +166,7 @@ Route::get('/language/{locale}', function ($locale) {
 
 /*
 |--------------------------------------------------------------------------------------------------------------------------------------------
-| Public Routes End
+| Frontend Routes End
 |--------------------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -400,12 +363,9 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     // Documents
     Route::resource('documents', AdminDocumentController::class);
 
-    // Gallery
-    Route::resource('galleries', AdminGalleryController::class);
-
     // Subscribers (only admin)
     Route::middleware(['role:admin'])->group(function () {
-        Route::resource('subscribers', SubscriberController::class)->only(['index', 'destroy']);
+        Route::resource('subscribers', AdminSubscriberController::class)->only(['index', 'destroy']);
     });
 
     // Blogs
@@ -424,19 +384,6 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::delete('blog-comments/{id}/force-delete', [AdminBlogCommentController::class, 'forceDelete'])->name('blog-comments.force-delete');
     Route::get('blog-comments/stats', [AdminBlogCommentController::class, 'stats'])->name('blog-comments.stats');
 
-    // Country Routes
-    Route::resource('countries', AdminCountryController::class);
-
-    // Sponsor Routes
-    Route::resource('sponsors', AdminSponsorController::class);
-
-    // Course Evaluation Questions
-    Route::resource('course-evaluation-questions', AdminCourseEvaluationQuestionController::class);
-
-    // Course Evalation Export
-    Route::get('course-evaluations/{course}/export-excel/{user?}', [AdminCourseEvaluationExportController::class, 'exportExcel'])->name('course-evaluations.export.excel');
-    Route::get('course-evaluations/{course}/export-pdf/{user?}', [AdminCourseEvaluationExportController::class, 'exportPdf'])->name('course-evaluations.export.pdf');
-
     // Users (only admin)
     Route::middleware(['role:admin'])->group(function () {
         Route::resource('users', AdminUserController::class);
@@ -446,19 +393,6 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::delete('/contact-inquiries/{id}', [AdminContactController::class, 'destroy'])->name('contact.inquiries.delete');
     Route::post('/contact-inquiries/{id}/reply', [AdminContactController::class, 'sendReply'])->name('contact.inquiries.reply');
     Route::patch('/contact-inquiries/{id}/status', [AdminContactController::class, 'updateStatus'])->name('contact.inquiries.status');
-
-    // Email handling
-    // Email sending
-    Route::get('emails/create', [\App\Http\Controllers\Admin\EmailController::class, 'create'])->name('emails.create');
-    Route::post('emails/send', [\App\Http\Controllers\Admin\EmailController::class, 'send'])->name('emails.send');
-
-    // Inbox
-    Route::get('emails/inbox', [\App\Http\Controllers\Admin\EmailController::class, 'inbox'])->name('emails.inbox');
-    Route::get('emails/view/{id}', [\App\Http\Controllers\Admin\EmailController::class, 'view'])->name('emails.view');
-    Route::post('emails/reply/{id}', [\App\Http\Controllers\Admin\EmailController::class, 'reply'])->name('emails.reply');
-
-    // Sync inbox
-    Route::get('emails/sync', [\App\Http\Controllers\Admin\EmailController::class, 'syncInbox'])->name('emails.sync');
 
     // Global search routes
     Route::get('/global-search', [AdminSearchController::class, 'search'])
@@ -479,33 +413,21 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
 |--------------------------------------------------------------------------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'role:admin|staff|customer'])->prefix('admin')->name('admin.')->group(function () {
-    // Course Registrations
-    Route::resource('course-registrations', AdminCourseRegistrationController::class)->only(['index', 'show', 'update', 'destroy']);
+Route::middleware(['auth', 'verified', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
+    // Add customer dashboard if needed
+    Route::get('/dashboard', function () {
+        return view('customer.dashboard');
+    })->name('dashboard');
 
-    // Company Registrations
-    Route::resource('company-registrations', CompanyRegistrationController::class)->only(['index', 'show', 'destroy']);
-
-    // Course Evaluations
-    Route::resource('course-evaluations', AdminCourseEvaluationController::class);
-
-    // Certificates
-    Route::resource('certificates', AdminCertificateController::class);
-    Route::get('certificates/{certificate}/download', [AdminCertificateController::class, 'download'])->name('certificates.download');
-
-    // Contact Enquires
-    Route::get('/contact-inquiries', [AdminContactController::class, 'index'])->name('contact.inquiries');
-    Route::get('/contact-inquiries/{id}', [AdminContactController::class, 'show'])->name('contact.inquiries.show');
-
-    // Blogs Comments
-    Route::resource('blog-comments', AdminBlogCommentController::class)->except(['create', 'store']);
-    Route::get('blog-comments/stats', [AdminBlogCommentController::class, 'stats'])->name('blog-comments.stats');
-
-    // Company Registrations
-    Route::resource('company-registrations', AdminCompanyRegistrationController::class)->only(['index', 'show', 'update', 'destroy']);
-
-
+    // Orders
+    Route::get('/orders', [CustomerOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [CustomerOrderController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{order}/invoice', [CustomerOrderController::class, 'invoice'])->name('orders.invoice');
+    
+    // Inquires
+    Route::get('/contact-inquires', [CustomerContactController::class, 'index'])->name('contact.inquiries');
 });
+
 /*
 |--------------------------------------------------------------------------------------------------------------------------------------------
 | Customer Routes Ends
