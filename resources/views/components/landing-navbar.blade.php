@@ -1,7 +1,6 @@
 <nav x-data="{ open: false, aboutOpen: false, coursesOpen: false, servicesOpen: false, mediaOpen: false, languageOpen: false, themeOpen: false }"
     class="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 transition-colors duration-300 backdrop-blur-md bg-white/80 dark:bg-gray-900/80">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        @include('frontend.global-search.index')
         <div class="flex justify-between h-20">
             <!-- Logo -->
             <div class="flex-shrink-0 flex items-center space-x-2">
@@ -64,23 +63,23 @@
                                 </svg>
                                 {{ __("All Products") }}
                             </a>
-                            <a href="#" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
-                                hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400">
+                            <a href="{{ route('products.new-arrivals') }}" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
+                                {{ request()->routeIs('products.new-arrivals') ? 'bg-gradient-to-r from-rose-500/10 to-pink-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400' }}">
                                 <svg class="w-4 h-4 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                                 {{ __("New Arrivals") }}
                             </a>
-                            <a href="#" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
-                                hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400">
+                            <a href="{{ route('products.best-sellers') }}" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
+                                {{ request()->routeIs('products.best-sellers') ? 'bg-gradient-to-r from-rose-500/10 to-pink-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400' }}">
                                 <svg class="w-4 h-4 mr-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                 </svg>
                                 {{ __("Best Sellers") }}
                             </a>
                             <div class="border-t border-gray-100 dark:border-gray-700 my-2"></div>
-                            <a href="#" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
-                                hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400">
+                            <a href="{{ route('products.sale') }}" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
+                                {{ request()->routeIs('products.sale') ? 'bg-gradient-to-r from-rose-500/10 to-pink-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400' }}">
                                 <svg class="w-4 h-4 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
@@ -102,22 +101,22 @@
                 </a>
 
                 <!-- Shopping Cart -->
-                <a href="#" class="relative px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group
+                <a href="{{ route('cart.index') }}" class="relative px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group
                     {{ request()->routeIs('cart.*') ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-pink-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-800 dark:hover:to-gray-700 hover:text-rose-600 dark:hover:text-rose-400' }}">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        @auth
+                        
                         @php
-                        $cartCount = \App\Models\Cart::where('customer_id', auth()->id())->count();
+                            $cartCount = \App\Models\Cart::totalQuantity();
                         @endphp
+                        
                         @if($cartCount > 0)
-                        <span class="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-                            {{ $cartCount }}
-                        </span>
+                            <span class="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
+                                {{ $cartCount }}
+                            </span>
                         @endif
-                        @endauth
                     </div>
                 </a>
 
@@ -155,13 +154,37 @@
                 </div>
 
                 <!-- Theme Toggle -->
-                <button @click="toggleTheme()" class="p-3 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 dark:from-gray-800 dark:to-gray-700 text-gray-700 dark:text-gray-300 hover:from-rose-100 hover:to-pink-100 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-300 group">
-                    <!-- Sun icon for light mode -->
-                    <svg x-show="!darkMode" class="w-5 h-5 text-amber-500 group-hover:rotate-45 transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+                <button
+                    @click="$store.theme.toggle()"
+                    class="p-3 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50
+                        dark:from-gray-800 dark:to-gray-700
+                        text-gray-700 dark:text-gray-300
+                        transition-all duration-300 group"
+                >
+                    <!-- Sun -->
+                    <svg
+                        x-show="!$store.theme.dark"
+                        x-cloak
+                        class="w-5 h-5 text-amber-500 group-hover:rotate-45 transition-transform duration-300"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                    >
+                        <path fill-rule="evenodd"
+                             d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 
+                                001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 
+                                0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 
+                                1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                            clip-rule="evenodd" />
                     </svg>
-                    <!-- Moon icon for dark mode -->
-                    <svg x-show="darkMode" class="w-5 h-5 text-indigo-400 group-hover:rotate-45 transition-transform duration-300" fill="currentColor" viewBox="0 0 20 20">
+
+                    <!-- Moon -->
+                    <svg
+                        x-show="$store.theme.dark"
+                        x-cloak
+                        class="w-5 h-5 text-indigo-400 group-hover:rotate-45 transition-transform duration-300"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                    >
                         <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                     </svg>
                 </button>
@@ -302,23 +325,21 @@
             </a>
 
             <!-- Cart -->
-            <a href="#" class="block px-4 py-4 rounded-xl text-base font-semibold transition-all duration-300 group
+            <a href="{{ route('cart.index') }}" class="block px-4 py-4 rounded-xl text-base font-semibold transition-all duration-300 group
                 {{ request()->routeIs('cart.*') ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-pink-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-800 dark:hover:to-gray-700' }}">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 mr-3 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     {{ __("Cart") }}
-                    @auth
                     @php
-                    $cartCount = \App\Models\Cart::where('customer_id', auth()->id())->count();
+                        $cartCount = \App\Models\Cart::totalQuantity();
                     @endphp
                     @if($cartCount > 0)
                     <span class="ml-2 w-6 h-6 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
                         {{ $cartCount }}
                     </span>
                     @endif
-                    @endauth
                 </div>
             </a>
 
@@ -349,14 +370,20 @@
             </div>
 
             <!-- Theme Toggle -->
-            <button @click="toggleTheme()" class="w-full text-left px-4 py-4 rounded-xl text-base font-semibold transition-all duration-300 group flex items-center
-                text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-800 dark:hover:to-gray-700">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button 
+                x-data
+                @click="$dispatch('toggle-theme')" 
+                class="w-full text-left px-4 py-4 rounded-xl text-base font-semibold transition-all duration-300 group flex items-center
+                    text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-800 dark:hover:to-gray-700"
+            >
+                <svg x-show="!darkMode" x-cloak class="w-5 h-5 mr-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                {{ __("Theme") }}
+                <svg x-show="darkMode" x-cloak class="w-5 h-5 mr-3 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+                <span x-text="darkMode ? 'Light Mode' : 'Dark Mode'">{{ __("Theme") }}</span>
             </button>
-
             <!-- Login/User Menu -->
             @if (Route::has('login'))
             @auth
@@ -436,48 +463,20 @@
 @endforeach
 
 <script>
-    // Theme toggle functionality
-    function toggleTheme() {
-        const html = document.documentElement;
-        const currentTheme = html.classList.contains('dark') ? 'dark' : 'light';
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+document.addEventListener('alpine:init', () => {
+    Alpine.store('theme', {
+        dark: localStorage.getItem('theme') === 'dark'
+            || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches),
 
-        html.classList.remove('dark', 'light');
-        html.classList.add(newTheme);
-        localStorage.setItem('theme', newTheme);
+        init() {
+            document.documentElement.classList.toggle('dark', this.dark)
+        },
 
-        // Dispatch theme change event
-        window.dispatchEvent(new CustomEvent('themeChanged', {
-            detail: newTheme
-        }));
-    }
-
-    // Initialize theme
-    document.addEventListener('DOMContentLoaded', function() {
-        const storedTheme = localStorage.getItem('theme') || 'system';
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        const html = document.documentElement;
-        if (storedTheme === 'dark' || (storedTheme === 'system' && prefersDark)) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
+        toggle() {
+            this.dark = !this.dark
+            document.documentElement.classList.toggle('dark', this.dark)
+            localStorage.setItem('theme', this.dark ? 'dark' : 'light')
         }
-
-        // Alpine.js data for theme
-        Alpine.data('theme', () => ({
-            darkMode: document.documentElement.classList.contains('dark'),
-
-            toggleTheme() {
-                this.darkMode = !this.darkMode;
-                if (this.darkMode) {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                }
-            }
-        }));
-    });
+    })
+})
 </script>

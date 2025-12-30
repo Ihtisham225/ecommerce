@@ -13,19 +13,23 @@ return new class extends Migration
     {
         Schema::create('carts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('session_id')->nullable();
-            $table->foreignId('currency_id')->references('id')->on('currencies');
+            $table->string('currency_code');
 
             $table->decimal('subtotal', 15, 3)->default(0);
             $table->decimal('discount_total', 15, 3)->default(0);
+            $table->decimal('shipping_total', 15, 3)->default(0);
             $table->decimal('tax_total', 15, 3)->default(0);
             $table->decimal('grand_total', 15, 3)->default(0);
 
+            $table->string('notes')->nullable();
+            $table->boolean('is_guest')->default(true);
+            
             $table->softDeletes();
             $table->timestamps();
 
-            $table->index(['customer_id', 'session_id']); // performance boost
+            $table->index(['user_id', 'session_id']); // performance boost
         });
     }
 

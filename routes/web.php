@@ -66,39 +66,25 @@ Route::get('/', [FrontendPageController::class, 'welcome'])->name('home');
 // })->name('home');
 
 
-// ===============================
-// Products Routes Starts
-// ===============================
+// Products routes
+Route::prefix('products')->name('products.')->group(function () {
+    Route::get('/', [FrontendProductController::class, 'index'])->name('index');
+    Route::get('/new-arrivals', [FrontendProductController::class, 'newArrivals'])->name('new-arrivals');
+    Route::get('/best-sellers', [FrontendProductController::class, 'bestSellers'])->name('best-sellers');
+    Route::get('/sale', [FrontendProductController::class, 'sale'])->name('sale');
+    Route::get('/{slug}', [FrontendProductController::class, 'show'])->name('show');
+});
 
-Route::get('/products', [FrontendProductController::class, 'index'])->name('products.index');
-Route::get('/products/{slug}', [FrontendProductController::class, 'show'])->name('products.show');
-Route::get('/products/featured', [FrontendProductController::class, 'featured'])->name('products.featured');
 
-// ===============================
-// Products Routes Ends
-// ===============================
-
-// ===============================
-// Category Routes Starts
-// ===============================
-
+// Categories Routes
 Route::get('/categories', [FrontendCategoryController::class, 'index'])->name('categories.index');
 Route::get('/categories/{slug}', [FrontendCategoryController::class, 'show'])->name('categories.show');
 
-// ===============================
-// Category Routes Ends
-// ===============================
 
-// ===============================
-// Brand Routes Starts
-// ===============================
-
+// Brand Routes
 Route::get('/brands', [FrontendBrandController::class, 'index'])->name('brands.index');
 Route::get('/brands/{slug}', [FrontendBrandController::class, 'show'])->name('brands.show');
 
-// ===============================
-// Brand Routes Ends
-// ===============================
 
 // Collection Routes
 Route::get('/collections', [FrontendCollectionController::class, 'index'])->name('collections.index');

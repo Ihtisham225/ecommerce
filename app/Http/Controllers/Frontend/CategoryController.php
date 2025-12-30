@@ -28,7 +28,7 @@ class CategoryController extends Controller
             $locale = App::currentLocale();
             
             $categories = $categories->filter(function ($category) use ($search, $locale) {
-                $name = $category->getLocalizedName($locale);
+                $name = $category->localized_name;
                 return stripos($name, $search) !== false;
             });
         }
@@ -43,11 +43,11 @@ class CategoryController extends Controller
             switch ($sort) {
                 case 'name_desc':
                 case 'name_asc':
-                    return strtolower($category->getLocalizedName($locale));
+                    return strtolower($category->localized_name);
                 case 'products_count':
                     return $category->products_count;
                 default:
-                    return strtolower($category->getLocalizedName($locale));
+                    return strtolower($category->localized_name);
             }
         }, SORT_REGULAR, $isDescending);
 
@@ -72,11 +72,9 @@ class CategoryController extends Controller
      */
     public function show(Request $request, $slug)
     {
-        $category = Category::where('slug', $slug)->first();
-        // Ensure category is active
-        if (!$category->is_active) {
-            abort(404);
-        }
+        $category = Category::where('slug', $slug)
+            ->where('is_active', true)
+            ->firstOrFail();
 
         // 🔹 Load all published products in this category
         $productsQuery = $category->products()

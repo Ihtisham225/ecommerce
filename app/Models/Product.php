@@ -270,6 +270,23 @@ class Product extends Model
         return true;
     }
 
+    // Add this scope to your Product model:
+    public function scopeOnSale($query)
+    {
+        return $query->whereNotNull('compare_at_price')
+                    ->where('compare_at_price', '>', 0)
+                    ->whereColumn('compare_at_price', '>', 'price');
+    }
+
+    // Also add a helper method to calculate discount percentage:
+    public function getDiscountPercentageAttribute()
+    {
+        if ($this->compare_at_price && $this->compare_at_price > $this->price) {
+            return round((($this->compare_at_price - $this->price) / $this->compare_at_price) * 100);
+        }
+        
+        return 0;
+    }
 
     public function deleteCompletely()
     {

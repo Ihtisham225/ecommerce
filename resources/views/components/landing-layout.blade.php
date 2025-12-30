@@ -51,8 +51,6 @@
         
         {{ $slot }}
 
-        <x-landing-social-sidebar/>
-
         <!-- GLightbox JS-->
         <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
+use App\Models\StoreSetting;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -12,29 +13,24 @@ class CartController extends Controller
     {
         $summary = Cart::getCartSummary();
         
-        // Get currency information from cart items
-        $baseCurrency = 'KWD';
-        $currencySymbol = 'K.D';
-        
-        if (!empty($summary['items'])) {
-            // Get all vendor currencies from cart items
-            $vendorCurrencies = [];
-            
-            foreach ($summary['items'] as $item) {
-                if (isset($item['product']) && $item['product']->vendor) {
-                    $vendor = $item['product']->vendor;
-                    $vendorCurrencies[$vendor->id] = $vendor->currency_code ?? 'KWD';
-                }
-            }
-            
-            // If all items are from the same vendor with same currency, use that
-            if (count(array_unique($vendorCurrencies)) === 1) {
-                $baseCurrency = reset($vendorCurrencies);
-            }
-            
-            // Get currency symbol
-            $currencySymbol = $this->getCurrencySymbol($baseCurrency);
-        }
+        // Currency symbols for display
+        $currencySymbols = [
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'PKR' => '₨',
+            'INR' => '₹',
+            'AED' => 'د.إ',
+            'SAR' => '﷼',
+            'CAD' => '$',
+            'AUD' => '$',
+            'KWD' => 'K.D',
+        ];
+
+        // Get store setting
+        $storeSetting = StoreSetting::first();
+        $currencyCode = $storeSetting?->currency_code ?? 'USD';
+        $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
         
         return view('frontend.cart.index', [
             'items' => $summary['items'],
@@ -44,27 +40,9 @@ class CartController extends Controller
             'shipping' => $summary['shipping'],
             'discount' => $summary['discount'],
             'item_count' => $summary['item_count'],
-            'baseCurrency' => $baseCurrency,
+            'baseCurrency' => $currencyCode,
             'currencySymbol' => $currencySymbol
         ]);
-    }
-
-    private function getCurrencySymbol($currencyCode)
-    {
-        $symbols = [
-            'KWD' => 'K.D',
-            'USD' => '$',
-            'EUR' => '€',
-            'GBP' => '£',
-            'AED' => 'د.إ',
-            'SAR' => '﷼',
-            'PKR' => '₨',
-            'INR' => '₹',
-            'CAD' => '$',
-            'AUD' => '$',
-        ];
-        
-        return $symbols[$currencyCode] ?? $currencyCode;
     }
 
     public function add(Request $request)

@@ -8,7 +8,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\Cart;
-use App\Models\Vendor;
+use App\Models\StoreSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -20,73 +20,60 @@ class CheckoutController extends Controller
     public function index()
     {
         $cart = Cart::getCart();
-        
+
         if (empty($cart->items)) {
             return redirect()->route('cart.index')->with('error', 'Your cart is empty');
         }
 
-        $items = $cart->items;
-        $total = $cart->total;
-        $subtotal = $cart->subtotal;
-        $tax = $cart->tax;
-        $shipping = $cart->shipping;
+        $storeSetting = StoreSetting::first();
 
-        // Get all vendors from cart items
-        $vendorCurrencies = [];
-        $vendorSymbols = [];
-        
-        foreach ($items as $item) {
-            if ($item['product']->vendor) {
-                $vendor = $item['product']->vendor;
-                $vendorCurrencies[$vendor->id] = $vendor->currency_code ?? 'KWD';
-            }
-        }
-        
-        // If all items are from the same vendor, use that vendor's currency
-        // Otherwise, use KWD as default
-        $baseCurrency = count(array_unique($vendorCurrencies)) === 1 
-            ? reset($vendorCurrencies) 
-            : 'KWD';
-            
-        // Get currency symbol for display
+        $shippingMethods = $storeSetting?->shipping_methods ?? [];
+        $paymentMethods  = $storeSetting?->payment_methods ?? [];
+
+        // Defaults
+        $defaultShippingMethod = collect($shippingMethods)
+            ->firstWhere('code', 'free') ?? null;
+
+        $defaultPaymentMethod = collect($paymentMethods)
+            ->firstWhere('code', 'cod') ?? null;
+
+        $baseCurrency = $storeSetting?->currency_code ?? 'KWD';
         $currencySymbol = $this->getCurrencySymbol($baseCurrency);
-        
-        // Format prices with correct decimals
         $decimals = $baseCurrency === 'KWD' ? 3 : 2;
 
-        // Get addresses if user is logged in
-        $addresses = Auth::check() && Auth::user()->customer ? Auth::user()->customer->addresses : collect();
-
-        return view('frontend.checkout.index', compact(
-            'items', 'total', 'subtotal', 'tax', 'shipping', 
-            'addresses', 'baseCurrency', 'currencySymbol', 'decimals'
-        ));
+        return view('frontend.checkout.index', [
+            'items' => $cart->items,
+            'total' => $cart->total,
+            'subtotal' => $cart->subtotal,
+            'tax' => $cart->tax,
+            'shipping' => $cart->shipping,
+            'shippingMethods' => $shippingMethods,
+            'paymentMethods' => $paymentMethods,
+            'defaultShippingMethod' => $defaultShippingMethod,
+            'defaultPaymentMethod' => $defaultPaymentMethod,
+            'baseCurrency' => $baseCurrency,
+            'currencySymbol' => $currencySymbol,
+            'decimals' => $decimals,
+        ]);
     }
 
-    // Simple currency symbol helper
-    private function getCurrencySymbol($currencyCode)
+
+    public function getCurrencySymbol(string $currencyCode): string
     {
-        $symbols = [
-            'KWD' => 'K.D',
+        $currencySymbols = [
             'USD' => '$',
             'EUR' => '€',
             'GBP' => '£',
-            'AED' => 'د.إ',
-            'SAR' => '﷼',
             'PKR' => '₨',
             'INR' => '₹',
+            'AED' => 'د.إ',
+            'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
+            'KWD' => 'K.D',
         ];
-        
-        return $symbols[$currencyCode] ?? $currencyCode;
-    }
-    
-    // Simple currency formatting
-    private function formatCurrency($amount, $currencyCode)
-    {
-        $decimals = $currencyCode === 'KWD' ? 3 : 2;
-        return number_format($amount, $decimals);
+
+        return $currencySymbols[$currencyCode] ?? $currencyCode;
     }
 
     public function directPurchase(Request $request)
@@ -120,6 +107,16 @@ class CheckoutController extends Controller
 
     public function process(Request $request)
     {
+        $storeSetting = StoreSetting::first();
+
+        $shippingCodes = collect($storeSetting?->shipping_methods ?? [])
+            ->pluck('code')
+            ->implode(',');
+
+        $paymentCodes = collect($storeSetting?->payment_methods ?? [])
+            ->pluck('code')
+            ->implode(',');
+            
         // Validate all required fields
         $validated = $request->validate([
             // Customer information
@@ -140,11 +137,8 @@ class CheckoutController extends Controller
             'billing_address_line1' => 'nullable|string|max:255',
             'billing_address_line2' => 'nullable|string|max:255',
             
-            // Shipping method
-            'shipping_method' => 'required|in:standard,express,pickup',
-            
-            // Payment method
-            'payment_method' => 'required|in:cod,card,wallet',
+            'shipping_method' => 'required|in:' . $shippingCodes,
+            'payment_method'  => 'required|in:' . $paymentCodes,
             
             // Order notes
             'notes' => 'nullable|string',
@@ -162,23 +156,9 @@ class CheckoutController extends Controller
                 return redirect()->route('cart.index')->with('error', 'Your cart is empty');
             }
 
-            // Determine base currency from vendors in cart
-            $baseCurrency = 'KWD';
-            $vendorIds = [];
-            $vendorCurrencies = [];
-            
-            foreach ($cart->items as $item) {
-                if ($item['product']->vendor) {
-                    $vendor = $item['product']->vendor;
-                    $vendorIds[$vendor->id] = $vendor;
-                    $vendorCurrencies[$vendor->id] = $vendor->currency_code ?? 'KWD';
-                    
-                    // If all items are from same vendor with same currency, use it
-                    if (count(array_unique($vendorCurrencies)) === 1) {
-                        $baseCurrency = reset($vendorCurrencies);
-                    }
-                }
-            }
+            // Get store setting
+            $storeSetting = StoreSetting::first();
+            $currencyCode = $storeSetting?->currency_code ?? 'KWD';
 
             // Find or create customer
             $customer = $this->findOrCreateCustomer($validated);
@@ -194,10 +174,10 @@ class CheckoutController extends Controller
             }
 
             // Create order
-            $order = $this->createOrder($validated, $cart, $customer, $baseCurrency, $vendorIds);
+            $order = $this->createOrder($validated, $cart, $customer, $currencyCode);
 
             // Add order items
-            $this->addOrderItems($order, $cart->items, $baseCurrency);
+            $this->addOrderItems($order, $cart->items, $currencyCode);
 
             // Create addresses
             $this->createOrderAddresses($order, $validated);
@@ -351,14 +331,10 @@ class CheckoutController extends Controller
         }
     }
 
-    private function createOrder(array $data, $cart, Customer $customer, string $baseCurrency, array $vendorIds): Order
+    private function createOrder(array $data, $cart, Customer $customer, string $baseCurrency): Order
     {
         // Generate order number
         $orderNumber = 'ORD-' . date('Ymd') . '-' . Str::upper(Str::random(6));
-
-        // Determine if this is a multi-vendor order
-        $vendorCount = count($vendorIds);
-        $isMultiVendor = $vendorCount > 1;
 
         // Calculate totals
         $grandTotal = 0;
@@ -366,13 +342,15 @@ class CheckoutController extends Controller
             $grandTotal += $item['quantity'] * $item['product']->price;
         }
 
-        // Add shipping and tax
-        $shippingCost = $data['shipping_method'] === 'express' ? 
-            ($baseCurrency === 'KWD' ? 5.000 : 5.00) : 
-            ($data['shipping_method'] === 'pickup' ? 0 : 
-            ($baseCurrency === 'KWD' ? 2.000 : 2.00));
+        $shippingMethods = $storeSetting?->shipping_methods ?? [];
+
+        $selectedShipping = collect($shippingMethods)
+            ->firstWhere('code', $data['shipping_method']);
             
-        $taxRate = 0.05; // 5%
+        // Add shipping and tax
+        $shippingCost = $selectedShipping['price'] ?? 0;
+            
+        $taxRate = 0.00; // 5%
         $taxAmount = $grandTotal * $taxRate;
         $finalTotal = $grandTotal + $shippingCost + $taxAmount;
 
@@ -396,7 +374,6 @@ class CheckoutController extends Controller
             'shipping_method' => $data['shipping_method'],
             'notes' => $data['notes'] ?? null,
             'source' => 'online',
-            'vendor_id' => $vendorCount === 1 ? reset($vendorIds)->id : null,
             'currency_code' => $baseCurrency, // Add currency code to order
             'currency_symbol' => $this->getCurrencySymbol($baseCurrency), // Add symbol to order
             'created_by' => Auth::id(),
@@ -414,11 +391,12 @@ class CheckoutController extends Controller
             $productTitle = $item['product']->translate('title') ?? $item['product']->title;
             
             // Get vendor currency for this item
-            $itemCurrency = $item['product']->vendor->currency_code ?? 'KWD';
+            $storeSetting = StoreSetting::first();
+            $itemCurrency = $storeSetting?->currency_code ?? 'KWD';
             $itemSymbol = $this->getCurrencySymbol($itemCurrency);
             
             $subtotal = $item['quantity'] * $item['product']->price;
-            $taxAmount = $subtotal * 0.05;
+            $taxAmount = $subtotal * 0.00; // 5% tax
             $total = $subtotal + $taxAmount;
             
             $order->items()->create([
@@ -445,13 +423,6 @@ class CheckoutController extends Controller
             'address_line_1' => $data['shipping_address_line1'],
             'address_line_2' => $data['shipping_address_line2'] ?? null,
             'is_default' => true,
-            // Add additional fields if your Address model supports them
-            // 'city' => $data['shipping_city'],
-            // 'state' => $data['shipping_state'],
-            // 'postal_code' => $data['shipping_postal_code'],
-            // 'country' => $data['shipping_country'],
-            // 'phone' => $data['phone'],
-            // 'email' => $data['email'],
         ]);
 
         // Create billing address

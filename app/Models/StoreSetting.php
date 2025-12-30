@@ -15,6 +15,19 @@ class StoreSetting extends Model
         'settings' => 'array',
     ];
 
+    // Default settings structure
+    protected $attributes = [
+        'settings' => '{
+            "shipping_methods": [],
+            "payment_methods": [],
+            "bank_details": {},
+            "store_address": {},
+            "tax_settings": {},
+            "notification_settings": {},
+            "store_hours": {}
+        }',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -28,5 +41,26 @@ class StoreSetting extends Model
     public function getCurrencySymbolAttribute()
     {
         return $this->currency->symbol ?? 'KWD';
+    }
+
+    // Accessor for specific settings
+    public function getShippingMethodsAttribute()
+    {
+        return $this->settings['shipping_methods'] ?? [];
+    }
+
+    public function getPaymentMethodsAttribute()
+    {
+        return $this->settings['payment_methods'] ?? [];
+    }
+
+    public function getBankDetailsAttribute()
+    {
+        return $this->settings['bank_details'] ?? [];
+    }
+
+    public function getStoreAddressAttribute()
+    {
+        return $this->settings['store_address'] ?? [];
     }
 }

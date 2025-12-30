@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] { display: none !important; }
+
+
 .mark {
     background-color: rgb(254 240 138 / 0.5);
 }
