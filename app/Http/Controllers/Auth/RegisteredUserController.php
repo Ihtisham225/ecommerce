@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 class RegisteredUserController extends Controller
 {
     use EmailHelper;
-    
+
     /**
      * Display the registration view.
      */
@@ -71,6 +71,6 @@ class RegisteredUserController extends Controller
         // Auto-login
         Auth::login($user);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('admin.dashboard', absolute: false));
     }
 }

@@ -43,9 +43,8 @@
                         @include('admin.products.partials._pricing', ['product' => $product])
                     </div>
 
-                    {{-- ✅ INVENTORY TOGGLE (outside the component) --}}
-                    {{-- ✅ INVENTORY TOGGLE --}}
-                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                    {{-- ✅ INVENTORY TOGGLE (only shown if no options) --}}
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6" x-show="!hasOptions" x-cloak>
                         <label class="flex items-center gap-3 cursor-pointer group">
                             <div class="relative">
                                 <input type="checkbox" x-model="trackStock" class="sr-only" @input.debounce.1000ms="triggerAutosave()">
@@ -199,12 +198,6 @@
                     this.saving = true;
 
                     try {
-                        const variantComponent = document.querySelector('[x-data^="variantManager"]')?._x_dataStack?.[0];
-
-                        // Always JSON.stringify to send as a string
-                        const variantsJson = JSON.stringify(variantComponent?.variants || []);
-                        const optionsJson = JSON.stringify(variantComponent?.options || []);
-
                         //shipping
                         const shippingEl = document.querySelector('[x-data*="shippingManager"]');
                         const shippingComponent = shippingEl ? Alpine.$data(shippingEl) : null;
@@ -244,9 +237,6 @@
                             // ✅ Inventory
                             track_stock: this.trackStock ? 1 : 0,
                             stock_quantity: this.trackStock ? this.stockQuantity ?? 0 : 0,
-
-                            variants_json: variantsJson, // string
-                            options_json: optionsJson,   // string
 
                             // ✅ Organization Data
                             organizationData,
@@ -335,27 +325,6 @@
                     const categorySelect = document.querySelector('select[name="category_id"]');
                     if (categorySelect && product.categories?.length) {
                         categorySelect.value = product.categories[0].id;
-                    }
-
-                    // ---- Variants ----
-                    const variantComponent = document.querySelector('[x-data^="variantManager"]')?._x_dataStack?.[0];
-                    if (variantComponent && product.variants) {
-                        // Replace variant data entirely with backend-updated versions
-                        variantComponent.variants = product.variants.map(v => ({
-                            id: v.id ?? null,
-                            title: v.title ?? '',
-                            sku: v.sku ?? '',
-                            barcode: v.barcode ?? '',
-                            price: parseFloat(v.price ?? 0),
-                            compare_at_price: parseFloat(v.compare_at_price ?? 0),
-                            cost: parseFloat(v.cost ?? 0),
-                            quantity: parseInt(v.quantity ?? v.stock_quantity ?? 0),
-                            track_quantity: v.track_quantity ?? true,
-                            taxable: v.taxable ?? true,
-                            options: v.options ?? {},
-                            image_id: v.image_id ?? v.image?.id ?? null,
-                            image: v.image ?? null,
-                        }));
                     }
 
                     // ---- SEO ----

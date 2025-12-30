@@ -1,6 +1,7 @@
 <?php
 
 //admin
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\ProductImportController as AdminProductImportController;
 use App\Http\Controllers\Admin\ProductAttributeController as AdminProductAttributeController;
@@ -164,7 +165,12 @@ Route::get('/language/{locale}', function ($locale) {
 | Admin Routes (Protected by auth + roles)
 |--------------------------------------------------------------------------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // -------------------------
+    // ✅ Dashboard
+    // -------------------------
+    Route::get('dashboard', [AdminDashboardController::class,'index'])->name('dashboard');
 
     // -------------------------
     // ✅ Products CRUD
@@ -198,12 +204,19 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
 
 
     // -------------------------
-    // ✅ Product Variants
+    // ✅ Product Variants and Options
     // -------------------------
+    // variants routes
     Route::get('products/{product}/variants', [AdminProductVariantController::class, 'index'])->name('products.variants.index');
     Route::post('products/{product}/variants', [AdminProductVariantController::class, 'store'])->name('products.variants.store');
+    Route::put('products/{product}/variants/batch', [AdminProductVariantController::class, 'updateBatch'])->name('products.variants.batch');
     Route::put('products/{product}/variants/{variant}', [AdminProductVariantController::class, 'update'])->name('products.variants.update');
     Route::delete('products/{product}/variants/{variant}', [AdminProductVariantController::class, 'destroy'])->name('products.variants.destroy');
+
+    // options routes
+    Route::post('products/{product}/options', [AdminProductVariantController::class, 'storeOptions'])->name('products.options.store');
+    Route::put('products/{product}/options/{option}', [AdminProductVariantController::class, 'updateOption'])->name('products.options.update');
+    Route::delete('products/{product}/options', [AdminProductVariantController::class, 'destroyOptions'])->name('products.options.destroy');
 
     // -------------------------
     // ✅ Product Attributes
@@ -361,6 +374,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
     Route::resource('blog-categories', AdminBlogCategoryController::class);
 
     // Blog Comments
+    Route::get('blog-comments', [AdminBlogCommentController::class, 'index'])->name('blog-comments.index');
     Route::post('blog-comments/{comment}/approve', [AdminBlogCommentController::class, 'approve'])->name('blog-comments.approve');
     Route::post('blog-comments/bulk-approve', [AdminBlogCommentController::class, 'bulkApprove'])->name('blog-comments.bulk-approve');
     Route::post('blog-comments/{comment}/destroy', [AdminBlogCommentController::class, 'destroy'])->name('blog-comments.destroy');
@@ -375,7 +389,8 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])->prefix('admin')->na
         Route::resource('users', AdminUserController::class);
     });
 
-    // Contactus
+    // Contact Inquiries
+    Route::get('/contact-inquiries', [AdminContactController::class, 'index'])->name('contact.inquiries');
     Route::delete('/contact-inquiries/{id}', [AdminContactController::class, 'destroy'])->name('contact.inquiries.delete');
     Route::post('/contact-inquiries/{id}/reply', [AdminContactController::class, 'sendReply'])->name('contact.inquiries.reply');
     Route::patch('/contact-inquiries/{id}/status', [AdminContactController::class, 'updateStatus'])->name('contact.inquiries.status');
@@ -423,13 +438,9 @@ Route::middleware(['auth', 'verified', 'role:customer'])->prefix('customer')->na
 
 /*
 |--------------------------------------------------------------------------
-| User Profile & Dashboard
+| User Profile
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', fn () => view('admin.dashboard'))
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -441,6 +452,6 @@ require __DIR__.'/auth.php';
 
 /*
 |--------------------------------------------------------------------------
-| User Profile & Dashboard Ends
+| User Profile Ends
 |--------------------------------------------------------------------------
 */

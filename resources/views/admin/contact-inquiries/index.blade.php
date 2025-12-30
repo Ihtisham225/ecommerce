@@ -67,12 +67,6 @@
         <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-200">{{ __('Contact Inquiries') }}</h3>
-                @role('admin')
-                    <a href="{{ route('admin.emails.inbox') }}"
-                       class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">
-                       {{ __('Email Inbox') }}
-                    </a>
-                @endrole
             </div>
 
             <div class="overflow-x-auto">

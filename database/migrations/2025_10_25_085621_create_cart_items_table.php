@@ -15,7 +15,7 @@ return new class extends Migration
            $table->id();
             $table->foreignId('cart_id')->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('variant_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('variant_id')->nullable()->constrained('product_variants')->onDelete('cascade');
             $table->integer('quantity')->default(1);
             $table->decimal('price', 15, 3);
             $table->json('options')->nullable();

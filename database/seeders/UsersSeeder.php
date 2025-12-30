@@ -27,18 +27,6 @@ class UsersSeeder extends Seeder
         );
         $admin->assignRole('admin');
 
-        // Staff User
-        $staff = User::firstOrCreate(
-            ['email' => 'staff@gmail'],
-            [
-                'name' => 'Staff User',
-                'password' => Hash::make('system@123'),
-                'user_password' => 'system@123',
-                'email_verified_at' => Carbon::now(),
-            ]
-        );
-        $staff->assignRole('staff');
-
         // Customer User
         $customer = User::firstOrCreate(
             ['email' => 'customer@gmail.com'],

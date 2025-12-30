@@ -11,23 +11,23 @@
 
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        @include('admin.global-search.index')
+        {{-- @include('vendor.global-search.index') --}}
         <div class="flex justify-between h-16">
             <div class="flex items-center gap-6">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
+                    <a href="{{ route('admin.dashboard') }}">
                         <x-application-logo class="block h-9 w-auto" />
                     </a>
                 </div>
 
                 <!-- Navigation Links -->
                 <div class="hidden sm:flex items-center gap-6">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
+                    @if(Auth::user()->hasRole('admin'))
+                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
 
-                    @if(Auth::user()->hasRole(['admin','staff']))
                         <!-- Products -->
                         <x-nav-dropdown label="Products">
                             <a href="{{ route('admin.products.index') }}"
@@ -68,44 +68,32 @@
                             </a>
                         </x-nav-dropdown>
 
+                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                            {{ __('Users') }}
+                        </x-nav-link>
+
                         <x-nav-link :href="route('admin.blogs.index')" :active="request()->routeIs('admin.blogs.*')">
                             {{ __('Blogs') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.countries.index')" :active="request()->routeIs('admin.countries.*')">
-                            {{ __('Countries') }}
+
+                        <x-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.*')">
+                            {{ __('Contact Inquries') }}
                         </x-nav-link>
+
                         <x-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                             {{ __('Documents') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.inquiries.*')">
-                            {{ __('Inquiries') }}
-                        </x-nav-link>
                     @elseif(Auth::user()->hasRole('customer'))
-                        @php
-                            $hasCompanyRegistration = \App\Models\CompanyRegistration::where('email', Auth::user()->email)->exists();
-                            $registrationsRoute = $hasCompanyRegistration
-                                ? route('admin.company-registrations.index')
-                                : route('admin.course-registrations.index');
-                            $isActive = $hasCompanyRegistration
-                                ? request()->routeIs('admin.company-registrations.*')
-                                : request()->routeIs('admin.course-registrations.*');
-                        @endphp
-
-                        <x-nav-link :href="$registrationsRoute" :active="$isActive">
-                            {{ __('Registrations') }}
+                        <x-nav-link :href="route('customer.dashboard')" :active="request()->routeIs('customer.dashboard')">
+                            {{ __('Dashboard') }}
                         </x-nav-link>
 
-                        <x-nav-link :href="route('admin.course-evaluations.index')" :active="request()->routeIs('admin.course-evaluations.*')">
-                            {{ __('Evaluations') }}
+                        <x-nav-link :href="route('customer.orders.index')" :active="request()->routeIs('customer.orders.*')">
+                            {{ __('Orders') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.certificates.index')" :active="request()->routeIs('admin.certificates.*')">
-                            {{ __('Certificates') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('admin.blog-comments.index')" :active="request()->routeIs('admin.blog-comments.*')">
-                            {{ __('Comments') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.inquiries.*')">
-                            {{ __('Inquiries') }}
+
+                        <x-nav-link :href="route('customer.contact.inquiries')" :active="request()->routeIs('customer.contact.*')">
+                            {{ __('Contact Inquries') }}
                         </x-nav-link>
                     @endif
                 </div>
@@ -185,11 +173,11 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-
-            @if(Auth::user()->hasRole(['admin','staff']))
+            @if(Auth::user()->hasRole('admin'))
+                <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+                
                 <!-- Responsive Products Dropdown -->
                 <div x-data="{ open: false }">
                     <button @click="open = !open"
@@ -255,46 +243,31 @@
                     </div>
                 </div>
 
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                    {{ __('Users') }}
+                </x-responsive-nav-link>
+
                 <x-responsive-nav-link :href="route('admin.blogs.index')" :active="request()->routeIs('admin.blogs.*')">
                     {{ __('Blogs') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.countries.index')" :active="request()->routeIs('admin.countries.*')">
-                    {{ __('Countries') }}
+
+                <x-responsive-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.*')">
+                    {{ __('Contact Inquries') }}
                 </x-responsive-nav-link>
+
                 <x-responsive-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                     {{ __('Documents') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.inquiries.*')">
-                    {{ __('Inquiries') }}
-                </x-responsive-nav-link>
+
             @elseif(Auth::user()->hasRole('customer'))
-                @php
-                    $hasCompanyRegistration = \App\Models\CompanyRegistration::where('email', Auth::user()->email)->exists();
-                    $registrationsRoute = $hasCompanyRegistration
-                        ? route('admin.company-registrations.index')
-                        : route('admin.course-registrations.index');
-                    $isActive = $hasCompanyRegistration
-                        ? request()->routeIs('admin.company-registrations.*')
-                        : request()->routeIs('admin.course-registrations.*');
-                @endphp
-
-                <x-responsive-nav-link :href="$registrationsRoute" :active="$isActive">
-                    {{ __('Registrations') }}
+                <x-responsive-nav-link :href="route('customer.dashboard')" :active="request()->routeIs('customer.dashboard')">
+                    {{ __('Dashboard') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('admin.course-evaluations.index')" :active="request()->routeIs('admin.course-evaluations.*')">
-                    {{ __('Evaluations') }}
+                <x-responsive-nav-link :href="route('customer.orders.index')" :active="request()->routeIs('customer.orders.index')">
+                    {{ __('Orders') }}
                 </x-responsive-nav-link>
-
-                <x-responsive-nav-link :href="route('admin.certificates.index')" :active="request()->routeIs('admin.certificates.*')">
-                    {{ __('Certificates') }}
-                </x-responsive-nav-link>
-
-                <x-responsive-nav-link :href="route('admin.blog-comments.index')" :active="request()->routeIs('admin.blog-comments.*')">
-                    {{ __('Comments') }}
-                </x-responsive-nav-link>
-
-                <x-responsive-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.inquiries.*')">
+                <x-responsive-nav-link :href="route('customer.contact.inquiries')" :active="request()->routeIs('customer.contact.inquiries.*')">
                     {{ __('Inquiries') }}
                 </x-responsive-nav-link>
             @endif

@@ -33,7 +33,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('admin.dashboard', absolute: false));
     }
 
     public function requestOtp(Request $request)
@@ -78,11 +78,11 @@ class AuthenticatedSessionController extends Controller
     {
         $request->validate(['email' => 'required|email', 'otp' => 'required']);
 
-        $cachedOtp = cache()->get('otp_'.$request->email);
+        $cachedOtp = cache()->get('otp_' . $request->email);
         if ($cachedOtp && $cachedOtp == $request->otp) {
             $user = User::where('email', $request->email)->first();
             Auth::login($user, true);
-            cache()->forget('otp_'.$request->email);
+            cache()->forget('otp_' . $request->email);
             return redirect()->intended('/dashboard');
         }
 
