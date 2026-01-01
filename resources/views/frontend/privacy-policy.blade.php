@@ -1,6 +1,6 @@
 <x-landing-layout>
-    <x-landing-navbar/>
-    
+    <x-landing-navbar />
+
     <main class="flex-1">
         <!-- About Institute -->
         <div id="about-institute" class="py-16 bg-white dark:bg-gray-800">
@@ -8,9 +8,9 @@
                 <div class="flex flex-col md:flex-row items-center">
                     <div class="md:w-1/2 mb-10 md:mb-0">
                         <div class="h-96 rounded-lg overflow-hidden">
-                            <img src="https://infotechq8.com/storage/documents/lyfTjy1mArNCSCR9S7dNtFONGDxTmUuUOXUrhB4G.jpg" 
-                                alt="IT Section Image" 
-                                class="w-full h-full object-cover">
+                            <img src="https://infotechq8.com/storage/documents/lyfTjy1mArNCSCR9S7dNtFONGDxTmUuUOXUrhB4G.jpg"
+                                alt="IT Section Image"
+                                class="w-full h-full object-contain">
                         </div>
                     </div>
 
@@ -25,7 +25,7 @@
                         <div class="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-lg mb-6">
                             <h3 class="text-xl font-semibold text-indigo-900 dark:text-indigo-400 mb-3">{{ __("Quality Certification") }}</h3>
                             <p class="text-gray-600 dark:text-gray-400">
-                               {{ __("Due to the institute's ability to achieve quality performance and the diversity of its training outputs, the institute has obtained the ISO 9001-2015 quality certificate.") }}
+                                {{ __("Due to the institute's ability to achieve quality performance and the diversity of its training outputs, the institute has obtained the ISO 9001-2015 quality certificate.") }}
                             </p>
                         </div>
                     </div>
@@ -37,7 +37,7 @@
         <div id="certifications" class="py-16 bg-gray-100 dark:bg-gray-900">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">{{ __("Certifications & Accreditations") }}</h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
                     <!-- Local Accreditations -->
                     <div>
@@ -71,7 +71,7 @@
                             </ul>
                         </div>
                     </div>
-                    
+
                     <!-- International Accreditations -->
                     <div>
                         <h3 class="text-2xl font-semibold text-gray-800 dark:text-white mb-8 text-center">{{ __("International Accreditations") }}</h3>
@@ -124,7 +124,7 @@
         <div id="our-clients" class="py-16 bg-white dark:bg-gray-800">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">{{ __("Our Clients") }}</h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
                     <!-- Public Sector -->
                     <div>
@@ -158,7 +158,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Private Sector -->
                     <div>
                         <h3 class="text-2xl font-semibold text-gray-800 dark:text-white mb-8 text-center">{{ __("Private Sector") }}</h3>
@@ -199,7 +199,7 @@
         <div id="training-areas" class="py-16 bg-gray-100 dark:bg-gray-900">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">{{ __("Training Areas 2024-2025") }}</h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <!-- Environment -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
@@ -236,7 +236,7 @@
                             </li>
                         </ul>
                     </div>
-                    
+
                     <!-- Energy -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
                         <div class="h-12 w-12 bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 rounded-full flex items-center justify-center mb-4">
@@ -272,7 +272,7 @@
                             </li>
                         </ul>
                     </div>
-                    
+
                     <!-- Accounting & Finance -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
                         <div class="h-12 w-12 bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 rounded-full flex items-center justify-center mb-4">
@@ -308,10 +308,10 @@
                             </li>
                         </ul>
                     </div>
-                    
+
                     <!-- Additional training areas would continue here -->
                 </div>
-                
+
                 <div class="text-center mt-12">
                     <a href="#" class="inline-block px-6 py-3 bg-indigo-900 text-white rounded-lg hover:bg-indigo-800 transition-colors font-semibold">
                         {{ __("View All Training Areas") }}
@@ -344,9 +344,9 @@
                         <div class="swiper-slide flex items-center justify-center">
                             <div class="group bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition-all duration-500 flex flex-col items-center justify-center p-6 w-56 h-40 border border-gray-100 dark:border-gray-800 hover:border-primary/30 dark:hover:border-blue-700" data-aos="zoom-in" data-aos-delay="200">
                                 @if($sponsor->sponsorLogo)
-                                    <img src="{{ asset('storage/' . $sponsor->sponsorLogo->file_path) }}" 
-                                        alt="{{ $sponsor->name }}"
-                                        class="max-h-20 mb-3 object-contain transition-transform group-hover:scale-110 duration-500 grayscale group-hover:grayscale-0">
+                                <img src="{{ asset('storage/' . $sponsor->sponsorLogo->file_path) }}"
+                                    alt="{{ $sponsor->name }}"
+                                    class="max-h-20 mb-3 object-contain transition-transform group-hover:scale-110 duration-500 grayscale group-hover:grayscale-0">
                                 @endif
 
                                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300 text-center group-hover:text-primary dark:group-hover:text-blue-400 transition-colors">
@@ -381,6 +381,6 @@
             </div>
         </div>
     </main>
-    
+
     <x-landing-footer />
 </x-landing-layout>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
+use Illuminate\Support\Facades\Log;
 use App\Models\StoreSetting;
 use Illuminate\Http\Request;
 
@@ -50,24 +51,60 @@ class CartController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
-            'variant_id' => 'nullable|exists:product_variants,id'
+            'variant_id' => 'nullable|exists:product_variants,id',
+            'options' => 'nullable'
         ]);
 
         try {
+            // Handle options parameter
+            $options = [];
+            
+            if ($request->has('options')) {
+                $optionsInput = $request->options;
+                
+                // If options is a JSON string, decode it
+                if (is_string($optionsInput)) {
+                    $decodedOptions = json_decode($optionsInput, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $options = $decodedOptions;
+                    }
+                } 
+                // If options is already an array, use it directly
+                elseif (is_array($optionsInput)) {
+                    $options = $optionsInput;
+                }
+                
+                // Ensure options is always an array
+                if (!is_array($options)) {
+                    $options = [];
+                }
+            }
+
+            // Add item to cart
             $cart = Cart::addItem(
                 $request->product_id,
                 $request->quantity,
                 $request->variant_id,
-                $request->options ?? []
+                $options
             );
+
+            // Get cart summary for response
+            $summary = Cart::getCartSummary();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product added to cart',
                 'cart_count' => Cart::totalQuantity(),
-                'cart_total' => $cart->grand_total ?? $cart->total ?? 0
+                'cart_total' => Cart::totalAmount(),
+                'cart_items' => $summary['items'] // Use the items from summary
             ]);
+            
         } catch (\Exception $e) {
+            Log::error('Cart add error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()

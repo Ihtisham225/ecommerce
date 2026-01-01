@@ -45,11 +45,12 @@
                 <div data-aos="fade-right">
                     <!-- Main Image -->
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden mb-6">
-                        <div class="relative h-96">
+                        <div class="relative h-96 flex items-center justify-center">
                             @if($product->mainImage)
                                 <img src="{{ asset('storage/' . $product->mainImage->first()->file_path) }}" 
                                      alt="{{ $product->translate('title') }}"
-                                     class="w-full h-full object-cover" id="mainImage">
+                                     class="max-w-full max-h-full object-contain" 
+                                     id="mainImage">
                             @else
                                 <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800">
                                     <svg class="w-24 h-24 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,27 +84,39 @@
                     </div>
 
                     <!-- Thumbnails -->
-                    @if($product->galleryImages->count() > 0)
-                    <div class="flex space-x-3 overflow-x-auto pb-2 thumbnails">
+                    <div class="flex space-x-3 overflow-x-auto pb-2 thumbnails" id="productThumbnails">
+                        @if($product->mainImage)
                         <button onclick="changeImage('{{ asset('storage/' . $product->mainImage->first()->file_path) }}')"
-                                class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-rose-500">
+                                class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-rose-500 thumbnail-btn active-thumbnail"
+                                data-image-src="{{ asset('storage/' . $product->mainImage->first()->file_path) }}">
                             <img src="{{ asset('storage/' . $product->mainImage->first()->file_path) }}" 
                                  alt="{{ $product->translate('title') }}"
-                                 class="w-full h-full object-cover">
+                                 class="w-full h-full object-contain">
                         </button>
+                        @endif
                         @foreach($product->galleryImages as $image)
                         <button onclick="changeImage('{{ asset('storage/' . $image->file_path) }}')"
-                                class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-rose-500 transition-colors">
+                                class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-rose-500 transition-colors thumbnail-btn"
+                                data-image-src="{{ asset('storage/' . $image->file_path) }}">
                             <img src="{{ asset('storage/' . $image->file_path) }}" 
                                  alt="{{ $product->translate('title') }}"
-                                 class="w-full h-full object-cover">
+                                 class="w-full h-full object-contain">
                         </button>
                         @endforeach
                     </div>
-                    @endif
+                    
+                    <!-- Description Section -->
+                    <div class="mt-8" data-aos="fade-up">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ __("Description") }}</h3>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <div class="text-gray-600 dark:text-gray-400 leading-relaxed prose dark:prose-invert max-w-none">
+                                {!! $product->translate('description') !!}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Product Details -->
+                <!-- Product Actions -->
                 <div data-aos="fade-left">
                     <!-- Brand -->
                     @if($product->brand)
@@ -134,55 +147,144 @@
                     <!-- Price -->
                     <div class="mb-8">
                         <div class="flex items-center gap-4">
-                            <span class="text-4xl font-bold text-gray-900 dark:text-white">
-                                {{ $currencySymbol }}{{ number_format($product->price, $productDecimals) }}
+                            <span class="text-4xl font-bold text-gray-900 dark:text-white" id="productPrice">
+                                @if($product->variants->count() > 0 && $product->variants->first())
+                                    {{ $currencySymbol }}{{ number_format($product->variants->first()->price, $productDecimals) }}
+                                @else
+                                    {{ $currencySymbol }}{{ number_format($product->price, $productDecimals) }}
+                                @endif
                             </span>
-                            @if($product->compare_price && $product->compare_price > $product->price)
-                                <span class="text-2xl text-gray-500 line-through">
+                            
+                            @if($product->variants->count() > 0)
+                                @php
+                                    $firstVariant = $product->variants->first();
+                                    $hasComparePrice = $firstVariant && $firstVariant->compare_at_price && $firstVariant->compare_at_price > $firstVariant->price;
+                                @endphp
+                                
+                                @if($hasComparePrice)
+                                    <span class="text-2xl text-gray-500 line-through" id="productComparePrice">
+                                        {{ $currencySymbol }}{{ number_format($firstVariant->compare_at_price, $productDecimals) }}
+                                    </span>
+                                    <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg" id="productDiscount">
+                                        {{ round((($firstVariant->compare_at_price - $firstVariant->price) / $firstVariant->compare_at_price) * 100) }}% OFF
+                                    </span>
+                                @else
+                                    <span class="text-2xl text-gray-500 line-through hidden" id="productComparePrice"></span>
+                                    <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hidden" id="productDiscount"></span>
+                                @endif
+                            @elseif($product->compare_price && $product->compare_price > $product->price)
+                                <span class="text-2xl text-gray-500 line-through" id="productComparePrice">
                                     {{ $currencySymbol }}{{ number_format($product->compare_price, $productDecimals) }}
                                 </span>
-                                <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg">
+                                <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg" id="productDiscount">
                                     {{ round((($product->compare_price - $product->price) / $product->compare_price) * 100) }}% OFF
                                 </span>
                             @endif
                         </div>
-                        @if($product->stock_quantity > 0)
-                            <p class="text-sm text-green-600 dark:text-green-400 mt-2">
+                        <p class="text-sm text-green-600 dark:text-green-400 mt-2" id="productStock">
+                            @if($product->variants->count() > 0 && $product->variants->first())
+                                @if($product->variants->first()->stock_quantity > 0)
+                                    {{ __("Only") }} {{ $product->variants->first()->stock_quantity }} {{ __("items left") }}
+                                @endif
+                            @elseif($product->stock_quantity > 0)
                                 {{ __("Only") }} {{ $product->stock_quantity }} {{ __("items left") }}
-                            </p>
-                        @endif
+                            @endif
+                        </p>
                     </div>
 
-                    <!-- Description -->
-                    <div class="mb-8">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{{ __("Description") }}</h3>
-                        <div class="text-gray-600 dark:text-gray-400 leading-relaxed prose dark:prose-invert max-w-none">
-                            {!! $product->translate('description') !!}
-                        </div>
-                    </div>
-
-                    <!-- Variants -->
-                    @if($product->options->count() > 0)
-                    <div class="mb-8">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{{ __("Options") }}</h3>
-                        <div class="space-y-4">
-                            @foreach($product->options as $option)
-                            <div>
+                    <!-- Variants - Simple UI/UX -->
+                    @if($product->variants->count() > 0)
+                        @php
+                            $firstVariant = $product->variants->first();
+                            $firstVariantId = $firstVariant ? $firstVariant->id : null;
+                            
+                            // Prepare variant data with image information
+                            $variantsWithImages = [];
+                            foreach($product->variants as $variant) {
+                                $variantData = [
+                                    'id' => $variant->id,
+                                    'sku' => $variant->sku,
+                                    'price' => $variant->price,
+                                    'compare_at_price' => $variant->compare_at_price,
+                                    'stock_quantity' => $variant->stock_quantity,
+                                    'options' => $variant->options,
+                                ];
+                                
+                                // Add variant-specific image if exists
+                                if ($variant->image) {
+                                    $variantData['image'] = asset('storage/' . $variant->image->file_path);
+                                }
+                                
+                                $variantsWithImages[] = $variantData;
+                            }
+                        @endphp
+                        
+                        @if($firstVariantId)
+                        <div class="mb-8" id="variantSelector" 
+                             data-variants='@json($variantsWithImages)' 
+                             data-currency='{{ $currencySymbol }}' 
+                             data-decimals='{{ $productDecimals }}'
+                             data-main-image='{{ $product->mainImage ? asset('storage/' . $product->mainImage->first()->file_path) : "" }}'>
+                            
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{{ __("Available Options") }}</h3>
+                            
+                            @foreach($variantGroups as $optionName => $optionValues)
+                            <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    {{ $option->name }}
+                                    {{ $optionName }}
                                 </label>
                                 <div class="flex flex-wrap gap-2">
-                                    @foreach($option->values as $value)
-                                    <button type="button"
-                                            class="px-4 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-rose-500 dark:hover:border-rose-500 text-gray-700 dark:text-gray-300 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-300">
-                                        {{ $value->value }}
-                                    </button>
+                                    @foreach($optionValues as $optionValue => $variantId)
+                                        @php
+                                            $variant = $product->variants->firstWhere('id', $variantId);
+                                        @endphp
+                                        @if($variant)
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                name="variant_{{ Str::slug($optionName) }}" 
+                                                value="{{ $variant->id }}"
+                                                class="sr-only peer variant-radio"
+                                                data-variant-id="{{ $variant->id }}"
+                                                @if($loop->first) checked @endif>
+                                            <div class="px-4 py-2 rounded-lg border-2 peer-checked:border-rose-500 peer-checked:bg-rose-50 dark:peer-checked:bg-rose-900/20 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-rose-500 dark:hover:border-rose-500 transition-all duration-300">
+                                                {{ $optionValue }}
+                                                @if($variant->stock_quantity <= 0)
+                                                    <span class="text-xs text-red-500 ml-1">({{ __("Out of Stock") }})</span>
+                                                @endif
+                                            </div>
+                                        </label>
+                                        @endif
                                     @endforeach
                                 </div>
                             </div>
                             @endforeach
+                            
+                            <!-- Add a hidden input for variant_id -->
+                            <input type="hidden" id="variantIdInput" name="variant_id" value="{{ $firstVariantId }}">
+                            
+                            <!-- Selected Variant Info -->
+                            <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg" id="selectedVariantInfo">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ __("SKU") }}</span>
+                                        <p class="font-medium text-gray-900 dark:text-white" id="variantSKU">
+                                            {{ $firstVariant->sku ?? $product->sku }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ __("Stock") }}</span>
+                                        <p class="font-medium text-gray-900 dark:text-white" id="variantStock">
+                                            @if($firstVariant && $firstVariant->stock_quantity > 0)
+                                                {{ __("In Stock") }} ({{ $firstVariant->stock_quantity }})
+                                            @else
+                                                {{ __("Out of Stock") }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                        @endif
                     @endif
 
                     <!-- Quantity & Add to Cart -->
@@ -201,7 +303,7 @@
                                     id="quantity" 
                                     value="1" 
                                     min="1" 
-                                    max="{{ $product->stock_quantity }}"
+                                    max="{{ $product->variants->count() > 0 ? ($product->variants->first()->stock_quantity ?? 0) : $product->stock_quantity }}"
                                     class="w-16 h-12 text-center bg-transparent text-gray-900 dark:text-white focus:outline-none">
                                 <button type="button" 
                                         class="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400"
@@ -251,10 +353,10 @@
                     <div class="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-6">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __("Product Details") }}</h3>
                         <div class="grid grid-cols-2 gap-4">
-                            @if($product->sku)
+                            @if($product->collections->count() > 0)
                             <div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ __("SKU") }}</span>
-                                <p class="font-medium text-gray-900 dark:text-white">{{ $product->sku }}</p>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ __("Collection") }}</span>
+                                <p class="font-medium text-gray-900 dark:text-white">{{ $product->collections->pluck('title')->implode(', ') }}</p>
                             </div>
                             @endif
                             @if($product->categories->count() > 0)
@@ -265,16 +367,16 @@
                                 </p>
                             </div>
                             @endif
-                            @if($product->weight)
+                            @if($product->shipping->weight)
                             <div>
                                 <span class="text-sm text-gray-600 dark:text-gray-400">{{ __("Weight") }}</span>
-                                <p class="font-medium text-gray-900 dark:text-white">{{ $product->weight }} kg</p>
+                                <p class="font-medium text-gray-900 dark:text-white">{{ $product->shipping->weight }} kg</p>
                             </div>
                             @endif
-                            @if($product->dimensions)
+                            @if($product->shipping->height && $product->shipping->width && $product->shipping->length)
                             <div>
                                 <span class="text-sm text-gray-600 dark:text-gray-400">{{ __("Dimensions") }}</span>
-                                <p class="font-medium text-gray-900 dark:text-white">{{ $product->dimensions }}</p>
+                                <p class="font-medium text-gray-900 dark:text-white">{{ $product->shipping->height }} x {{ $product->shipping->width }} x {{ $product->shipping->length }}</p>
                             </div>
                             @endif
                         </div>
@@ -306,7 +408,7 @@
                                 @if($relatedProduct->mainImage)
                                     <img src="{{ asset('storage/' . $relatedProduct->mainImage->first()->file_path) }}" 
                                          alt="{{ $relatedProduct->translate('title') }}"
-                                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700">
+                                         class="w-full h-full object-contain transform group-hover:scale-110 transition-transform duration-700">
                                 @endif
                             </div>
                             <div class="p-4">
@@ -362,119 +464,277 @@
     </main>
 
     <x-landing-footer />
+</x-landing-layout>
 
-    <script>
-        // Change main image
-        function changeImage(imageSrc) {
-            document.getElementById('mainImage').src = imageSrc;
+<script>
+// DOM Ready function
+document.addEventListener('DOMContentLoaded', function() {
+    // Current active image source
+    let currentImageSrc = '';
+    
+    // Main image change function
+    function changeImage(imageSrc) {
+        const mainImage = document.getElementById('mainImage');
+        if (mainImage && imageSrc) {
+            mainImage.src = imageSrc;
+            currentImageSrc = imageSrc;
             
             // Update active thumbnail
             document.querySelectorAll('.thumbnails button').forEach(btn => {
-                btn.classList.remove('border-rose-500');
+                btn.classList.remove('border-rose-500', 'active-thumbnail');
                 btn.classList.add('border-gray-200', 'dark:border-gray-700');
             });
-            event.currentTarget.classList.add('border-rose-500');
-            event.currentTarget.classList.remove('border-gray-200', 'dark:border-gray-700');
+            
+            // Find and activate the corresponding thumbnail
+            const activeThumbnail = document.querySelector(`.thumbnail-btn[data-image-src="${imageSrc}"]`);
+            if (activeThumbnail) {
+                activeThumbnail.classList.add('border-rose-500', 'active-thumbnail');
+                activeThumbnail.classList.remove('border-gray-200', 'dark:border-gray-700');
+            }
+        }
+    }
+    
+    // Quantity controls
+    function changeQuantity(change) {
+        const input = document.getElementById('quantity');
+        let value = parseInt(input.value) + change;
+        const max = parseInt(input.max);
+        const min = parseInt(input.min);
+        
+        if (value < min) value = min;
+        if (value > max) value = max;
+        
+        input.value = value;
+    }
+    
+    // Update variant display - ONLY changes main image, not gallery
+    function updateVariantDisplay(variantId) {
+        const variantSelector = document.getElementById('variantSelector');
+        if (!variantSelector) return;
+        
+        const variants = JSON.parse(variantSelector.getAttribute('data-variants'));
+        const mainProductImage = variantSelector.getAttribute('data-main-image');
+        const currencySymbol = variantSelector.getAttribute('data-currency');
+        const decimals = parseInt(variantSelector.getAttribute('data-decimals'));
+        
+        const variant = variants.find(v => v.id == variantId) || variants[0];
+        if (!variant) return;
+        
+        // Update price
+        const priceElement = document.getElementById('productPrice');
+        if (priceElement) {
+            priceElement.textContent = currencySymbol + parseFloat(variant.price).toFixed(decimals);
         }
         
-        // Quantity controls
-        function changeQuantity(change) {
-            const input = document.getElementById('quantity');
-            let value = parseInt(input.value) + change;
-            const max = parseInt(input.max);
-            const min = parseInt(input.min);
-            
-            if (value < min) value = min;
-            if (value > max) value = max;
-            
-            input.value = value;
+        // Update compare price and discount
+        const comparePriceEl = document.getElementById('productComparePrice');
+        const discountEl = document.getElementById('productDiscount');
+        
+        if (variant.compare_at_price && variant.compare_at_price > variant.price) {
+            if (comparePriceEl) {
+                comparePriceEl.textContent = currencySymbol + 
+                    parseFloat(variant.compare_at_price).toFixed(decimals);
+                comparePriceEl.classList.remove('hidden');
+            }
+            if (discountEl) {
+                const discountPercent = Math.round(
+                    ((variant.compare_at_price - variant.price) / variant.compare_at_price) * 100
+                );
+                discountEl.textContent = discountPercent + '% OFF';
+                discountEl.classList.remove('hidden');
+            }
+        } else {
+            if (comparePriceEl) comparePriceEl.classList.add('hidden');
+            if (discountEl) discountEl.classList.add('hidden');
         }
         
-        // Add to cart functionality
-        async function addToCart(productId, event = null) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
+        // Update stock display
+        updateStockDisplay(variant);
+        
+        // Update max quantity
+        const quantityInput = document.getElementById('quantity');
+        if (quantityInput) {
+            quantityInput.max = variant.stock_quantity;
+            if (parseInt(quantityInput.value) > variant.stock_quantity) {
+                quantityInput.value = variant.stock_quantity;
+            }
+        }
+        
+        // Update hidden input
+        document.getElementById('variantIdInput').value = variantId;
+        
+        // Update variant info display
+        document.getElementById('variantSKU').textContent = variant.sku || '{{ $product->sku }}';
+        document.getElementById('variantStock').textContent = variant.stock_quantity > 0 
+            ? '{{ __("In Stock") }} (' + variant.stock_quantity + ')' 
+            : '{{ __("Out of Stock") }}';
+        
+        // Update main image based on variant
+        // If variant has its own image, use it
+        // Otherwise, use the current image or default to main product image
+        if (variant.image) {
+            // Variant has its own image - update main image
+            changeImage(variant.image);
+        } else {
+            // Variant doesn't have specific image
+            // If user has selected a gallery image, keep it
+            // Otherwise, use main product image
+            if (!currentImageSrc || currentImageSrc === '') {
+                changeImage(mainProductImage);
+            }
+            // If user has already selected a gallery image, do nothing - keep it
+        }
+    }
+    
+    // Update stock display and buttons
+    function updateStockDisplay(variant) {
+        const stockEl = document.getElementById('productStock');
+        const addToCartBtn = document.getElementById('addToCartBtn');
+        const buyNowBtn = document.getElementById('buyNowBtn');
+        
+        if (variant.stock_quantity > 0) {
+            stockEl.textContent = '{{ __("Only") }} ' + variant.stock_quantity + ' {{ __("items left") }}';
+            stockEl.className = 'text-sm text-green-600 dark:text-green-400 mt-2';
+            
+            // Enable buttons
+            addToCartBtn.disabled = false;
+            buyNowBtn.disabled = false;
+            
+            // Update button text
+            addToCartBtn.innerHTML = `
+                <svg class="w-6 h-6 mr-3 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                {{ __("Add to Cart") }}
+            `;
+            
+            buyNowBtn.innerHTML = `
+                <svg class="w-6 h-6 mr-3 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+                {{ __("Buy Now") }}
+            `;
+        } else {
+            stockEl.textContent = '{{ __("Out of Stock") }}';
+            stockEl.className = 'text-sm text-red-600 dark:text-red-400 mt-2';
+            
+            // Disable buttons
+            addToCartBtn.disabled = true;
+            buyNowBtn.disabled = true;
+            
+            // Update button text
+            addToCartBtn.innerHTML = `
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                {{ __("Out of Stock") }}
+            `;
+            
+            buyNowBtn.innerHTML = `
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+                {{ __("Out of Stock") }}
+            `;
+        }
+    }
+    
+    // Get selected variant ID
+    function getSelectedVariantId() {
+        const checkedRadio = document.querySelector('input[name^="variant_"]:checked');
+        return checkedRadio ? checkedRadio.value : null;
+    }
+    
+    // Add to cart functionality
+    async function addToCart(productId, event = null) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const quantity = document.getElementById('quantity')?.value || 1;
+        const variantId = getSelectedVariantId();
+        
+        console.log('Variant ID:', variantId);
+        
+        const button = document.getElementById('addToCartBtn');
+        const originalHtml = button.innerHTML;
+        const originalClasses = button.className;
+        
+        // Show loading state
+        button.innerHTML = `
+            <svg class="w-6 h-6 mr-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ __("Adding...") }}
+        `;
+        button.disabled = true;
+        
+        try {
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('quantity', parseInt(quantity));
+            
+            // Add variant_id if exists
+            if (variantId) {
+                formData.append('variant_id', variantId);
             }
             
-            const quantity = document.getElementById('quantity')?.value || 1;
-            const button = document.getElementById('addToCartBtn');
-            const originalHtml = button.innerHTML;
-            const originalClasses = button.className;
-            
-            // Show loading state
-            button.innerHTML = `
-                <svg class="w-6 h-6 mr-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ __("Adding...") }}
-            `;
-            button.disabled = true;
-            
-            try {
-                // Prepare form data
-                const formData = new FormData();
-                formData.append('product_id', productId);
-                formData.append('quantity', parseInt(quantity));
-                formData.append('_token', '{{ csrf_token() }}');
-                
-                // Make API call
-                const response = await fetch('{{ route("cart.add") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Success state
-                    button.innerHTML = `
-                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        {{ __("Added!") }}
-                    `;
-                    button.classList.remove('from-rose-500', 'to-pink-500', 'hover:from-rose-600', 'hover:to-pink-600');
-                    button.classList.add('bg-green-500', 'hover:bg-green-600');
-                    
-                    // Update cart count
-                    updateCartCount(data.cart_count);
-                    
-                    // Show notification
-                    showNotification(`✓ ${quantity} × "${document.querySelector('h1').textContent}" {{ __("added to cart") }}`, 'success');
-                    
-                    // Reset button after 3 seconds
-                    setTimeout(() => {
-                        button.innerHTML = originalHtml;
-                        button.className = originalClasses;
-                        button.disabled = false;
-                    }, 3000);
-                } else {
-                    // Error state
-                    button.innerHTML = `{{ __("Error") }}!`;
-                    button.classList.remove('from-rose-500', 'to-pink-500');
-                    button.classList.add('bg-red-500');
-                    
-                    showNotification(data.message || '{{ __("Failed to add item to cart") }}', 'error');
-                    
-                    setTimeout(() => {
-                        button.innerHTML = originalHtml;
-                        button.className = originalClasses;
-                        button.disabled = false;
-                    }, 3000);
+            // Get variant selector to get options
+            const variantSelector = document.getElementById('variantSelector');
+            if (variantSelector) {
+                const variants = JSON.parse(variantSelector.getAttribute('data-variants'));
+                const variant = variants.find(v => v.id == variantId) || variants[0];
+                if (variant && variant.options) {
+                    formData.append('options', JSON.stringify(variant.options));
                 }
-            } catch (error) {
-                console.error('Error:', error);
+            }
+            
+            // Make API call
+            const response = await fetch('{{ route("cart.add") }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Success state
+                button.innerHTML = `
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    {{ __("Added!") }}
+                `;
+                button.classList.remove('from-rose-500', 'to-pink-500', 'hover:from-rose-600', 'hover:to-pink-600');
+                button.classList.add('bg-green-500', 'hover:bg-green-600');
+                
+                // Update cart count
+                updateCartCount(data.cart_count);
+                
+                // Show notification
+                const variantName = variantId ? ' ({{ __("Selected Variant") }})' : '';
+                showNotification(`✓ ${quantity} × "${document.querySelector('h1').textContent}${variantName}" {{ __("added to cart") }}`, 'success');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalHtml;
+                    button.className = originalClasses;
+                    button.disabled = false;
+                }, 3000);
+            } else {
+                // Error state
                 button.innerHTML = `{{ __("Error") }}!`;
                 button.classList.remove('from-rose-500', 'to-pink-500');
                 button.classList.add('bg-red-500');
                 
-                showNotification('{{ __("Network error. Please try again.") }}', 'error');
+                showNotification(data.message || '{{ __("Failed to add item to cart") }}', 'error');
                 
                 setTimeout(() => {
                     button.innerHTML = originalHtml;
@@ -482,305 +742,353 @@
                     button.disabled = false;
                 }, 3000);
             }
+        } catch (error) {
+            console.error('Error:', error);
+            button.innerHTML = `{{ __("Error") }}!`;
+            button.classList.remove('from-rose-500', 'to-pink-500');
+            button.classList.add('bg-red-500');
+            
+            showNotification('{{ __("Network error. Please try again.") }}', 'error');
+            
+            setTimeout(() => {
+                button.innerHTML = originalHtml;
+                button.className = originalClasses;
+                button.disabled = false;
+            }, 3000);
+        }
+    }
+    
+    // Buy Now functionality (direct purchase)
+    async function buyNow(productId, event = null) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
         }
         
-        // Buy Now functionality (direct purchase)
-        async function buyNow(productId, event = null) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
+        const quantity = document.getElementById('quantity')?.value || 1;
+        const variantId = getSelectedVariantId();
+        
+        console.log('Buy Now - Variant ID:', variantId);
+        
+        const button = document.getElementById('buyNowBtn');
+        const originalHtml = button.innerHTML;
+        
+        // Show loading state
+        button.innerHTML = `
+            <svg class="w-6 h-6 mr-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ __("Processing...") }}
+        `;
+        button.disabled = true;
+        
+        try {
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('quantity', parseInt(quantity));
+            
+            // Add variant_id if exists
+            if (variantId) {
+                formData.append('variant_id', variantId);
             }
             
-            const quantity = document.getElementById('quantity')?.value || 1;
-            const button = document.getElementById('buyNowBtn');
-            const originalHtml = button.innerHTML;
+            const response = await fetch('{{ route("cart.add") }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            });
             
-            // Show loading state
-            button.innerHTML = `
-                <svg class="w-6 h-6 mr-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ __("Processing...") }}
-            `;
-            button.disabled = true;
+            const data = await response.json();
             
-            try {
-                // First add to cart
-                const formData = new FormData();
-                formData.append('product_id', productId);
-                formData.append('quantity', parseInt(quantity));
-                formData.append('_token', '{{ csrf_token() }}');
+            if (data.success) {
+                // Update cart count
+                updateCartCount(data.cart_count);
                 
-                const response = await fetch('{{ route("cart.add") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Update cart count
-                    updateCartCount(data.cart_count);
-                    
-                    // Redirect to checkout
-                    window.location.href = '{{ route("checkout.index") }}';
-                } else {
-                    // Error state
-                    button.innerHTML = `{{ __("Error") }}!`;
-                    showNotification(data.message || '{{ __("Failed to process purchase") }}', 'error');
-                    
-                    setTimeout(() => {
-                        button.innerHTML = originalHtml;
-                        button.disabled = false;
-                    }, 3000);
-                }
-            } catch (error) {
-                console.error('Error:', error);
+                // Redirect to checkout
+                window.location.href = '{{ route("checkout.index") }}';
+            } else {
+                // Error state
                 button.innerHTML = `{{ __("Error") }}!`;
-                showNotification('{{ __("Network error. Please try again.") }}', 'error');
+                showNotification(data.message || '{{ __("Failed to process purchase") }}', 'error');
                 
                 setTimeout(() => {
                     button.innerHTML = originalHtml;
                     button.disabled = false;
                 }, 3000);
             }
+        } catch (error) {
+            console.error('Error:', error);
+            button.innerHTML = `{{ __("Error") }}!`;
+            showNotification('{{ __("Network error. Please try again.") }}', 'error');
+            
+            setTimeout(() => {
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+            }, 3000);
         }
-
-        // Update cart count in navbar
-        function updateCartCount(count) {
-            // Find cart badge in desktop navbar
-            const desktopCart = document.querySelector('a[href*="cart"] .cart-badge');
-            if (desktopCart) {
-                desktopCart.textContent = count;
-                desktopCart.classList.remove('hidden');
-                desktopCart.classList.add('animate-pulse');
-                setTimeout(() => desktopCart.classList.remove('animate-pulse'), 1000);
-            }
-            
-            // Find cart badge in mobile navbar
-            const mobileCart = document.querySelector('.md\\:hidden a[href*="cart"] .cart-badge');
-            if (mobileCart) {
-                mobileCart.textContent = count;
-                mobileCart.classList.remove('hidden');
-                mobileCart.classList.add('animate-pulse');
-                setTimeout(() => mobileCart.classList.remove('animate-pulse'), 1000);
-            }
-            
-            // If no badge exists, create one (for first time)
-            if (count > 0) {
-                const cartLinks = document.querySelectorAll('a[href*="cart"]');
-                cartLinks.forEach(link => {
-                    let badge = link.querySelector('.cart-badge');
-                    if (!badge) {
-                        badge = document.createElement('span');
-                        badge.className = 'cart-badge absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse';
-                        badge.textContent = count;
-                        link.classList.add('relative');
-                        link.appendChild(badge);
-                        
-                        // Remove pulse animation after 1 second
-                        setTimeout(() => badge.classList.remove('animate-pulse'), 1000);
-                    }
-                });
-            }
+    }
+    
+    // Update cart count in navbar
+    function updateCartCount(count) {
+        // Find cart badge in desktop navbar
+        const desktopCart = document.querySelector('a[href*="cart"] .cart-badge');
+        if (desktopCart) {
+            desktopCart.textContent = count;
+            desktopCart.classList.remove('hidden');
+            desktopCart.classList.add('animate-pulse');
+            setTimeout(() => desktopCart.classList.remove('animate-pulse'), 1000);
         }
-
-        // Add related product to cart
-        async function addRelatedToCart(productId, event) {
-            const button = event.currentTarget;
-            const originalHtml = button.innerHTML;
-            
-            // Show loading state
-            button.innerHTML = `
-                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            `;
-            button.disabled = true;
-            
-            try {
-                // Prepare form data
-                const formData = new FormData();
-                formData.append('product_id', productId);
-                formData.append('quantity', 1);
-                formData.append('_token', '{{ csrf_token() }}');
-                
-                // Make API call
-                const response = await fetch('{{ route("cart.add") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Success state
-                    button.innerHTML = `
-                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    `;
+        
+        // Find cart badge in mobile navbar
+        const mobileCart = document.querySelector('.md\\:hidden a[href*="cart"] .cart-badge');
+        if (mobileCart) {
+            mobileCart.textContent = count;
+            mobileCart.classList.remove('hidden');
+            mobileCart.classList.add('animate-pulse');
+            setTimeout(() => mobileCart.classList.remove('animate-pulse'), 1000);
+        }
+        
+        // If no badge exists, create one (for first time)
+        if (count > 0) {
+            const cartLinks = document.querySelectorAll('a[href*="cart"]');
+            cartLinks.forEach(link => {
+                let badge = link.querySelector('.cart-badge');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'cart-badge absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse';
+                    badge.textContent = count;
+                    link.classList.add('relative');
+                    link.appendChild(badge);
                     
-                    // Update cart count
-                    updateCartCount(data.cart_count);
-                    
-                    // Show notification
-                    showNotification(`✓ {{ __("Product added to cart") }}`, 'success');
-                    
-                    // Reset button after 2 seconds
-                    setTimeout(() => {
-                        button.innerHTML = originalHtml;
-                        button.disabled = false;
-                    }, 2000);
-                } else {
-                    // Error state
-                    button.innerHTML = '!';
-                    showNotification(data.message || '{{ __("Failed to add product") }}', 'error');
-                    
-                    setTimeout(() => {
-                        button.innerHTML = originalHtml;
-                        button.disabled = false;
-                    }, 2000);
+                    // Remove pulse animation after 1 second
+                    setTimeout(() => badge.classList.remove('animate-pulse'), 1000);
                 }
-            } catch (error) {
-                console.error('Error:', error);
+            });
+        }
+    }
+    
+    // Add related product to cart
+    async function addRelatedToCart(productId, event) {
+        const button = event.currentTarget;
+        const originalHtml = button.innerHTML;
+        
+        // Show loading state
+        button.innerHTML = `
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        `;
+        button.disabled = true;
+        
+        try {
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('quantity', 1);
+            formData.append('_token', '{{ csrf_token() }}');
+            
+            // Make API call
+            const response = await fetch('{{ route("cart.add") }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Success state
+                button.innerHTML = `
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                `;
+                
+                // Update cart count
+                updateCartCount(data.cart_count);
+                
+                // Show notification
+                showNotification(`✓ {{ __("Product added to cart") }}`, 'success');
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                }, 2000);
+            } else {
+                // Error state
                 button.innerHTML = '!';
-                showNotification('{{ __("Network error") }}', 'error');
+                showNotification(data.message || '{{ __("Failed to add product") }}', 'error');
                 
                 setTimeout(() => {
                     button.innerHTML = originalHtml;
                     button.disabled = false;
                 }, 2000);
             }
+        } catch (error) {
+            console.error('Error:', error);
+            button.innerHTML = '!';
+            showNotification('{{ __("Network error") }}', 'error');
+            
+            setTimeout(() => {
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+            }, 2000);
+        }
+    }
+    
+    // Show notification
+    function showNotification(message, type = 'success') {
+        // Remove existing notifications
+        document.querySelectorAll('.custom-notification').forEach(el => el.remove());
+        
+        const notification = document.createElement('div');
+        notification.className = `custom-notification fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl border-l-4 transform translate-x-full transition-transform duration-300 ${
+            type === 'success' 
+                ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-green-500' 
+                : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-red-500'
+        }`;
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <svg class="w-6 h-6 mr-3 ${
+                    type === 'success' ? 'text-green-500' : 'text-red-500'
+                }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    ${
+                        type === 'success' 
+                            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
+                            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'
+                    }
+                </svg>
+                <span class="font-medium">${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Show notification
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+            notification.classList.add('translate-x-0');
+        }, 10);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('translate-x-0');
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 3000);
+        
+        // Click to dismiss
+        notification.addEventListener('click', () => {
+            notification.classList.remove('translate-x-0');
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        });
+    }
+    
+    // Initialize event listeners
+    function initializeEventListeners() {
+        // Set initial current image
+        const initialMainImage = document.getElementById('mainImage');
+        if (initialMainImage) {
+            currentImageSrc = initialMainImage.src;
         }
         
-        function showNotification(message, type = 'success') {
-            // Remove existing notifications
-            document.querySelectorAll('.custom-notification').forEach(el => el.remove());
+        // Quantity input validation
+        const quantityInput = document.getElementById('quantity');
+        if (quantityInput) {
+            quantityInput.addEventListener('change', function() {
+                let value = parseInt(this.value);
+                const max = parseInt(this.getAttribute('max')) || 999;
+                const min = parseInt(this.getAttribute('min')) || 1;
+                
+                if (isNaN(value) || value < min) value = min;
+                if (value > max) value = max;
+                
+                this.value = value;
+            });
             
-            const notification = document.createElement('div');
-            notification.className = `custom-notification fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl border-l-4 transform translate-x-full transition-transform duration-300 ${
-                type === 'success' 
-                    ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-green-500' 
-                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-red-500'
-            }`;
-            
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <svg class="w-6 h-6 mr-3 ${
-                        type === 'success' ? 'text-green-500' : 'text-red-500'
-                    }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        ${
-                            type === 'success' 
-                                ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
-                                : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'
-                        }
-                    </svg>
-                    <span class="font-medium">${message}</span>
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // Show notification
-            setTimeout(() => {
-                notification.classList.remove('translate-x-full');
-                notification.classList.add('translate-x-0');
-            }, 10);
-            
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                notification.classList.remove('translate-x-0');
-                notification.classList.add('translate-x-full');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
-            }, 3000);
-            
-            // Click to dismiss
-            notification.addEventListener('click', () => {
-                notification.classList.remove('translate-x-0');
-                notification.classList.add('translate-x-full');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
+            quantityInput.addEventListener('input', function() {
+                // Prevent non-numeric input
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+        }
+        
+        // Add to cart button event listener
+        const addToCartBtn = document.getElementById('addToCartBtn');
+        if (addToCartBtn && !addToCartBtn.disabled) {
+            addToCartBtn.addEventListener('click', function(e) {
+                const productId = this.getAttribute('data-product-id');
+                addToCart(productId, e);
+            });
+        }
+        
+        // Buy now button event listener
+        const buyNowBtn = document.getElementById('buyNowBtn');
+        if (buyNowBtn && !buyNowBtn.disabled) {
+            buyNowBtn.addEventListener('click', function(e) {
+                const productId = this.getAttribute('data-product-id');
+                buyNow(productId, e);
             });
         }
         
         // Wishlist functionality
-        document.getElementById('wishlistBtn')?.addEventListener('click', async function() {
-            const heartIcon = this.querySelector('svg');
-            const isFilled = heartIcon.classList.contains('fill-rose-500');
-            
-            // Toggle visual state
-            if (isFilled) {
-                heartIcon.classList.remove('fill-rose-500');
-            } else {
-                heartIcon.classList.add('fill-rose-500');
-            }
-            
-            // Show notification
-            showNotification(
-                isFilled 
-                    ? '{{ __("Removed from wishlist") }}' 
-                    : '{{ __("Added to wishlist!") }}',
-                'success'
-            );
+        const wishlistBtn = document.getElementById('wishlistBtn');
+        if (wishlistBtn) {
+            wishlistBtn.addEventListener('click', function() {
+                const heartIcon = this.querySelector('svg');
+                const isFilled = heartIcon.classList.contains('fill-rose-500');
+                
+                // Toggle visual state
+                if (isFilled) {
+                    heartIcon.classList.remove('fill-rose-500');
+                } else {
+                    heartIcon.classList.add('fill-rose-500');
+                }
+                
+                // Show notification
+                showNotification(
+                    isFilled 
+                        ? '{{ __("Removed from wishlist") }}' 
+                        : '{{ __("Added to wishlist!") }}',
+                    'success'
+                );
+            });
+        }
+        
+        // Variant radio button change listeners
+        document.querySelectorAll('.variant-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                updateVariantDisplay(this.value);
+            });
         });
         
-        // Initialize event listeners when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add to cart button event listener
-            const addToCartBtn = document.getElementById('addToCartBtn');
-            if (addToCartBtn && !addToCartBtn.disabled) {
-                addToCartBtn.addEventListener('click', function(e) {
-                    const productId = this.getAttribute('data-product-id');
-                    addToCart(productId, e);
-                });
-            }
-            
-            // Buy now button event listener
-            const buyNowBtn = document.getElementById('buyNowBtn');
-            if (buyNowBtn && !buyNowBtn.disabled) {
-                buyNowBtn.addEventListener('click', function(e) {
-                    const productId = this.getAttribute('data-product-id');
-                    buyNow(productId, e);
-                });
-            }
-            
-            // Quantity input validation
-            const quantityInput = document.getElementById('quantity');
-            if (quantityInput) {
-                quantityInput.addEventListener('change', function() {
-                    let value = parseInt(this.value);
-                    const max = parseInt(this.getAttribute('max')) || 999;
-                    const min = parseInt(this.getAttribute('min')) || 1;
-                    
-                    if (isNaN(value) || value < min) value = min;
-                    if (value > max) value = max;
-                    
-                    this.value = value;
-                });
-                
-                quantityInput.addEventListener('input', function() {
-                    // Prevent non-numeric input
-                    this.value = this.value.replace(/[^0-9]/g, '');
-                });
-            }
-        });
-    </script>
-</x-landing-layout>
+        // Make functions globally available
+        window.changeImage = changeImage;
+        window.changeQuantity = changeQuantity;
+        window.updateVariantDisplay = updateVariantDisplay;
+        window.addRelatedToCart = addRelatedToCart;
+    }
+    
+    // Initialize everything
+    initializeEventListeners();
+});
+</script>

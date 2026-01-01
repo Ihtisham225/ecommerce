@@ -32,13 +32,13 @@
                     <!-- Featured Image -->
                     @if($blog->blogImage)
                     <div class="mb-6">
-                        <img 
-                            src="{{ asset('storage/' . $blog->blogImage->file_path) }}" 
-                            alt="{{ $blog->title }}" 
-                            class="w-full h-64 object-cover rounded-lg">
+                        <img
+                            src="{{ asset('storage/' . $blog->blogImage->file_path) }}"
+                            alt="{{ $blog->title }}"
+                            class="w-full h-64 object-contain rounded-lg">
                     </div>
                     @endif
-                    
+
                     <div class="grid grid-cols-1 gap-6">
                         <!-- Excerpt -->
                         <div>
@@ -47,7 +47,7 @@
                                 {{ $blog->excerpt }}
                             </div>
                         </div>
-                        
+
                         <!-- Content -->
                         <div>
                             <h4 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">{{ __('Content') }}</h4>
@@ -55,42 +55,42 @@
                                 {!! $blog->content !!}
                             </div>
                         </div>
-                        
+
                         <!-- Meta Information -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Meta Title') }}</h4>
                                 <p class="mt-1 text-gray-900 dark:text-gray-200">{{ $blog->meta_title ?? 'Not set' }}</p>
                             </div>
-                            
+
                             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Meta Description') }}</h4>
                                 <p class="mt-1 text-gray-900 dark:text-gray-200">{{ $blog->meta_description ?? 'Not set' }}</p>
                             </div>
-                            
+
                             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Tags') }}</h4>
                                 <p class="mt-1 text-gray-900 dark:text-gray-200">
                                     @if($blog->tags)
-                                        @foreach($blog->tags as $tag)
-                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-1 mb-1">{{ $tag }}</span>
-                                        @endforeach
+                                    @foreach($blog->tags as $tag)
+                                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-1 mb-1">{{ $tag }}</span>
+                                    @endforeach
                                     @else
-                                        No tags
+                                    No tags
                                     @endif
                                 </p>
                             </div>
-                            
+
                             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Reading Time') }}</h4>
                                 <p class="mt-1 text-gray-900 dark:text-gray-200">{{ $blog->reading_time }} minutes</p>
                             </div>
-                            
+
                             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Views') }}</h4>
                                 <p class="mt-1 text-gray-900 dark:text-gray-200">{{ $blog->views }}</p>
                             </div>
-                            
+
                             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Status') }}</h4>
                                 <p class="mt-1">
@@ -106,20 +106,20 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Action buttons -->
                     <div class="mt-8 flex justify-between">
                         <a href="{{ route('admin.blogs.index') }}"
-                           class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center transition-colors duration-200">
+                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center transition-colors duration-200">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                             {{ __('Back to Blog Posts') }}
                         </a>
-                        
+
                         <div class="space-x-3">
                             <a href="{{ route('admin.blogs.edit', $blog) }}"
-                               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center transition-colors duration-200">
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center transition-colors duration-200">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>

@@ -85,6 +85,28 @@
                         </div>
                         @endif
 
+                        <!-- Collections -->
+                        @if($collections->count() > 0)
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">{{ __("Collections") }}</h4>
+                            <div class="space-y-2">
+                                <a href="{{ route('products.index') }}" 
+                                class="block py-2 px-3 rounded-lg text-sm {{ !request('collection') ? 'bg-gradient-to-r from-rose-50 to-pink-50 dark:from-gray-700 text-rose-600 dark:text-rose-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                                    {{ __("All Collections") }}
+                                </a>
+                                @foreach($collections as $collection)
+                                <a href="{{ route('products.index', ['collection' => $collection->slug]) }}" 
+                                class="block py-2 px-3 rounded-lg text-sm flex justify-between items-center {{ request('collection') == $collection->slug ? 'bg-gradient-to-r from-rose-50 to-pink-50 dark:from-gray-700 text-rose-600 dark:text-rose-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                                    <span>{{ $collection->title }}</span>
+                                    <span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full">
+                                        {{ $collection->products_count }}
+                                    </span>
+                                </a>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
                         <!-- Price Range -->
                         <div class="mb-6">
                             <h4 class="font-medium text-gray-900 dark:text-white mb-3">{{ __("Price Range") }}</h4>
@@ -128,10 +150,10 @@
                         </div>
 
                         <!-- Clear Filters -->
-                        @if(request()->anyFilled(['search', 'category', 'brand', 'min_price', 'max_price', 'stock']))
+                        @if(request()->anyFilled(['search', 'category', 'brand', 'collection', 'min_price', 'max_price', 'stock']))
                         <div>
                             <a href="{{ route('products.index') }}" 
-                               class="block w-full py-3 text-center text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors duration-300">
+                            class="block w-full py-3 text-center text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors duration-300">
                                 {{ __("Clear All Filters") }}
                             </a>
                         </div>
@@ -180,7 +202,7 @@
                                 @if($product->mainImage)
                                     <img src="{{ asset('storage/' . $product->mainImage->first()->file_path) }}" 
                                          alt="{{ $product->translate('title') }}"
-                                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700">
+                                         class="w-full h-full object-contain transform group-hover:scale-110 transition-transform duration-700">
                                 @else
                                     <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800">
                                         <svg class="w-16 h-16 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,10 +253,21 @@
                                 <!-- Price -->
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-2xl font-bold text-gray-900 dark:text-white">
-                                            {{ $currencySymbol }}{{ number_format($product->price, 2) }}
+                                        <span class="text-2xl font-bold text-gray-900 dark:text-white" id="productPrice">
+                                            @if($product->variants->count() > 0)
+                                                <!-- Initially show first variant price, will be updated by JavaScript -->
+                                                {{ $currencySymbol }}{{ number_format($product->variants->first()->price ?? $product->price, 2) }}
+                                            @else
+                                                {{ $currencySymbol }}{{ number_format($product->price, 2) }}
+                                            @endif
                                         </span>
-                                        @if($product->compare_price && $product->compare_price > $product->price)
+                                        @if($product->variants->count() > 0)
+                                            <!-- Compare price for variants (handled by JavaScript) -->
+                                            <span class="text-sm text-gray-500 line-through hidden" id="productComparePrice">
+                                                <!-- Will be populated by JavaScript -->
+                                            </span>
+                                        @elseif($product->compare_price && $product->compare_price > $product->price)
+                                            <!-- Regular product compare price -->
                                             <span class="text-sm text-gray-500 line-through">
                                                 {{ $currencySymbol }}{{ number_format($product->compare_price, 2) }}
                                             </span>

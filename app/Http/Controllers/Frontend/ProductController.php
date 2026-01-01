@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
+use App\Models\Collection;
 use App\Models\OrderItem;
 use App\Models\StoreSetting;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['brand', 'mainImage', 'galleryImages'])
+        $query = Product::with(['brand', 'mainImage', 'galleryImages', 'collections'])
             ->published()
             ->active();
 
@@ -23,8 +24,8 @@ class ProductController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
@@ -39,6 +40,13 @@ class ProductController extends Controller
         if ($request->has('brand')) {
             $query->whereHas('brand', function($q) use ($request) {
                 $q->where('slug', $request->brand);
+            });
+        }
+
+        // Collection filter
+        if ($request->has('collection')) {
+            $query->whereHas('collections', function($q) use ($request) {
+                $q->where('slug', $request->collection);
             });
         }
 
@@ -84,6 +92,7 @@ class ProductController extends Controller
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
+        $collections = Collection::active()->withCount('products')->get();
 
         // Currency symbols for display
         $currencySymbols = [
@@ -106,7 +115,7 @@ class ProductController extends Controller
 
         $pageTitle = __('All Products');
 
-        return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'));
+        return view('frontend.products.index', compact('products', 'categories', 'brands', 'collections', 'currencySymbol', 'pageTitle'));
     }
 
     public function newArrivals(Request $request)
@@ -201,8 +210,8 @@ class ProductController extends Controller
             'brand', 
             'categories',
             'documents',
-            'variants.options',
-            'options.values'
+            'variants', // Just load variants
+            'options'   // Just load options - they belong to product, not variants
         ])->where('slug', $slug)->firstOrFail();
 
         // Related products
@@ -216,7 +225,6 @@ class ProductController extends Controller
         ->get();
 
         // Currency symbols
-       // Currency symbols for display
         $currencySymbols = [
             'USD' => '$',
             'EUR' => '€',
@@ -232,11 +240,92 @@ class ProductController extends Controller
 
         // Get store setting
         $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
-        $currencyCode = $storeSetting?->currency_code ?? 'USD';
+        $currencyCode = $storeSetting?->currency_code ?? 'KWD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
         $productDecimals = $currencyCode === 'KWD' ? 3 : 2;
 
-        return view('frontend.products.show', compact('product', 'relatedProducts', 'currencySymbol', 'productDecimals'));
+        // **ADD THIS VARIANT PROCESSING CODE:**
+        
+        // Process variants for frontend
+        $variantsData = $product->variants->map(function($variant) use ($currencySymbol, $productDecimals) {
+            return [
+                'id' => $variant->id,
+                'title' => $variant->title,
+                'price' => $variant->price,
+                'formatted_price' => $currencySymbol . number_format($variant->price, $productDecimals),
+                'compare_at_price' => $variant->compare_at_price,
+                'formatted_compare_price' => $variant->compare_at_price 
+                    ? $currencySymbol . number_format($variant->compare_at_price, $productDecimals) 
+                    : null,
+                'discount_percentage' => $variant->compare_at_price && $variant->compare_at_price > $variant->price
+                    ? round((($variant->compare_at_price - $variant->price) / $variant->compare_at_price) * 100)
+                    : 0,
+                'stock_quantity' => $variant->stock_quantity,
+                'sku' => $variant->sku,
+                'options' => $variant->options ?? [],
+                'is_in_stock' => $variant->stock_quantity > 0
+            ];
+        })->toArray();
+
+        // Get first variant safely
+        $firstVariant = $product->variants->first();
+        $selectedVariant = $firstVariant ? [
+            'id' => $firstVariant->id,
+            'price' => $firstVariant->price,
+            'formatted_price' => $currencySymbol . number_format($firstVariant->price, $productDecimals),
+            'compare_at_price' => $firstVariant->compare_at_price,
+            'formatted_compare_price' => $firstVariant->compare_at_price 
+                ? $currencySymbol . number_format($firstVariant->compare_at_price, $productDecimals) 
+                : null,
+            'discount_percentage' => $firstVariant->compare_at_price && $firstVariant->compare_at_price > $firstVariant->price
+                ? round((($firstVariant->compare_at_price - $firstVariant->price) / $firstVariant->compare_at_price) * 100)
+                : 0,
+            'stock_quantity' => $firstVariant->stock_quantity,
+            'sku' => $firstVariant->sku,
+            'options' => $firstVariant->options ?? [],
+            'is_in_stock' => $firstVariant->stock_quantity > 0
+        ] : null;
+
+        // Group variants by options for simple UI
+        $variantGroups = [];
+        foreach ($product->variants as $variant) {
+            if ($variant->options && is_array($variant->options)) {
+                foreach ($variant->options as $optionName => $optionValue) {
+                    if (!isset($variantGroups[$optionName])) {
+                        $variantGroups[$optionName] = [];
+                    }
+                    // Store the variant ID with the option value
+                    if (!isset($variantGroups[$optionName][$optionValue])) {
+                        $variantGroups[$optionName][$optionValue] = $variant->id;
+                    }
+                }
+            }
+        }
+
+        // Calculate initial price display
+        $initialPrice = $selectedVariant['formatted_price'] ?? $currencySymbol . number_format($product->price, $productDecimals);
+        $initialComparePrice = $selectedVariant['formatted_compare_price'] ?? ($product->compare_price ? $currencySymbol . number_format($product->compare_price, $productDecimals) : null);
+        $initialDiscount = $selectedVariant['discount_percentage'] ?? ($product->compare_price && $product->compare_price > $product->price 
+            ? round((($product->compare_price - $product->price) / $product->compare_price) * 100) 
+            : 0);
+
+        $firstVariant = $product->variants->first();
+        $firstVariantId = $firstVariant ? $firstVariant->id : null;
+
+        // **MAKE SURE TO INCLUDE ALL THESE VARIABLES IN THE COMPACT FUNCTION:**
+        return view('frontend.products.show', compact(
+            'product',
+            'relatedProducts',
+            'currencySymbol',
+            'productDecimals',
+            'variantsData',
+            'selectedVariant',
+            'variantGroups',
+            'firstVariantId',
+            'initialPrice',
+            'initialComparePrice',
+            'initialDiscount'
+        ));
     }
 
     /**

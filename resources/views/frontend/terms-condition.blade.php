@@ -1,6 +1,6 @@
 <x-landing-layout>
-    <x-landing-navbar/>
-    
+    <x-landing-navbar />
+
     <main class="flex-1">
         <!-- Leadership Section -->
         <div id="leadership-component" class="py-16 bg-white dark:bg-gray-800">
@@ -8,9 +8,9 @@
                 <div class="flex flex-col md:flex-row items-center">
                     <div class="md:w-1/3 mb-10 md:mb-0">
                         <div class="h-96 bg-gradient-to-r from-indigo-900 to-blue-800 rounded-lg overflow-hidden">
-                            <img src="https://infotechq8.com/storage/documents/BLCZ3gNVX5Fv35TjUgWBTwFnhedL2cfok9dAzGmE.jpg" alt="Mariam Althaidi" class="w-full h-full object-cover">
+                            <img src="https://infotechq8.com/storage/documents/BLCZ3gNVX5Fv35TjUgWBTwFnhedL2cfok9dAzGmE.jpg" alt="Mariam Althaidi" class="w-full h-full object-contain">
                         </div>
-                        
+
                         <!-- Social Links -->
                         <div class="flex justify-center mt-6 space-x-4">
                             <a href="#" class="h-10 w-10 bg-indigo-100 text-indigo-900 rounded-full flex items-center justify-center hover:bg-indigo-200 transition-colors">
@@ -38,7 +38,7 @@
                     <div class="md:w-2/3 md:pl-12">
                         <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">{{ __("Mariam Althaidi") }}</h2>
                         <p class="text-xl text-indigo-900 dark:text-indigo-400 font-semibold mb-6">{{ __("Chairman of the Board of Directors") }}</p>
-                        
+
                         <h3 class="text-2xl font-semibold text-gray-800 dark:text-white mb-4">{{ __("About Me") }}</h3>
                         <p class="text-gray-600 dark:text-gray-400 mb-4">
                             {{ __("InfoTech Private Training Institute was established in 2008 to be one of the distinguished institutes that has proven its presence in the Kuwaiti market in recent years, whether at the level of private courses for individuals or professional courses for governmental and private institutions.") }}
@@ -60,9 +60,9 @@
                 <div class="flex flex-col md:flex-row items-center">
                     <div class="md:w-1/2 mb-10 md:mb-0">
                         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                            
+
                             <!-- Video without cropping -->
-                            <video class="w-full h-64 object-cover" controls>
+                            <video class="w-full h-64 object-contain" controls>
                                 <source src="https://infotechq8.com/storage/documents/Yf9oxUopPzvVJvhzvmwXGsy6dEnXkA3QUsHG4f53.mp4" type="video/mp4">
                                 {{ __("Your browser does not support the video tag.") }}
                             </video>
@@ -94,7 +94,7 @@
         <div id="mission-component" class="py-16 bg-white dark:bg-gray-800">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">{{ __("Our Mission & Values") }}</h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-sm">
                         <div class="h-12 w-12 bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 rounded-full flex items-center justify-center mb-4">
@@ -107,7 +107,7 @@
                             {{ __("We believe in the transformative power of education to change lives and communities for the better.") }}
                         </p>
                     </div>
-                    
+
                     <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-sm">
                         <div class="h-12 w-12 bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 rounded-full flex items-center justify-center mb-4">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -119,7 +119,7 @@
                             {{ __("Our ISO 9001-2015 certification reflects our unwavering commitment to excellence in all we do.") }}
                         </p>
                     </div>
-                    
+
                     <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-sm">
                         <div class="h-12 w-12 bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 rounded-full flex items-center justify-center mb-4">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -135,6 +135,6 @@
             </div>
         </div>
     </main>
-    
+
     <x-landing-footer />
 </x-landing-layout>

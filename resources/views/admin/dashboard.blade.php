@@ -11,7 +11,7 @@
     </x-slot>
 
     <div class="py-12 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
-        
+
         {{-- Quick Stats Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {{-- Total Revenue Card --}}
@@ -215,36 +215,36 @@
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Top Selling Products</h3>
                 <div class="space-y-4">
                     @php
-                        $topProducts = App\Models\Product::withCount(['orderItems as total_sold' => function($query) {
-                            $query->select(DB::raw('SUM(quantity)'));
-                        }])
-                        ->orderByDesc('total_sold')
-                        ->limit(5)
-                        ->get();
+                    $topProducts = App\Models\Product::withCount(['orderItems as total_sold' => function($query) {
+                    $query->select(DB::raw('SUM(quantity)'));
+                    }])
+                    ->orderByDesc('total_sold')
+                    ->limit(5)
+                    ->get();
                     @endphp
-                    
+
                     @foreach($topProducts as $product)
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-                                    @if($product->mainImage()->first())
-                                        <img src="{{ Storage::url($product->mainImage()->first()->file_path) }}" alt="{{ $product->translate('title') }}" class="w-8 h-8 rounded object-cover">
-                                    @else
-                                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    @endif
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $product->translate('title') }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $product->sku }}</p>
-                                </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                                @if($product->mainImage()->first())
+                                <img src="{{ Storage::url($product->mainImage()->first()->file_path) }}" alt="{{ $product->translate('title') }}" class="w-8 h-8 rounded object-contain">
+                                @else
+                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                @endif
                             </div>
-                            <div class="text-right">
-                                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $product->total_sold ?? 0 }} sold</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">${{ number_format($product->price, 2) }}</p>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $product->translate('title') }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $product->sku }}</p>
                             </div>
                         </div>
+                        <div class="text-right">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $product->total_sold ?? 0 }} sold</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${{ number_format($product->price, 2) }}</p>
+                        </div>
+                    </div>
                     @endforeach
                 </div>
             </div>
@@ -254,25 +254,25 @@
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recent Customers</h3>
                 <div class="space-y-4">
                     @foreach(App\Models\Customer::latest()->take(5)->get() as $customer)
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                                            {{ substr($customer->first_name, 0, 1) }}{{ substr($customer->last_name, 0, 1) }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $customer->full_name }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $customer->email }}</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                        {{ substr($customer->first_name, 0, 1) }}{{ substr($customer->last_name, 0, 1) }}
+                                    </span>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $customer->created_at->diffForHumans() }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $customer->orders()->count() }} orders</p>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $customer->full_name }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $customer->email }}</p>
                             </div>
                         </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $customer->created_at->diffForHumans() }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $customer->orders()->count() }} orders</p>
+                        </div>
+                    </div>
                     @endforeach
                 </div>
             </div>
@@ -297,36 +297,36 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach(App\Models\Order::latest()->take(8)->get() as $order)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <a href="{{ route('orders.show', $order) }}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                                        {{ $order->order_number }}
-                                    </a>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900 dark:text-white">{{ $order->customer->full_name ?? 'Guest' }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ $order->customer->email ?? '' }}</div>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {{ $order->created_at->format('M d, Y') }}
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    @php
-                                        $statusColors = [
-                                            'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                                            'processing' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                                            'completed' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                                            'cancelled' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-                                        ];
-                                    @endphp
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$order->status] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' }}">
-                                        {{ ucfirst($order->status) }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
-                                    ${{ number_format($order->grand_total, 2) }}
-                                </td>
-                            </tr>
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <a href="{{ route('orders.show', $order) }}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                                    {{ $order->order_number }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 dark:text-white">{{ $order->customer->full_name ?? 'Guest' }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $order->customer->email ?? '' }}</div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                {{ $order->created_at->format('M d, Y') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                @php
+                                $statusColors = [
+                                'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                                'processing' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                                'completed' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                                'cancelled' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+                                ];
+                                @endphp
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$order->status] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' }}">
+                                    {{ ucfirst($order->status) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
+                                ${{ number_format($order->grand_total, 2) }}
+                            </td>
+                        </tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -404,7 +404,7 @@
     {{-- Charts.js --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
             const isDarkMode = () =>
                 document.documentElement.classList.contains('dark') ||
@@ -477,11 +477,26 @@
                 data: {
                     labels: ['Pending', 'Processing', 'Completed', 'Cancelled'],
                     datasets: [{
-                        data: [
-                            {{ $orderStatusCounts['pending'] }},
-                            {{ $orderStatusCounts['processing'] }},
-                            {{ $orderStatusCounts['completed'] }},
-                            {{ $orderStatusCounts['cancelled'] }}
+                        data: [{
+                                {
+                                    $orderStatusCounts['pending']
+                                }
+                            },
+                            {
+                                {
+                                    $orderStatusCounts['processing']
+                                }
+                            },
+                            {
+                                {
+                                    $orderStatusCounts['completed']
+                                }
+                            },
+                            {
+                                {
+                                    $orderStatusCounts['cancelled']
+                                }
+                            }
                         ],
                         backgroundColor: [
                             'rgb(251, 191, 36)',
@@ -529,7 +544,7 @@
             window.matchMedia('(prefers-color-scheme: dark)')
                 .addEventListener('change', updateChartsForTheme);
         });
-        </script>
+    </script>
 
 
 </x-app-layout>
