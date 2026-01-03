@@ -482,6 +482,56 @@ class Cart extends Model
     }
 
     /**
+     * Calculate taxes for given items
+     */
+    public static function calculateTaxes(array $items): array
+    {
+        $storeSetting = StoreSetting::first();
+        $taxSettings = $storeSetting?->settings['tax_settings'] ?? [];
+        $taxEnabled = $taxSettings['tax_enabled'] ?? false;
+        $taxRate = (float)($taxSettings['tax_rate'] ?? 0);
+        $taxInclusive = $taxSettings['tax_inclusive'] ?? false;
+
+        $subtotal = 0;
+        $taxableSubtotal = 0;
+        
+        foreach ($items as $item) {
+            $product = $item['product'];
+            $variant = isset($item['variant_id']) ? ProductVariant::find($item['variant_id']) : null;
+            
+            // Get price
+            $price = $variant && $variant->price > 0 ? $variant->price : $product->price;
+            
+            // Calculate line total
+            $lineTotal = $price * $item['quantity'];
+            $subtotal += $lineTotal;
+            
+            // Check if product/variant is taxable
+            $isTaxable = $variant ? ($variant->taxable ?? $product->charge_tax) : $product->charge_tax;
+            
+            if ($taxEnabled && $isTaxable) {
+                $taxableSubtotal += $lineTotal;
+            }
+        }
+
+        // Calculate tax
+        $tax = $taxEnabled ? ($taxableSubtotal * ($taxRate / 100)) : 0;
+        
+        // If tax is inclusive, adjust subtotal
+        if ($taxInclusive && $taxEnabled) {
+            $subtotal = $subtotal - $tax;
+        }
+
+        return [
+            'subtotal' => $subtotal,
+            'tax' => $tax,
+            'tax_enabled' => $taxEnabled,
+            'tax_rate' => $taxRate,
+            'tax_inclusive' => $taxInclusive,
+        ];
+    }
+
+    /**
      * Calculate totals for session cart
      */
     private static function calculateSessionTotals(&$cart)

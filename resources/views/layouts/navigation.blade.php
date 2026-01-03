@@ -77,11 +77,15 @@
                         </x-nav-link>
 
                         <x-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.*')">
-                            {{ __('Contact Inquries') }}
+                            {{ __('Inquries') }}
                         </x-nav-link>
 
                         <x-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                             {{ __('Documents') }}
+                        </x-nav-link>
+
+                        <x-nav-link :href="route('admin.store-settings.index')" :active="request()->routeIs('admin.store-settings.*')">
+                            {{ __('Settings') }}
                         </x-nav-link>
                     @elseif(Auth::user()->hasRole('customer'))
                         <x-nav-link :href="route('customer.dashboard')" :active="request()->routeIs('customer.dashboard')">
@@ -252,11 +256,15 @@
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('admin.contact.inquiries')" :active="request()->routeIs('admin.contact.*')">
-                    {{ __('Contact Inquries') }}
+                    {{ __('Inquries') }}
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                     {{ __('Documents') }}
+                </x-responsive-nav-link>
+
+                <x-responsive-nav-link :href="route('admin.store-settings.index')" :active="request()->routeIs('admin.store-settings.*')">
+                    {{ __('Settings') }}
                 </x-responsive-nav-link>
 
             @elseif(Auth::user()->hasRole('customer'))

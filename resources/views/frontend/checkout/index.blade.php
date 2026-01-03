@@ -575,67 +575,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Store prices from backend
-            const baseSubtotal = {
-                {
-                    $subtotal
-                }
-            };
-            const baseShipping = {
-                {
-                    $shipping
-                }
-            };
-            const baseTax = {
-                {
-                    $tax
-                }
-            };
-            const baseTotal = {
-                {
-                    $total
-                }
-            };
+            // Store prices and tax settings from backend
+            const baseSubtotal = {{ $subtotal }};
+            const baseShipping = {{ $shipping }};
+            const baseTax = {{ $tax }};
+            const baseTotal = {{ $total }};
             const currencySymbol = '{{ $currencySymbol }}';
-            const decimals = {
-                {
-                    $decimals
-                }
-            };
-
-            // Same as shipping toggle
-            const sameAsShipping = document.getElementById('same_as_shipping');
-            const billingFields = document.getElementById('billing-address-fields');
-
-            sameAsShipping.addEventListener('change', function() {
-                if (this.checked) {
-                    billingFields.classList.add('hidden');
-                    // Clear billing fields when hidden
-                    document.querySelectorAll('#billing-address-fields input, #billing-address-fields select').forEach(field => {
-                        field.removeAttribute('required');
-                    });
-                } else {
-                    billingFields.classList.remove('hidden');
-                    // Make billing fields required when shown
-                    document.querySelectorAll('#billing-address-fields input, #billing-address-fields select').forEach(field => {
-                        field.setAttribute('required', 'required');
-                    });
-                }
-            });
-
-            // Payment method toggle
-            const paymentMethods = document.querySelectorAll('input[name="payment_method"]');
-            const cardFields = document.getElementById('card-payment-fields');
-
-            paymentMethods.forEach(method => {
-                method.addEventListener('change', function() {
-                    if (this.value === 'card' && this.checked) {
-                        cardFields.classList.remove('hidden');
-                    } else {
-                        cardFields.classList.add('hidden');
-                    }
-                });
-            });
+            const decimals = {{ $decimals }};
+            const taxEnabled = {{ $taxEnabled ? 'true' : 'false' }};
+            const taxRate = {{ $taxRate }};
+            const taxInclusive = {{ $taxInclusive ? 'true' : 'false' }};
 
             // Shipping method price calculation
             const shippingMethods = document.querySelectorAll('input[name="shipping_method"]');
@@ -644,303 +593,79 @@
             const orderTotal = document.getElementById('order-total');
             const subtotalDisplay = document.getElementById('subtotal-display');
 
+            // Calculate tax for a given subtotal
+            function calculateTax(subtotal) {
+                if (!taxEnabled) return 0;
+                return subtotal * (taxRate / 100);
+            }
+
+            // Update display with new values
+            function updateTotals(subtotalValue, shippingPrice) {
+                let taxValue = calculateTax(subtotalValue);
+                
+                // If tax is inclusive, adjust displayed subtotal
+                let displaySubtotal = taxInclusive ? subtotalValue - taxValue : subtotalValue;
+                
+                const totalValue = displaySubtotal + taxValue + shippingPrice;
+
+                // Update display
+                subtotalDisplay.textContent = currencySymbol + displaySubtotal.toFixed(decimals);
+                shippingCost.textContent = shippingPrice > 0 ?
+                    currencySymbol + shippingPrice.toFixed(decimals) :
+                    '{{ __("FREE") }}';
+                
+                if (taxEnabled) {
+                    taxAmount.textContent = currencySymbol + taxValue.toFixed(decimals);
+                    taxAmount.parentElement.style.display = 'flex';
+                } else {
+                    taxAmount.parentElement.style.display = 'none';
+                }
+                
+                orderTotal.textContent = currencySymbol + totalValue.toFixed(decimals);
+            }
+
             // Set initial values
-            subtotalDisplay.textContent = currencySymbol + baseSubtotal.toFixed(decimals);
+            updateTotals(baseSubtotal, baseShipping);
 
             shippingMethods.forEach(method => {
                 method.addEventListener('change', function() {
                     if (!this.checked) return;
 
                     let shippingPrice = parseFloat(this.dataset.price || 0);
-                    const taxRate = 0.00; // 5% tax rate
-                    const tax = baseSubtotal * taxRate;
-                    const total = baseSubtotal + shippingPrice + tax;
-
-                    // Update display
-                    shippingCost.textContent = shippingPrice > 0 ?
-                        currencySymbol + shippingPrice.toFixed(decimals) :
-                        '{{ __("FREE") }}';
-
-                    taxAmount.textContent = currencySymbol + tax.toFixed(decimals);
-                    orderTotal.textContent = currencySymbol + total.toFixed(decimals);
+                    updateTotals(baseSubtotal, shippingPrice);
                 });
             });
 
-            // Form submission
-            const checkoutForm = document.getElementById('checkout-form');
-            const placeOrderBtn = document.getElementById('place-order-btn');
+            // Update tax display based on tax settings
+            const taxElement = document.querySelector('.flex.justify-between:has(#tax-amount)');
+            if (taxElement && taxEnabled) {
+                taxElement.style.display = 'flex';
+            } else if (taxElement) {
+                taxElement.style.display = 'none';
+            }
 
-            checkoutForm.addEventListener('submit', function(e) {
-                // Prevent double submission
-                if (placeOrderBtn.disabled) {
-                    e.preventDefault();
-                    return;
-                }
-
-                // Show loading state
-                placeOrderBtn.disabled = true;
-                placeOrderBtn.innerHTML = `
-                    <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                `;
-
-                // Validate all required fields
-                const requiredFields = checkoutForm.querySelectorAll('[required]');
-                let isValid = true;
-                let firstInvalidField = null;
-
-                requiredFields.forEach(field => {
-                    if (!field.value.trim() && field.offsetParent !== null) {
-                        isValid = false;
-                        field.classList.add('border-red-500');
-                        if (!firstInvalidField) {
-                            firstInvalidField = field;
-                        }
-                    } else {
-                        field.classList.remove('border-red-500');
-                    }
-                });
-
-                if (!isValid) {
-                    e.preventDefault();
-                    showNotification('{{ __("Please fill all required fields") }}', 'error');
-                    if (firstInvalidField) {
-                        firstInvalidField.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center'
-                        });
-                        firstInvalidField.focus();
-                    }
-                    placeOrderBtn.disabled = false;
-                    placeOrderBtn.innerHTML = `
-                        <svg class="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        {{ __("Place Order") }}
+            // Add tax information tooltip
+            if (taxEnabled) {
+                const taxLabel = document.querySelector('label[for="tax_amount"], .flex.justify-between:has(#tax-amount) span:first-child');
+                if (taxLabel) {
+                    taxLabel.innerHTML = `
+                        <div class="flex items-center">
+                            <span>{{ __("Tax") }} (${taxRate}%)</span>
+                            <div class="relative group ml-1">
+                                <svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                    <div class="relative">
+                                        ${taxInclusive ? 
+                                            '{{ __("Tax included in product prices") }}' : 
+                                            '{{ __("Tax added at checkout") }}'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     `;
-                    return;
                 }
-
-                // Validate email format
-                const emailField = document.getElementById('email');
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(emailField.value)) {
-                    e.preventDefault();
-                    showNotification('{{ __("Please enter a valid email address") }}', 'error');
-                    emailField.classList.add('border-red-500');
-                    emailField.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                    emailField.focus();
-                    placeOrderBtn.disabled = false;
-                    placeOrderBtn.innerHTML = `
-                        <svg class="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        {{ __("Place Order") }}
-                    `;
-                    return;
-                }
-
-                // Validate phone number
-                const phoneField = document.getElementById('phone');
-                const phoneRegex = /^[\+]?[1-9][\d\s\-\(\)\.]{8,}$/;
-                if (!phoneRegex.test(phoneField.value.replace(/\s/g, ''))) {
-                    e.preventDefault();
-                    showNotification('{{ __("Please enter a valid phone number") }}', 'error');
-                    phoneField.classList.add('border-red-500');
-                    phoneField.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                    phoneField.focus();
-                    placeOrderBtn.disabled = false;
-                    placeOrderBtn.innerHTML = `
-                        <svg class="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        {{ __("Place Order") }}
-                    `;
-                    return;
-                }
-
-                // Validate card fields if card payment is selected
-                const cardPayment = document.getElementById('payment_card');
-                if (cardPayment && cardPayment.checked) {
-                    const cardNumber = document.getElementById('card_number');
-                    const cardExpiry = document.getElementById('card_expiry');
-                    const cardCvv = document.getElementById('card_cvv');
-                    const cardName = document.getElementById('card_name');
-
-                    if (!cardNumber.value.trim() || !cardExpiry.value.trim() || !cardCvv.value.trim() || !cardName.value.trim()) {
-                        e.preventDefault();
-                        showNotification('{{ __("Please fill all card payment details") }}', 'error');
-                        cardFields.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center'
-                        });
-                        placeOrderBtn.disabled = false;
-                        placeOrderBtn.innerHTML = `
-                            <svg class="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            {{ __("Place Order") }}
-                        `;
-                        return;
-                    }
-                }
-
-                // Show success notification
-                showNotification('{{ __("Processing your order...") }}', 'success');
-            });
-
-            // Format card inputs
-            const cardNumber = document.getElementById('card_number');
-            const cardExpiry = document.getElementById('card_expiry');
-            const cardCvv = document.getElementById('card_cvv');
-
-            if (cardNumber) {
-                cardNumber.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-                    let formatted = value.replace(/(\d{4})/g, '$1 ').trim();
-                    e.target.value = formatted.substring(0, 19);
-                });
-            }
-
-            if (cardExpiry) {
-                cardExpiry.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-                    if (value.length >= 2) {
-                        value = value.substring(0, 2) + '/' + value.substring(2, 4);
-                    }
-                    e.target.value = value.substring(0, 5);
-                });
-            }
-
-            if (cardCvv) {
-                cardCvv.addEventListener('input', function(e) {
-                    e.target.value = e.target.value.replace(/[^0-9]/gi, '').substring(0, 4);
-                });
-            }
-
-            // Phone number formatting
-            const phoneField = document.getElementById('phone');
-            if (phoneField) {
-                phoneField.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9+]/gi, '');
-                    e.target.value = value.substring(0, 15);
-                });
-            }
-
-            // Auto-fill billing address from shipping
-            sameAsShipping.addEventListener('change', function() {
-                if (this.checked) {
-                    document.getElementById('billing_address_line1').value = document.getElementById('shipping_address_line1').value;
-                    document.getElementById('billing_address_line2').value = document.getElementById('shipping_address_line2').value;
-                    document.getElementById('billing_city').value = document.getElementById('shipping_city').value;
-                    document.getElementById('billing_postal_code').value = document.getElementById('shipping_postal_code').value;
-                    document.getElementById('billing_country').value = document.getElementById('shipping_country').value;
-                }
-            });
-
-            // Real-time shipping address to billing address sync
-            const shippingFields = ['shipping_address_line1', 'shipping_address_line2', 'shipping_city', 'shipping_postal_code'];
-            shippingFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    field.addEventListener('input', function() {
-                        if (sameAsShipping.checked) {
-                            const billingField = document.getElementById(fieldId.replace('shipping', 'billing'));
-                            if (billingField) {
-                                billingField.value = this.value;
-                            }
-                        }
-                    });
-                }
-            });
-
-            const shippingCountry = document.getElementById('shipping_country');
-            if (shippingCountry) {
-                shippingCountry.addEventListener('change', function() {
-                    if (sameAsShipping.checked) {
-                        document.getElementById('billing_country').value = this.value;
-                    }
-                });
-            }
-
-            // Show notification function
-            function showNotification(message, type = 'success') {
-                // Remove existing notifications
-                const existingNotifications = document.querySelectorAll('.checkout-notification');
-                existingNotifications.forEach(notification => notification.remove());
-
-                const notification = document.createElement('div');
-                notification.className = `checkout-notification fixed top-4 right-4 z-50 bg-white dark:bg-gray-800 text-gray-800 dark:text-white px-6 py-4 rounded-xl shadow-2xl border-l-4 transform translate-x-full transition-transform duration-300 ${
-                    type === 'success' ? 'border-green-500' : 'border-red-500'
-                }`;
-                notification.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-6 h-6 mr-3 ${type === 'success' ? 'text-green-500' : 'text-red-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
-                                type === 'success' ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'
-                            }"/>
-                        </svg>
-                        <span class="font-medium">${message}</span>
-                    </div>
-                `;
-
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.classList.remove('translate-x-full');
-                    notification.classList.add('translate-x-0');
-                }, 10);
-
-                // Auto remove after 3 seconds
-                setTimeout(() => {
-                    notification.classList.remove('translate-x-0');
-                    notification.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.remove();
-                        }
-                    }, 300);
-                }, 3000);
-
-                // Click to dismiss
-                notification.addEventListener('click', () => {
-                    notification.classList.remove('translate-x-0');
-                    notification.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.remove();
-                        }
-                    }, 300);
-                });
-            }
-
-            // Initialize shipping method display
-            const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
-            if (selectedShipping) {
-                selectedShipping.dispatchEvent(new Event('change'));
-            }
-
-            // Initialize progress indicators
-            updateProgressIndicators();
-
-            function updateProgressIndicators() {
-                const steps = document.querySelectorAll('.flex-col.items-center');
-                steps.forEach((step, index) => {
-                    if (index < 1) { // Step 1 (Checkout) is active
-                        step.classList.add('active');
-                    } else {
-                        step.classList.remove('active');
-                    }
-                });
             }
         });
     </script>

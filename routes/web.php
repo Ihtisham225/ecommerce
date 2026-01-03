@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\GlobalSearchController as AdminSearchController;
 use App\Http\Controllers\Admin\SubscriberController as AdminSubscriberController;
+use App\Http\Controllers\Admin\StoreSettingController as AdminStoreSettingController;
 use App\Http\Controllers\ProfileController;
 
 // Frontend
@@ -171,6 +172,46 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     // ✅ Dashboard
     // -------------------------
     Route::get('dashboard', [AdminDashboardController::class,'index'])->name('dashboard');
+
+    // -------------------------
+    // ✅ Store Settings
+    // -------------------------
+
+    // Main store settings route
+    Route::get('/store-settings', [AdminStoreSettingController::class, 'index'])->name('store-settings.index');
+    
+    // Store Info Routes
+    Route::get('/store-settings/store-info', [AdminStoreSettingController::class, 'showStoreInfo'])->name('store-settings.store-info');
+    Route::post('/store-settings/store-info/update', [AdminStoreSettingController::class, 'updateStoreInfo'])->name('store-settings.store-info.update');
+    Route::delete('/store-settings/store-info/delete-logo', [AdminStoreSettingController::class, 'deleteLogo'])->name('store-settings.store-info.delete-logo');
+    
+    // Store Address Routes
+    Route::get('/store-settings/store-address', [AdminStoreSettingController::class, 'showStoreAddress'])->name('store-settings.store-address');
+    Route::post('/store-settings/store-address/update', [AdminStoreSettingController::class, 'updateStoreAddress'])->name('store-settings.store-address.update');
+    
+    // Shipping Methods Routes
+    Route::get('/store-settings/shipping-methods', [AdminStoreSettingController::class, 'showShippingMethods'])->name('store-settings.shipping-methods');
+    Route::post('/store-settings/shipping-methods/update', [AdminStoreSettingController::class, 'updateShippingMethods'])->name('store-settings.shipping-methods.update');
+    
+    // Payment Methods Routes
+    Route::get('/store-settings/payment-methods', [AdminStoreSettingController::class, 'showPaymentMethods'])->name('store-settings.payment-methods');
+    Route::post('/store-settings/payment-methods/update', [AdminStoreSettingController::class, 'updatePaymentMethods'])->name('store-settings.payment-methods.update');
+    
+    // Bank Details Routes
+    Route::get('/store-settings/bank-details', [AdminStoreSettingController::class, 'showBankDetails'])->name('store-settings.bank-details');
+    Route::post('/store-settings/bank-details/update', [AdminStoreSettingController::class, 'updateBankDetails'])->name('store-settings.bank-details.update');
+    
+    // Tax Settings Routes
+    Route::get('/store-settings/tax-settings', [AdminStoreSettingController::class, 'showTaxSettings'])->name('store-settings.tax-settings');
+    Route::post('/store-settings/tax-settings/update', [AdminStoreSettingController::class, 'updateTaxSettings'])->name('store-settings.tax-settings.update');
+    
+    // Notification Settings Routes
+    Route::get('/store-settings/notification-settings', [AdminStoreSettingController::class, 'showNotificationSettings'])->name('store-settings.notification-settings');
+    Route::post('/store-settings/notification-settings/update', [AdminStoreSettingController::class, 'updateNotificationSettings'])->name('store-settings.notification-settings.update');
+    
+    // Store Hours Routes
+    Route::get('/store-settings/store-hours', [AdminStoreSettingController::class, 'showStoreHours'])->name('store-settings.store-hours');
+    Route::post('/store-settings/store-hours/update', [AdminStoreSettingController::class, 'updateStoreHours'])->name('store-settings.store-hours.update');
 
     // -------------------------
     // ✅ Products CRUD
