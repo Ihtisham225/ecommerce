@@ -206,6 +206,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function purchaseItems()
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
     // ... other relations left as-is
 
     // ---------- Scopes ----------
@@ -331,5 +336,18 @@ class Product extends Model
             DB::rollBack();
             throw $e;
         }
+    }
+
+    public function getTotalPurchasedAttribute()
+    {
+        return $this->purchaseItems()->sum('quantity');
+    }
+
+    public function getAveragePurchasePriceAttribute()
+    {
+        $totalQuantity = $this->purchaseItems()->sum('quantity');
+        $totalAmount = $this->purchaseItems()->sum('total_price');
+        
+        return $totalQuantity > 0 ? $totalAmount / $totalQuantity : 0;
     }
 }

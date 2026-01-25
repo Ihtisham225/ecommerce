@@ -67,6 +67,26 @@
                                 Customers
                             </a>
                         </x-nav-dropdown>
+                        
+                        <!-- Suppliers -->
+                        <x-nav-dropdown label="Suppliers">
+                            <a href="{{ route('admin.suppliers.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                All Suppliers
+                            </a>
+
+                            <a href="{{ route('admin.expenses.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                All Expenses
+                            </a>
+
+                            <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+                            <a href="{{ route('admin.supplier-payments.index') }}"
+                            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Supplier Payments
+                            </a>
+                        </x-nav-dropdown>
 
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                             {{ __('Users') }}
@@ -243,6 +263,37 @@
                         <x-responsive-nav-link :href="route('admin.customers.index')" 
                             :active="request()->routeIs('admin.customers.*')">
                             Customers
+                        </x-responsive-nav-link>
+                    </div>
+                </div>
+
+                <!-- Responsive Suppliers Dropdown -->
+                <div x-data="{ open: false }">
+                    <button @click="open = !open"
+                        class="w-full flex justify-between items-center px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <span>Suppliers</span>
+                        <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div x-show="open" x-collapse class="bg-gray-50 dark:bg-gray-800">
+                        <x-responsive-nav-link :href="route('admin.suppliers.index')" 
+                            :active="request()->routeIs('admin.suppliers.*')">
+                            All Suppliers
+                        </x-responsive-nav-link>
+
+                        <x-responsive-nav-link :href="route('admin.expenses.index')" 
+                            :active="request()->routeIs('admin.expenses.*')">
+                            All Expenses
+                        </x-responsive-nav-link>
+
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+                        <x-responsive-nav-link :href="route('admin.supplier-payments.index')" 
+                            :active="request()->routeIs('admin.supplier-payments.*')">
+                            Supplier Payments
                         </x-responsive-nav-link>
                     </div>
                 </div>

@@ -29,6 +29,10 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\GlobalSearchController as AdminSearchController;
 use App\Http\Controllers\Admin\SubscriberController as AdminSubscriberController;
 use App\Http\Controllers\Admin\StoreSettingController as AdminStoreSettingController;
+use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
+use App\Http\Controllers\Admin\SupplierController as AdminSupplierController;
+use App\Http\Controllers\Admin\SupplierPaymentController as AdminSupplierPaymentController;
+use App\Http\Controllers\Admin\PurchaseItemController as AdminPurchaseItemController;
 use App\Http\Controllers\ProfileController;
 
 // Frontend
@@ -424,6 +428,34 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('blog-comments/{id}/restore', [AdminBlogCommentController::class, 'restore'])->name('blog-comments.restore');
     Route::delete('blog-comments/{id}/force-delete', [AdminBlogCommentController::class, 'forceDelete'])->name('blog-comments.force-delete');
     Route::get('blog-comments/stats', [AdminBlogCommentController::class, 'stats'])->name('blog-comments.stats');
+
+    // Supplier Routes
+    Route::resource('suppliers', AdminSupplierController::class);
+    Route::get('suppliers/{supplier}/balance-sheet', [AdminSupplierController::class, 'balanceSheet'])
+        ->name('suppliers.balance-sheet');
+
+    // Expense Routes
+    Route::resource('expenses', AdminExpenseController::class);
+    Route::post('expenses/{expense}/mark-paid', [AdminExpenseController::class, 'markAsPaid'])
+        ->name('expenses.mark-paid');
+    Route::post('products/{product}/variants', [AdminExpenseController::class, 'loadVariants'])
+        ->name('product.variants.load');
+
+    // Purchase Items Routes
+    Route::prefix('purchase-items')->name('purchase-items.')->group(function () {
+        Route::get('/search-products', [AdminPurchaseItemController::class, 'searchProducts'])->name('search-products');
+        Route::get('/{productId}/variants', [AdminPurchaseItemController::class, 'getVariants'])->name('variants');
+        Route::get('/product/{id}', [AdminPurchaseItemController::class, 'getProduct'])->name('product');
+        Route::get('/variant/{id}', [AdminPurchaseItemController::class, 'getVariant'])->name('variant');
+        Route::post('/calculate-totals', [AdminPurchaseItemController::class, 'calculateTotals'])->name('calculate-totals');
+    });
+
+    // Supplier Payment Routes
+    Route::resource('supplier-payments', AdminSupplierPaymentController::class);
+    Route::post('supplier-payments/{payment}/update-status', [AdminSupplierPaymentController::class, 'updateStatus'])->name('supplier-payments.update-status');
+    Route::get('supplier-payments/suppliers/get-pending-expenses', [AdminSupplierPaymentController::class, 'getPendingExpenses'])->name('get-pending-expenses');
+    Route::get('supplier-payments/suppliers/{supplier}/balance', [AdminSupplierPaymentController::class, 'getSupplierBalance'])->name('supplier-balance');
+    Route::get('supplier-payments/suppliers/{supplier}/pending-expenses', [AdminSupplierPaymentController::class, 'getSupplierPendingExpenses'])->name('supplier-pending-expenses');
 
     // Users (only admin)
     Route::middleware(['role:admin'])->group(function () {

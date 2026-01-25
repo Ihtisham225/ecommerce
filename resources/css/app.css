@@ -748,3 +748,51 @@ animation-delay: 2s;
         display: block;
     }
 }
+
+/** Expenses product model */
+/* Modal animations */
+#product-selection-modal {
+    transition: opacity 0.3s ease;
+}
+
+#product-selection-modal:not(.hidden) {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Product and variant card hover effects */
+.product-card, .variant-card {
+    transition: all 0.2s ease;
+}
+
+.product-card:hover, .variant-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollbar styling for modal */
+#product-selection-modal .overflow-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+#product-selection-modal .overflow-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#product-selection-modal .overflow-auto::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+#product-selection-modal .overflow-auto::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
