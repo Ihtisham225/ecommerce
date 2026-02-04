@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class Customer extends Model
 {
@@ -22,6 +24,208 @@ class Customer extends Model
     protected $casts = [
         'is_guest' => 'boolean',
     ];
+
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Creating event - before the customer is created
+        static::creating(function ($customer) {
+            if (!$customer->is_guest && !$customer->user_id) {
+                $customer->user_id = self::createUserForCustomer($customer);
+            }
+        });
+
+        // Updating event - before the customer is updated
+        static::updating(function ($customer) {
+            // If converting from guest to registered customer
+            if (!$customer->is_guest && !$customer->user_id) {
+                $customer->user_id = self::createUserForCustomer($customer);
+            }
+            
+            // If converting from registered to guest, remove user_id
+            if ($customer->is_guest && $customer->user_id) {
+                $customer->user_id = null;
+            }
+        });
+
+        // After the customer is saved, sync customer data with user
+        static::saved(function ($customer) {
+            if (!$customer->is_guest && $customer->user_id) {
+                self::syncUserWithCustomer($customer);
+            }
+        });
+    }
+
+    /**
+     * Create a user account for customer
+     */
+    private static function createUserForCustomer($customer): int
+    {
+        // Check if user already exists with this email
+        $user = User::where('email', $customer->email)->first();
+        $password = Str::random(12);
+        if (!$user) {
+            $user = User::create([
+                'name' => trim($customer->first_name . ' ' . $customer->last_name),
+                'email' => $customer->email,
+                'password' => Hash::make($password),
+                'user_password' => $password, // Store plain password temporarily if needed
+                
+            ]);
+            
+            // Assign customer role to the user
+            $user->assignRole('customer');
+        } else {
+            // Ensure existing user has customer role
+            if (!$user->hasRole('customer')) {
+                $user->assignRole('customer');
+            }
+        }
+        
+        return $user->id;
+    }
+
+    /**
+     * Sync user data with customer data
+     */
+    private static function syncUserWithCustomer($customer): void
+    {
+        if ($customer->user && $customer->user_id) {
+            $user = $customer->user;
+            
+            // Update user name if different
+            $fullName = trim($customer->first_name . ' ' . $customer->last_name);
+            if ($user->name !== $fullName) {
+                $user->name = $fullName;
+            }
+            
+            // Update email if different
+            if ($user->email !== $customer->email) {
+                $user->email = $customer->email;
+            }
+            
+            // Ensure customer role is assigned
+            if (!$user->hasRole('customer')) {
+                $user->assignRole('customer');
+            }
+            
+            $user->save();
+        }
+    }
+
+    /**
+     * Convert guest customer to registered user
+     */
+    public function convertToRegistered(string $password = null): User
+    {
+        if (!$this->is_guest) {
+            throw new \Exception('Customer is already registered');
+        }
+
+        $this->is_guest = false;
+        $user = $this->createUserAccount($password);
+        $this->user_id = $user->id;
+        $this->save();
+
+        return $user;
+    }
+
+    /**
+     * Create user account with optional password
+     */
+    public function createUserAccount(string $password = null): User
+    {
+        if ($this->is_guest) {
+            throw new \Exception('Cannot create user account for guest customer');
+        }
+
+        if ($this->user_id) {
+            return $this->user;
+        }
+
+        $user = User::where('email', $this->email)->first();
+        
+        if (!$user) {
+            $userData = [
+                'name' => $this->full_name,
+                'email' => $this->email,
+            ];
+
+            if ($password) {
+                $userData['password'] = Hash::make($password);
+            } else {
+                $userData['password'] = Hash::make(Str::random(12));
+            }
+
+            $user = User::create($userData);
+            $user->assignRole('customer');
+            
+            $this->update(['user_id' => $user->id]);
+        } else {
+            // Ensure the user has customer role
+            if (!$user->hasRole('customer')) {
+                $user->assignRole('customer');
+            }
+        }
+        
+        return $user;
+    }
+
+    /**
+     * Send welcome email to newly created user
+     */
+    public function sendWelcomeEmail(string $password = null): void
+    {
+        if (!$this->user_id || $this->is_guest) {
+            return;
+        }
+
+        // Dispatch a job to send welcome email
+        
+    }
+
+    /**
+     * Check if customer has user account
+     */
+    public function hasUserAccount(): bool
+    {
+        return !$this->is_guest && !is_null($this->user_id);
+    }
+
+    /**
+     * Get the customer's user with role check
+     */
+    public function getUserWithRoleAttribute()
+    {
+        if (!$this->user_id) {
+            return null;
+        }
+
+        return $this->user()->with('roles')->first();
+    }
+
+    /**
+     * Scope: Get only registered customers (non-guests with user accounts)
+     */
+    public function scopeRegistered($query)
+    {
+        return $query->where('is_guest', false)
+                     ->whereNotNull('user_id');
+    }
+
+    /**
+     * Scope: Get only guest customers
+     */
+    public function scopeGuest($query)
+    {
+        return $query->where('is_guest', true)
+                     ->orWhereNull('user_id');
+    }
 
     /**
      * Relationship: A customer may belong to a user account OR be a guest.
@@ -230,20 +434,21 @@ class Customer extends Model
      */
     public function getOrderFrequencyAttribute(): ?float
     {
-        $firstOrder = $this->orders()->orderBy('created_at')->first();
-        $lastOrder = $this->orders()->orderBy('created_at', 'desc')->first();
-        
+        $firstOrder = $this->orders()->oldest('created_at')->first();
+        $lastOrder  = $this->orders()->latest('created_at')->first();
+
         if (!$firstOrder || !$lastOrder) {
             return null;
         }
-        
-        $totalOrders = $this->total_orders_count;
-        $monthsBetween = $firstOrder->created_at->diffInMonths($lastOrder->created_at);
-        
-        if ($monthsBetween === 0) {
-            return $totalOrders;
-        }
-        
+
+        $totalOrders = $this->total_orders_count ?? $this->orders()->count();
+
+        // Ensure minimum of 1 month to avoid division by zero
+        $monthsBetween = max(
+            1,
+            $firstOrder->created_at->diffInMonths($lastOrder->created_at)
+        );
+
         return round($totalOrders / $monthsBetween, 2);
     }
 

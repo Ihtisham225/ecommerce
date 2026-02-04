@@ -14,7 +14,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-[1440px] mx-auto sm:px-6 lg:px-8">
             <!-- Global Messages Container -->
             <div id="globalMessages"></div>
 
@@ -32,6 +32,7 @@
                                 'tax-settings' => ['icon' => 'calculator', 'title' => 'Tax', 'route' => 'admin.store-settings.tax-settings'],
                                 'notification-settings' => ['icon' => 'bell', 'title' => 'Notifications', 'route' => 'admin.store-settings.notification-settings'],
                                 'store-hours' => ['icon' => 'clock', 'title' => 'Store Hours', 'route' => 'admin.store-settings.store-hours'],
+                                'google-merchant' => ['icon' => 'shopping-cart', 'title' => 'Google Merchant', 'route' => 'admin.store-settings.google-merchant'],
                             ];
                         @endphp
                         
@@ -57,6 +58,8 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     @elseif($section['icon'] == 'clock')
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    @elseif($section['icon'] == 'shopping-cart')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                                     @endif
                                 </svg>
                                 {{ __($section['title']) }}

@@ -131,6 +131,7 @@
                                 <option value="unfeature">{{ __('Unfeature') }}</option>
                                 <option value="out_of_stock">{{ __('Out Of Stock') }}</option>
                                 <option value="in_stock">{{ __('In Stock') }}</option>
+                                <option value="sync_google">{{ __('Sync to Google') }}</option>
                                 <option value="delete">{{ __('Delete') }}</option>
                             </select>
                             <button id="apply-bulk" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition duration-150 ease-in-out">
@@ -202,6 +203,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Featured</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Google Sync</th> <!-- Add this column -->
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
                                 <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -386,18 +388,23 @@
             #products-table td:nth-child(4),
             #products-table th:nth-child(5),
             #products-table td:nth-child(5),
-            #products-table th:nth-child(6), /* Add stock status column */
+            #products-table th:nth-child(6),
             #products-table td:nth-child(6) {
                 @apply w-32;
             }
 
-            #products-table th:nth-child(7), /* Updated from 6 to 7 */
+            #products-table th:nth-child(7), /* Google sync column */
             #products-table td:nth-child(7) {
+                @apply w-36;
+            }
+
+            #products-table th:nth-child(8), /* Created column */
+            #products-table td:nth-child(8) {
                 @apply w-40;
             }
 
-            #products-table th:nth-child(8), /* Updated from 7 to 8 */
-            #products-table td:nth-child(8) {
+            #products-table th:nth-child(9), /* Actions column */
+            #products-table td:nth-child(9) {
                 @apply w-48;
             }
 
@@ -481,10 +488,16 @@
                         className: 'px-4 py-3' 
                     },
                     { 
-                        data: 'stock_status', // Add this column
+                        data: 'stock_status',
                         orderable: false, 
                         searchable: false,
                         className: 'px-4 py-3' 
+                    },
+                    { 
+                        data: 'google_sync', // Add Google sync column
+                        orderable: false, 
+                        searchable: false,
+                        className: 'px-4 py-3 text-center' 
                     },
                     { 
                         data: 'created_at', 
@@ -652,6 +665,47 @@
                 });
             });
 
+            // ✅ Google Sync button click handler
+            $('#products-table').on('click', '.sync-google-btn', function (e) {
+                e.stopPropagation();
+                const id = $(this).data('id');
+                
+                if (confirm('Sync this product to Google Merchant Center?')) {
+                    const button = $(this);
+                    const originalHtml = button.html();
+                    
+                    button.prop('disabled', true);
+                    button.html(`
+                        <svg class="w-3 h-3 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4m8-10h-4M6 12H2m15.364-7.364l-2.828 2.828M7.464 17.536l-2.828 2.828m12.728 0l-2.828-2.828M7.464 6.464L4.636 3.636"/>
+                        </svg>
+                        Syncing...
+                    `);
+                    
+                    $.ajax({
+                        url: `/admin/products/${id}/sync-google`,
+                        method: 'POST',
+                        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+                        success: (response) => {
+                            if (response.success) {
+                                showToast('Product synced to Google Merchant');
+                                // Reload just the row to update status
+                                table.ajax.reload(null, false);
+                            } else {
+                                showToast('Sync failed: ' + response.message, 'error');
+                                button.prop('disabled', false);
+                                button.html(originalHtml);
+                            }
+                        },
+                        error: () => {
+                            showToast('Failed to sync product', 'error');
+                            button.prop('disabled', false);
+                            button.html(originalHtml);
+                        }
+                    });
+                }
+            });
+
             // ✅ Select all / bulk actions
             $('#select-all').on('change', function() {
                 $('.row-check').prop('checked', $(this).is(':checked'));
@@ -671,9 +725,10 @@
             }
 
             // ✅ Apply bulk actions
-            $('#apply-bulk').click(() => {
+           $('#apply-bulk').click(() => {
                 const action = $('#bulk-action-select').val();
                 const ids = $('.row-check:checked').map((i, e) => e.value).get();
+                
                 if (!action || !ids.length) {
                     showToast('Please select an action and at least one product.', 'error');
                     return;
@@ -681,8 +736,30 @@
 
                 if (action === 'delete') {
                     showBulkDeleteModal(ids, ids.length);
+                } else if (action === 'sync_google') {
+                    if (confirm(`Sync ${ids.length} product(s) to Google Merchant Center?`)) {
+                        $('#apply-bulk').prop('disabled', true).text('Syncing...');
+                        
+                        $.post(`{{ route('admin.products.bulk.sync-google') }}`, {
+                            product_ids: ids, 
+                            _token: "{{ csrf_token() }}"
+                        }).done(res => {
+                            if (res.success) {
+                                showToast(res.message);
+                                table.ajax.reload();
+                                toggleBulkBar();
+                                $('#bulk-action-select').val('');
+                            } else {
+                                showToast(res.message, 'error');
+                            }
+                        }).fail(() => {
+                            showToast('An error occurred while syncing products.', 'error');
+                        }).always(() => {
+                            $('#apply-bulk').prop('disabled', false).text('Apply');
+                        });
+                    }
                 } else {
-                    // For other actions, proceed directly
+                    // For other actions (publish, unpublish, etc.)
                     $.post(`{{ route('admin.products.bulk') }}`, {
                         action, ids, _token: "{{ csrf_token() }}"
                     }).done(res => {

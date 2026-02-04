@@ -211,23 +211,27 @@
                         @click.away="open = false"
                         class="absolute z-10 right-0 mt-2 w-48 rounded-xl shadow-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden">
                         <div class="py-2">
-                            <a href="{{ url('/admin/dashboard') }}" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
-                                        {{ request()->routeIs('admin.dashboard') ? 'bg-gradient-to-r from-rose-500/10 to-pink-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400' }}">
+                            <a href="{{ auth()->user()->dashboardRoute() }}" class="block px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
+                                        {{ request()->routeIs('admin.dashboard', 'customer.dashboard') ? 'bg-gradient-to-r from-rose-500/10 to-pink-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:text-rose-400' }}">
                                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                 </svg>
                                 {{ __("Dashboard") }}
                             </a>
                             <div class="border-t border-gray-100 dark:border-gray-700 my-2"></div>
-                            <form method="POST" action="{{ route('logout') }}">
+                            <form method="POST" action="{{ route('logout') }}" id="logout-form">
                                 @csrf
-                                <button type="submit" class="block w-full text-left px-4 py-3 text-sm transition-all duration-300 group/item flex items-center
-                                            hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-700 hover:text-red-600 dark:hover:text-red-400">
+                                <a href="{{ route('logout') }}"
+                                onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
+                                class="block w-full text-left px-4 py-3 text-sm flex items-center
+                                        hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50
+                                        hover:text-red-600">
                                     <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                     </svg>
-                                    {{ __("Log Out") }}
-                                </button>
+                                    {{ __('Log Out') }}
+                                </a>
                             </form>
                         </div>
                     </div>
@@ -388,8 +392,8 @@
             @if (Route::has('login'))
             @auth
             <div class="border-t border-gray-200 dark:border-gray-800 pt-4 mt-4">
-                <a href="{{ url('/admin/dashboard') }}" class="block px-4 py-4 rounded-xl text-base font-semibold transition-all duration-300 group
-                            {{ request()->routeIs('admin.dashboard') ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-pink-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-800 dark:hover:to-gray-700' }}">
+                <a href="{{ auth()->user()->dashboardRoute() }}" class="block px-4 py-4 rounded-xl text-base font-semibold transition-all duration-300 group
+                            {{ request()->routeIs('admin.dashboard', 'custom.dashboard') ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-pink-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-rose-50 hover:to-pink-50 dark:hover:from-gray-800 dark:hover:to-gray-700' }}">
                     <div class="flex items-center">
                         <div class="w-8 h-8 mr-3 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
                             {{ substr(auth()->user()->name, 0, 1) }}

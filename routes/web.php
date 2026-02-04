@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
 use App\Http\Controllers\Admin\SupplierController as AdminSupplierController;
 use App\Http\Controllers\Admin\SupplierPaymentController as AdminSupplierPaymentController;
 use App\Http\Controllers\Admin\PurchaseItemController as AdminPurchaseItemController;
+use App\Http\Controllers\Admin\GoogleMerchantController as AdminGoogleMerchantController;
 use App\Http\Controllers\ProfileController;
 
 // Frontend
@@ -109,6 +110,7 @@ Route::post('/cart/clear', [FrontendCartController::class, 'clear'])->name('cart
 Route::get('/checkout', [FrontendCheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/process', [FrontendCheckoutController::class, 'process'])->name('checkout.process');
 Route::post('/checkout/direct-purchase', [FrontendCheckoutController::class, 'directPurchase'])->name('checkout.direct-purchase');
+Route::get('/checkout/success/{order}', [FrontendCheckoutController::class, 'success'])->name('checkout.success');
 
 
 // Policy Pages
@@ -217,6 +219,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('/store-settings/store-hours', [AdminStoreSettingController::class, 'showStoreHours'])->name('store-settings.store-hours');
     Route::post('/store-settings/store-hours/update', [AdminStoreSettingController::class, 'updateStoreHours'])->name('store-settings.store-hours.update');
 
+    // Google Merchant Settings Routes
+    Route::get('/store-settings/google-merchant', function () {
+        return view('admin.store-settings.sections.google-merchant');
+    })->name('store-settings.google-merchant');
+
     // -------------------------
     // ✅ Products CRUD
     // -------------------------
@@ -321,6 +328,22 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     // -------------------------
     Route::resource('/collections', AdminCollectionController::class);
     Route::post('/collections/quick-add', [AdminCollectionController::class, 'quickAdd'])->name('admin.collections.quick-add');
+
+    // -------------------------
+    // ✅ Google Merchant Sync Routes
+    // -------------------------
+    Route::prefix('google-merchant')->name('google-merchant.')->group(function () {
+        Route::get('/settings', [AdminGoogleMerchantController::class, 'settings'])->name('settings');
+        Route::post('/settings', [AdminGoogleMerchantController::class, 'updateSettings'])->name('settings.update');
+        Route::post('/connect', [AdminGoogleMerchantController::class, 'connect'])->name('connect');
+        Route::get('/callback', [AdminGoogleMerchantController::class, 'callback'])->name('callback');
+        Route::post('/disconnect', [AdminGoogleMerchantController::class, 'disconnect'])->name('disconnect');
+        Route::post('/test', [AdminGoogleMerchantController::class, 'testConnection'])->name('test');
+        Route::post('/sync', [AdminGoogleMerchantController::class, 'syncAll'])->name('sync');
+        Route::get('/stats', [AdminGoogleMerchantController::class, 'getStats'])->name('stats');
+    });
+    Route::post('/products/{product}/sync-google', [AdminProductController::class, 'syncToGoogle'])->name('products.sync-google');
+    Route::post('/products/bulk-sync-google', [AdminProductController::class, 'bulkSyncToGoogle'])->name('products.bulk.sync-google');
 
     // -------------------------
     // ✅ Orders Routes

@@ -55,16 +55,51 @@
                     <!-- Cart Items List -->
                     <div class="space-y-4">
                         @foreach($items as $item)
+                        @php
+                            // Check if item is an array (from session) or object (from database)
+                            $itemId = $item['id'] ?? $item->id ?? '';
+                            $product = $item['product'] ?? $item->product ?? null;
+                            $quantity = $item['quantity'] ?? $item->quantity ?? 1;
+                            $price = $item['price'] ?? $item->price ?? 0;
+                            $variantId = $item['variant_id'] ?? $item->variant_id ?? null;
+                            $options = $item['options'] ?? $item->options ?? [];
+                            
+                            // For session cart, product might already be an object
+                            // For database cart, product might need to be loaded
+                            if ($product && is_array($product)) {
+                                $product = (object)$product;
+                            }
+                            
+                            // Get variant if exists
+                            $variant = null;
+                            $variantImage = null;
+                            if ($variantId) {
+                                $variant = \App\Models\ProductVariant::with('image')->find($variantId);
+                                if ($variant && $variant->image) {
+                                    $variantImage = asset('storage/' . $variant->image->file_path);
+                                }
+                            }
+                            
+                            // Determine which image to show - variant image first, then product main image
+                            $displayImage = $variantImage;
+                            if (!$displayImage && $product && method_exists($product, 'mainImage') && $product->mainImage()) {
+                                $mainImage = $product->mainImage()->first();
+                                if ($mainImage) {
+                                    $displayImage = asset('storage/' . $mainImage->file_path);
+                                }
+                            }
+                        @endphp
+                        
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
-                            data-item-id="{{ $item->id }}">
+                            data-item-id="{{ $itemId }}">
                             <div class="p-6">
                                 <div class="flex flex-col md:flex-row gap-6">
                                     <!-- Product Image -->
                                     <div class="flex-shrink-0">
                                         <div class="w-32 h-32 rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800">
-                                            @if($item->product && $item->product->mainImage)
-                                            <img src="{{ asset('storage/' . $item->product->mainImage->first()->file_path) }}"
-                                                alt="{{ $item->product->translate('title') }}"
+                                            @if($displayImage)
+                                            <img src="{{ $displayImage }}"
+                                                alt="{{ $product ? ($product->translate('title') ?? ($product->title ?? 'Product')) : 'Product' }}"
                                                 class="w-full h-full object-contain">
                                             @else
                                             <div class="w-full h-full flex items-center justify-center">
@@ -81,32 +116,40 @@
                                         <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
                                             <div class="flex-1">
                                                 <!-- Brand -->
-                                                @if($item->product && $item->product->brand)
+                                                @if($product && isset($product->brand) && $product->brand)
                                                 <div class="text-xs font-semibold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-1">
-                                                    {{ $item->product->brand->name }}
+                                                    {{ $product->brand->name ?? '' }}
                                                 </div>
                                                 @endif
 
                                                 <!-- Title -->
                                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
-                                                    <a href="{{ $item->product ? route('products.show', $item->product->slug) : '#' }}">
-                                                        {{ $item->product ? $item->product->translate('title') : __('Product not available') }}
+                                                    <a href="{{ $product ? route('products.show', $product->slug ?? '#') : '#' }}">
+                                                        {{ $product ? ($product->translate('title') ?? ($product->title ?? __('Product not available'))) : __('Product not available') }}
                                                     </a>
                                                 </h3>
 
                                                 <!-- Variant Details -->
-                                                @if($item->variant && $item->variant->options)
+                                                @if($variant)
                                                 <div class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                                    @foreach($item->variant->options as $optionName => $optionValue)
-                                                        <span class="mr-2">
-                                                            <strong>{{ $optionName }}:</strong> {{ $optionValue }}
-                                                        </span>
-                                                    @endforeach
+                                                    <div class="font-medium mb-1">{{ $variant->title ?? 'Variant' }}</div>
+                                                    @if($variant->options && is_array($variant->options))
+                                                        @foreach($variant->options as $optionName => $optionValue)
+                                                            <span class="inline-block mr-3 mb-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">
+                                                                <strong>{{ $optionName }}:</strong> {{ $optionValue }}
+                                                            </span>
+                                                        @endforeach
+                                                    @endif
+                                                    @if($variant->sku)
+                                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                            SKU: {{ $variant->sku }}
+                                                        </div>
+                                                    @endif
                                                 </div>
-                                                @elseif($item->options && is_array($item->options))
+                                                @elseif($options && is_array($options) && count($options) > 0)
                                                 <div class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                                    @foreach($item->options as $optionName => $optionValue)
-                                                        <span class="mr-2">
+                                                    @foreach($options as $optionName => $optionValue)
+                                                        <span class="inline-block mr-3 mb-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">
                                                             <strong>{{ $optionName }}:</strong> {{ $optionValue }}
                                                         </span>
                                                     @endforeach
@@ -115,7 +158,17 @@
 
                                                 <!-- Stock Status -->
                                                 <div class="flex items-center mb-4">
-                                                    @if($item->product && $item->product->stock_status === 'in_stock')
+                                                    @if($variant && isset($variant->stock_quantity))
+                                                        @if($variant->stock_quantity > 0)
+                                                        <span class="px-2 py-1 text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-full">
+                                                            {{ __("In Stock") }} ({{ $variant->stock_quantity }} {{ __("available") }})
+                                                        </span>
+                                                        @else
+                                                        <span class="px-2 py-1 text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded-full">
+                                                            {{ __("Out of Stock") }}
+                                                        </span>
+                                                        @endif
+                                                    @elseif($product && isset($product->stock_status) && $product->stock_status === 'in_stock')
                                                     <span class="px-2 py-1 text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-full">
                                                         {{ __("In Stock") }}
                                                     </span>
@@ -132,32 +185,37 @@
                                                 <!-- Price -->
                                                 <div class="text-right">
                                                     <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                                                        {{ $currencySymbol }}{{ number_format($item->price * $item->quantity, 2) }}
+                                                        {{ $currencySymbol }}{{ number_format($price * $quantity, 2) }}
                                                     </div>
                                                     <div class="text-sm text-gray-600 dark:text-gray-400">
-                                                        {{ $currencySymbol }}{{ number_format($item->price, 2) }} {{ __("each") }}
+                                                        {{ $currencySymbol }}{{ number_format($price, 2) }} {{ __("each") }}
                                                     </div>
+                                                    @if($variant && $variant->compare_at_price && $variant->compare_at_price > $price)
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400 line-through">
+                                                        {{ $currencySymbol }}{{ number_format($variant->compare_at_price * $quantity, 2) }}
+                                                    </div>
+                                                    @endif
                                                 </div>
 
                                                 <!-- Quantity Controls -->
                                                 <div class="flex items-center space-x-3">
                                                     <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700">
                                                         <button type="button"
-                                                            onclick="updateQuantity('{{ $item->id }}', {{ $item->quantity - 1 }})"
+                                                            onclick="updateQuantity('{{ $itemId }}', {{ $quantity - 1 }})"
                                                             class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                                                             </svg>
                                                         </button>
                                                         <input type="number"
-                                                            id="quantity-{{ $item->id }}"
-                                                            value="{{ $item->quantity }}"
+                                                            id="quantity-{{ $itemId }}"
+                                                            value="{{ $quantity }}"
                                                             min="1"
-                                                            max="{{ $item->product ? $item->product->stock_quantity : 99 }}"
-                                                            onchange="updateQuantity('{{ $item->id }}', this.value)"
+                                                            max="{{ $variant ? ($variant->stock_quantity ?? 99) : ($product && isset($product->stock_quantity) ? $product->stock_quantity : 99) }}"
+                                                            onchange="updateQuantity('{{ $itemId }}', this.value)"
                                                             class="w-16 h-10 text-center bg-transparent text-gray-900 dark:text-white focus:outline-none">
                                                         <button type="button"
-                                                            onclick="updateQuantity('{{ $item->id }}', {{ $item->quantity + 1 }})"
+                                                            onclick="updateQuantity('{{ $itemId }}', {{ $quantity + 1 }})"
                                                             class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -167,7 +225,7 @@
 
                                                     <!-- Remove Button -->
                                                     <button type="button"
-                                                        onclick="removeItem('{{ $item->id }}')"
+                                                        onclick="removeItem('{{ $itemId }}')"
                                                         class="p-2 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -318,51 +376,82 @@
             </div>
             @endif
 
-            <!-- Recently Viewed -->
-            @if($item_count > 0)
+            <!-- Dynamic Recommended Products -->
+            @if($item_count > 0 && !empty($recommendedProducts))
             <section class="mt-20" data-aos="fade-up">
                 <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-8">
                     {{ __("You Might Also Like") }}
                 </h2>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    @for($i = 1; $i <= 4; $i++)
-                        <div class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-200 dark:border-gray-700">
+                    @foreach($recommendedProducts as $recommended)
+                    <div class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-200 dark:border-gray-700">
                         <div class="relative h-48 overflow-hidden">
-                            <div class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
-                                <svg class="w-16 h-16 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                </svg>
-                            </div>
+                            <a href="{{ route('products.show', $recommended['slug']) }}">
+                                @if($recommended['main_image'])
+                                <img src="{{ $recommended['main_image'] }}" 
+                                     alt="{{ $recommended['title'] }}"
+                                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                @else
+                                <div class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+                                    <svg class="w-16 h-16 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                    </svg>
+                                </div>
+                                @endif
+                            </a>
+                            @if($recommended['discount_percentage'] > 0)
                             <div class="absolute top-4 right-4">
                                 <span class="px-3 py-1 bg-rose-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                                    {{ __("NEW") }}
+                                    -{{ $recommended['discount_percentage'] }}%
                                 </span>
                             </div>
+                            @endif
+                            @if(!$recommended['in_stock'])
+                            <div class="absolute top-4 left-4">
+                                <span class="px-3 py-1 bg-gray-800 text-white text-xs font-semibold rounded-full shadow-lg">
+                                    {{ __("Out of Stock") }}
+                                </span>
+                            </div>
+                            @endif
                         </div>
                         <div class="p-6">
+                            @if(isset($recommended['brand']) && $recommended['brand'])
                             <div class="text-xs font-semibold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-1">
-                                {{ __("Brand") }}
+                                {{ $recommended['brand'] }}
                             </div>
+                            @endif
                             <h3 class="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors line-clamp-2">
-                                {{ __("Sample Product Title") }}
+                                <a href="{{ route('products.show', $recommended['slug']) }}">
+                                    {{ $recommended['title'] }}
+                                </a>
                             </h3>
                             <div class="flex items-center justify-between">
-                                <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ $currencySymbol }}{{ number_format(rand(20, 100), 2) }}
-                                </span>
-                                <button class="p-2 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                        {{ $currencySymbol }}{{ number_format($recommended['price'], 2) }}
+                                    </span>
+                                    @if($recommended['compare_at_price'] && $recommended['compare_at_price'] > $recommended['price'])
+                                    <span class="text-sm text-gray-500 dark:text-gray-400 line-through">
+                                        {{ $currencySymbol }}{{ number_format($recommended['compare_at_price'], 2) }}
+                                    </span>
+                                    @endif
+                                </div>
+                                @if($recommended['in_stock'])
+                                <button onclick="addToCart('{{ $recommended['id'] }}')"
+                                        class="p-2 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
                                 </button>
+                                @endif
                             </div>
                         </div>
+                    </div>
+                    @endforeach
                 </div>
-                @endfor
-        </div>
-        </section>
-        @endif
+            </section>
+            @endif
         </div>
     </main>
 
@@ -376,6 +465,35 @@
 
             form.classList.toggle('hidden');
             arrow.classList.toggle('rotate-180');
+        }
+
+        // Add product to cart
+        function addToCart(productId) {
+            fetch('{{ route("cart.add") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        quantity: 1
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Product added to cart', 'success');
+                        updateCartStats(data);
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('An error occurred', 'error');
+                    console.error('Error:', error);
+                });
         }
 
         // Update cart item quantity

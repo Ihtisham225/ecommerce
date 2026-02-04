@@ -446,17 +446,6 @@
                     },
 
                     /* --------------------------------
-                    Debounce Logic
-                    -------------------------------- */
-                    saveTimer: null,
-                    debounceSave() {
-                        clearTimeout(this.saveTimer);
-                        this.saveTimer = setTimeout(() => {
-                            this.saveCustomer();
-                        }, 600);
-                    },
-
-                    /* --------------------------------
                     Save Customer
                     -------------------------------- */
                     async saveCustomer() {

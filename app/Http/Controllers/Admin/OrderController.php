@@ -37,7 +37,7 @@ class OrderController extends Controller
             if ($request->filled('payment_status')) {
                 $orders->where('payment_status', $request->payment_status);
             }
-            
+
             // Shipping status filter
             if ($request->filled('shipping_status')) {
                 $orders->where('shipping_status', $request->shipping_status);
@@ -82,12 +82,12 @@ class OrderController extends Controller
             // Search filter
             if ($request->filled('search')) {
                 $search = $request->search;
-                $orders->where(function($q) use ($search) {
+                $orders->where(function ($q) use ($search) {
                     $q->where('order_number', 'like', "%{$search}%")
-                      ->orWhereHas('customer', function($q) use ($search) {
-                          $q->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                      });
+                        ->orWhereHas('customer', function ($q) use ($search) {
+                            $q->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
                 });
             }
 
@@ -160,8 +160,8 @@ class OrderController extends Controller
                 ->addColumn('source', function ($row) {
                     $color = $row->source === 'online' ? 'blue' : 'green';
                     $label = $row->source === 'online' ? 'Online' : 'In Store';
-                    $icon = $row->source === 'online' ? 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9' 
-                                                        : 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4';
+                    $icon = $row->source === 'online' ? 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9'
+                        : 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4';
 
                     return <<<HTML
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
@@ -174,9 +174,7 @@ class OrderController extends Controller
                     HTML;
                 })
                 ->addColumn('total', function ($row) {
-                    // If you have currency relation, adjust; fallback to $
-                    $currencySymbol = $row->currency->symbol ?? '$';
-                    return '<span class="font-semibold">' . $currencySymbol . number_format($row->grand_total, 2) . '</span>';
+                    return '<span class="font-semibold">' . format_currency($row->grand_total) . '</span>';
                 })
                 ->addColumn('actions', function ($row) {
                     $showUrl = route('admin.orders.show', $row->id);
@@ -259,19 +257,19 @@ class OrderController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
         // Get store setting
-        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
         // Get addresses - first from customer, then from order
-        $billingAddress = $order->customer?->addresses()->billing()->default()->first() 
+        $billingAddress = $order->customer?->addresses()->billing()->default()->first()
             ?? $order->addresses()->billing()->first();
-        
-        $shippingAddress = $order->customer?->addresses()->shipping()->default()->first() 
+
+        $shippingAddress = $order->customer?->addresses()->shipping()->default()->first()
             ?? $order->addresses()->shipping()->first();
 
         // Calculate additional metrics
@@ -291,7 +289,7 @@ class OrderController extends Controller
 
         // Get timeline events
         $timelineEvents = collect();
-        
+
         // Add order creation
         $timelineEvents->push([
             'type' => 'created',
@@ -372,12 +370,19 @@ class OrderController extends Controller
 
         // Get currency symbols
         $currencySymbols = [
-            'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'PKR' => '₨', 
-            'INR' => '₹', 'AED' => 'د.إ', 'SAR' => '﷼', 'CAD' => '$', 
-            'AUD' => '$', 'KWD' => 'K.D',
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'PKR' => '₨',
+            'INR' => '₹',
+            'AED' => 'د.إ',
+            'SAR' => '﷼',
+            'CAD' => '$',
+            'AUD' => '$',
+            'KWD' => 'KD',
         ];
 
-        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
@@ -386,10 +391,10 @@ class OrderController extends Controller
         $defaultBilling = $order->addresses->where('type', 'billing')->first();
 
         return view('admin.orders.form', compact(
-            'order', 
-            'customers', 
-            'currencySymbol', 
-            'defaultShipping', 
+            'order',
+            'customers',
+            'currencySymbol',
+            'defaultShipping',
             'defaultBilling'
         ));
     }
@@ -411,7 +416,7 @@ class OrderController extends Controller
             'shipping_address' => 'nullable|array',
             'shipping_address.address_line_1' => 'nullable|string|max:255',
             'shipping_address.address_line_2' => 'nullable|string|max:255',
-            
+
         ]);
 
         DB::beginTransaction();
@@ -424,7 +429,7 @@ class OrderController extends Controller
             ⭐ Detect customer change
             ---------------------------------------------------- */
             $customerChanged = isset($validated['customer_id']) &&
-                            $validated['customer_id'] != $order->customer_id;
+                $validated['customer_id'] != $order->customer_id;
 
             if ($customerChanged) {
                 $customer = Customer::find($validated['customer_id']);
@@ -531,11 +536,15 @@ class OrderController extends Controller
                 'balance_due' => $grandTotal - $totalPaid,
                 'payment_status' => $paymentStatus,
                 'order' => $order->fresh([
-                    'customer', 'items', 'addresses', 'payments',
-                    'adjustments', 'transactions', 'fulfillments'
+                    'customer',
+                    'items',
+                    'addresses',
+                    'payments',
+                    'adjustments',
+                    'transactions',
+                    'fulfillments'
                 ]),
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -553,11 +562,11 @@ class OrderController extends Controller
     private function handleAddressUpdates(Order $order, array $validated)
     {
         $isCustomerOrder = !empty($order->customer_id);
-        
+
         // Handle shipping address
         if (isset($validated['shipping_address'])) {
             $this->updateOrCreateAddress($order, $validated['shipping_address'], 'shipping');
-            
+
             // If customer order, also update customer's default shipping address
             if ($isCustomerOrder) {
                 $this->updateCustomerDefaultAddress($order->customer, $validated['shipping_address'], 'shipping');
@@ -573,9 +582,9 @@ class OrderController extends Controller
                     'address_line_1' => $shippingAddress->address_line_1,
                     'address_line_2' => $shippingAddress->address_line_2,
                 ];
-                
+
                 $this->updateOrCreateAddress($order, $billingData, 'billing', true);
-                
+
                 // If customer order, also update customer's default billing address
                 if ($isCustomerOrder) {
                     $this->updateCustomerDefaultAddress($order->customer, $billingData, 'billing');
@@ -583,7 +592,7 @@ class OrderController extends Controller
             }
         } elseif (isset($validated['billing_address'])) {
             $this->updateOrCreateAddress($order, $validated['billing_address'], 'billing');
-            
+
             // If customer order, also update customer's default billing address
             if ($isCustomerOrder) {
                 $this->updateCustomerDefaultAddress($order->customer, $validated['billing_address'], 'billing');
@@ -697,7 +706,6 @@ class OrderController extends Controller
                 'success' => true,
                 'message' => 'Orders updated successfully.',
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -722,7 +730,7 @@ class OrderController extends Controller
             $order->adjustments()->delete();
             $order->transactions()->delete();
             $order->fulfillments()->delete();
-            
+
             // Soft delete the order
             $order->delete();
 
@@ -732,7 +740,6 @@ class OrderController extends Controller
                 'success' => true,
                 'message' => 'Order deleted successfully.'
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -824,7 +831,6 @@ class OrderController extends Controller
                 'message' => 'Order status updated successfully.',
                 'order' => $order->fresh(),
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
@@ -865,7 +871,6 @@ class OrderController extends Controller
                 'message' => 'Invoice generated successfully.',
                 'download_url' => '#',
             ]);
-
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -882,7 +887,7 @@ class OrderController extends Controller
     {
         $prefix = 'ORD';
         $date = now()->format('Ymd');
-        
+
         do {
             $number = $prefix . $date . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
         } while (Order::where('order_number', $number)->exists());

@@ -53,16 +53,6 @@
     </x-slot>
 
     @php
-    $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
-    $currencyCode = $order->currency->code ?? 'USD';
-    $currencySymbols = [
-    'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'JPY' => '¥',
-    'CAD' => 'C$', 'AUD' => 'A$', 'CHF' => 'CHF', 'CNY' => '¥',
-    'INR' => '₹', 'KWD' => 'KD', 'SAR' => 'SR', 'AED' => 'AED'
-    ];
-    $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
-    $decimals = $currencyCode === 'KWD' ? 3 : 2;
-
     // Status colors
     $statusColors = [
     'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -119,7 +109,7 @@
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Order Value</p>
                             <p class="text-lg font-semibold text-gray-900 dark:text-white">
-                                {{ $currencySymbol }}{{ number_format($order->grand_total, $decimals) }}
+                                {{ format_currency($order->grand_total) }}
                             </p>
                         </div>
                     </div>
@@ -135,7 +125,7 @@
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Paid</p>
                             <p class="text-lg font-semibold text-gray-900 dark:text-white">
-                                {{ $currencySymbol }}{{ number_format($totalPaid, $decimals) }}
+                                {{ format_currency($totalPaid) }}
                             </p>
                         </div>
                     </div>
@@ -152,7 +142,7 @@
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Balance Due</p>
                             <p class="text-lg font-semibold text-gray-900 dark:text-white">
-                                {{ $currencySymbol }}{{ number_format($balanceDue, $decimals) }}
+                                {{ format_currency($balanceDue) }}
                             </p>
                         </div>
                     </div>
@@ -199,7 +189,7 @@
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {{ $currencySymbol }}{{ number_format($totalPaid, $decimals) }} of {{ $currencySymbol }}{{ number_format($order->grand_total, $decimals) }}
+                                {{ format_currency($totalPaid) }} of {{ format_currency($order->grand_total) }}
                             </span>
                             <span class="text-sm font-bold text-gray-900 dark:text-white">{{ round($paymentPercentage, 1) }}%</span>
                         </div>
@@ -215,15 +205,15 @@
                         <div class="mt-6 grid grid-cols-4 gap-4 text-center">
                             <div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Subtotal</p>
-                                <p class="font-semibold text-gray-900 dark:text-white">{{ $currencySymbol }}{{ number_format($order->subtotal, $decimals) }}</p>
+                                <p class="font-semibold text-gray-900 dark:text-white">{{ format_currency($order->subtotal) }}</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Tax</p>
-                                <p class="font-semibold text-gray-900 dark:text-white">{{ $currencySymbol }}{{ number_format($order->tax_total, $decimals) }}</p>
+                                <p class="font-semibold text-gray-900 dark:text-white">{{ format_currency($order->tax_total) }}</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Total</p>
-                                <p class="font-semibold text-gray-900 dark:text-white">{{ $currencySymbol }}{{ number_format($order->grand_total, $decimals) }}</p>
+                                <p class="font-semibold text-gray-900 dark:text-white">{{ format_currency($order->grand_total) }}</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
@@ -232,7 +222,7 @@
                                     @elseif($totalPaid > 0) text-blue-600 dark:text-blue-400
                                     @else text-gray-900 dark:text-white
                                     @endif">
-                                    {{ $currencySymbol }}{{ number_format($totalPaid, $decimals) }}
+                                    {{ format_currency($totalPaid) }}
                                 </p>
                             </div>
                         </div>
@@ -310,7 +300,7 @@
                                             <div>
                                                 <p class="text-gray-500 dark:text-gray-400">Total Spent:</p>
                                                 <p class="font-semibold text-gray-900 dark:text-white">
-                                                    {{ $currencySymbol }}{{ number_format($order->customer->total_spent ?? 0, $decimals) }}
+                                                    {{ format_currency($order->customer->total_spent ?? 0) }}
                                                 </p>
                                             </div>
                                         </div>
@@ -347,10 +337,6 @@
                                                 {{ $isInStore ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' }}">
                                                 {{ $isInStore ? '🏪 In Store' : '🌐 Online' }}
                                             </span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Currency:</span>
-                                            <span class="font-medium text-gray-900 dark:text-white">{{ $order->currency->code ?? 'USD' }}</span>
                                         </div>
                                         @if($order->completed_at)
                                         <div class="flex justify-between">
@@ -390,39 +376,39 @@
                                 <div class="space-y-3">
                                     <div class="flex justify-between text-sm">
                                         <span class="text-white/90">Subtotal:</span>
-                                        <span class="font-medium">{{ $currencySymbol }}{{ number_format($order->subtotal, $decimals) }}</span>
+                                        <span class="font-medium">{{ format_currency($order->subtotal) }}</span>
                                     </div>
                                     @if($order->discount_total > 0)
                                     <div class="flex justify-between text-sm">
                                         <span class="text-white/90">Discount:</span>
-                                        <span class="font-medium text-red-200">-{{ $currencySymbol }}{{ number_format($order->discount_total, $decimals) }}</span>
+                                        <span class="font-medium text-red-200">-{{ format_currency($order->discount_total) }}</span>
                                     </div>
                                     @endif
                                     @if($order->tax_total > 0)
                                     <div class="flex justify-between text-sm">
                                         <span class="text-white/90">Tax:</span>
-                                        <span class="font-medium">{{ $currencySymbol }}{{ number_format($order->tax_total, $decimals) }}</span>
+                                        <span class="font-medium">{{ format_currency($order->tax_total) }}</span>
                                     </div>
                                     @endif
                                     @if($order->shipping_total > 0 && !$isInStore)
                                     <div class="flex justify-between text-sm">
                                         <span class="text-white/90">Shipping:</span>
-                                        <span class="font-medium">{{ $currencySymbol }}{{ number_format($order->shipping_total, $decimals) }}</span>
+                                        <span class="font-medium">{{ format_currency($order->shipping_total) }}</span>
                                     </div>
                                     @endif
                                     <div class="border-t border-white/20 pt-3 mt-3">
                                         <div class="flex justify-between text-lg font-bold">
                                             <span>Total:</span>
-                                            <span class="text-xl">{{ $currencySymbol }}{{ number_format($order->grand_total, $decimals) }}</span>
+                                            <span class="text-xl">{{ format_currency($order->grand_total) }}</span>
                                         </div>
                                         <div class="flex justify-between text-sm mt-2">
                                             <span class="text-white/90">Total Paid:</span>
-                                            <span class="font-medium">{{ $currencySymbol }}{{ number_format($totalPaid, $decimals) }}</span>
+                                            <span class="font-medium">{{ format_currency($totalPaid) }}</span>
                                         </div>
                                         @if($balanceDue > 0)
                                         <div class="flex justify-between text-sm mt-1">
                                             <span class="text-white/90">Balance Due:</span>
-                                            <span class="font-medium text-yellow-200">{{ $currencySymbol }}{{ number_format($balanceDue, $decimals) }}</span>
+                                            <span class="font-medium text-yellow-200">{{ format_currency($balanceDue) }}</span>
                                         </div>
                                         @elseif($order->is_fully_paid)
                                         <div class="flex items-center justify-center mt-3 text-green-200">
@@ -544,7 +530,7 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-700/50">{{ $item->sku }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
-                                                {{ $currencySymbol }}{{ number_format($item->price, $decimals) }}
+                                                {{ format_currency($item->price) }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -552,7 +538,7 @@
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
-                                                {{ $currencySymbol }}{{ number_format($item->total, $decimals) }}
+                                                {{ format_currency($item->total) }}
                                             </td>
                                         </tr>
                                         @endforeach
@@ -564,7 +550,7 @@
                                                 <span class="font-medium">{{ $order->items->sum('quantity') }}</span> items
                                             </td>
                                             <td class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
-                                                {{ $currencySymbol }}{{ number_format($order->subtotal, $decimals) }}
+                                                {{ format_currency($order->subtotal) }}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -739,7 +725,7 @@
                                                 <div>
                                                     <span class="text-gray-500 dark:text-gray-400">Amount:</span>
                                                     <p class="font-semibold text-lg text-gray-900 dark:text-white">
-                                                        {{ $currencySymbol }}{{ number_format($payment->amount, $decimals) }}
+                                                        {{ format_currency($payment->amount) }}
                                                     </p>
                                                 </div>
                                                 <div>
@@ -775,13 +761,13 @@
                                     </div>
                                     <div class="text-center">
                                         <p class="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
-                                        <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ $currencySymbol }}{{ number_format($totalPaid, $decimals) }}</p>
+                                        <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ format_currency($totalPaid) }}</p>
                                     </div>
                                     <div class="text-center">
                                         <p class="text-sm text-gray-500 dark:text-gray-400">Balance Due</p>
                                         <p class="text-lg font-bold 
                                                 {{ $balanceDue > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400' }}">
-                                            {{ $currencySymbol }}{{ number_format($balanceDue, $decimals) }}
+                                            {{ format_currency($balanceDue) }}
                                         </p>
                                     </div>
                                 </div>
@@ -835,7 +821,7 @@
                                                 <div>
                                                     <span class="text-gray-500 dark:text-gray-400">Amount:</span>
                                                     <p class="font-semibold text-lg text-gray-900 dark:text-white">
-                                                        {{ $currencySymbol }}{{ number_format($transaction->amount, $decimals) }}
+                                                        {{ format_currency($transaction->amount) }}
                                                     </p>
                                                 </div>
                                                 <div>

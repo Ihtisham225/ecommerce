@@ -26,6 +26,8 @@ return new class extends Migration
             $table->decimal('tax_total', 15, 3)->default(0);
             $table->decimal('shipping_total', 15, 3)->default(0);
             $table->decimal('grand_total', 15, 3)->default(0);
+            $table->boolean('tax_inclusive')->default(false);
+            $table->decimal('tax_rate', 15, 3)->default(0);
             
             // Shipping
             $table->foreignId('shipping_rate_id')->nullable()->constrained()->nullOnDelete();

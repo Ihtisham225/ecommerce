@@ -88,10 +88,6 @@
                             </a>
                         </x-nav-dropdown>
 
-                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                            {{ __('Users') }}
-                        </x-nav-link>
-
                         <x-nav-link :href="route('admin.blogs.index')" :active="request()->routeIs('admin.blogs.*')">
                             {{ __('Blogs') }}
                         </x-nav-link>
@@ -101,7 +97,7 @@
                         </x-nav-link>
 
                         <x-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
-                            {{ __('Documents') }}
+                            {{ __('Media') }}
                         </x-nav-link>
 
                         <x-nav-link :href="route('admin.store-settings.index')" :active="request()->routeIs('admin.store-settings.*')">
@@ -124,7 +120,7 @@
             </div>
 
             <!-- Right Side -->
-            <div class="hidden sm:flex items-center gap-4">
+            <div class="hidden sm:flex items-center gap-4 ml-3">
                 <!-- Theme Switcher -->
                 <div>
                     <select x-model="theme" @change="
@@ -298,10 +294,6 @@
                     </div>
                 </div>
 
-                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                    {{ __('Users') }}
-                </x-responsive-nav-link>
-
                 <x-responsive-nav-link :href="route('admin.blogs.index')" :active="request()->routeIs('admin.blogs.*')">
                     {{ __('Blogs') }}
                 </x-responsive-nav-link>
@@ -311,7 +303,7 @@
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
-                    {{ __('Documents') }}
+                    {{ __('Media') }}
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('admin.store-settings.index')" :active="request()->routeIs('admin.store-settings.*')">

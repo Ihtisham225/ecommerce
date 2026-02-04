@@ -14,7 +14,7 @@
         
         <div class="p-4 space-y-6">
             <!-- Payment Summary -->
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 gap-4">
                 <div class="bg-gray-50 p-3 rounded-lg">
                     <p class="text-sm text-gray-500">Total</p>
                     <p class="text-lg font-bold text-gray-900" x-text="formatCurrency(grandTotal)"></p>

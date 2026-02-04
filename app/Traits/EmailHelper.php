@@ -11,7 +11,6 @@ trait EmailHelper
     {
         // Always include permanent CC
         $cc = collect(is_array($cc) ? $cc : [$cc])
-            ->push('admin@infotechkw.co')
             ->filter()
             ->unique()
             ->values()

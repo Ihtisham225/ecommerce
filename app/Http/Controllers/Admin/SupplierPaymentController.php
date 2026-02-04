@@ -82,10 +82,10 @@ class SupplierPaymentController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
-        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
@@ -100,17 +100,17 @@ class SupplierPaymentController extends Controller
             $pendingExpenses = $supplier->expenses()
                 ->where('status', '!=', 'paid')
                 ->get();
-            
+
             // Calculate total pending amount (what supplier owes)
             $totalPendingAmount = $supplier->current_balance;
-            
+
             // Calculate available balance (how much can be paid)
             $availableBalance = $supplier->current_balance;
         }
 
         return view('admin.supplier-payments.create', compact(
-            'suppliers', 
-            'supplier', 
+            'suppliers',
+            'supplier',
             'pendingExpenses',
             'totalPendingAmount',
             'availableBalance',
@@ -175,13 +175,13 @@ class SupplierPaymentController extends Controller
                 'previous_balance' => $supplier->current_balance,
                 'new_balance' => $newBalance,
             ]);
-            
+
             // Update supplier balance if payment is completed
             if ($validated['status'] === 'completed') {
                 $supplier->updateBalance($validated['amount'], 'subtract');
                 $payment->new_balance = $supplier->current_balance;
                 $payment->save();
-                
+
                 // If payment is against a specific expense, update its status
                 if ($validated['expense_id']) {
                     $expense = Expense::find($validated['expense_id']);
@@ -196,7 +196,6 @@ class SupplierPaymentController extends Controller
 
             return redirect()->route('admin.supplier-payments.show', $payment)
                 ->with('success', 'Payment recorded successfully.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to record payment: ' . $e->getMessage());
@@ -215,26 +214,26 @@ class SupplierPaymentController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
-        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
         $suppliers = Supplier::withBalance()->get();
-        
+
         // Get pending expenses for the current supplier
         $pendingExpenses = $supplierPayment->supplier->expenses()
             ->where('status', '!=', 'paid')
             ->get();
-        
+
         // Also include the current expense even if it's paid
         $currentExpense = $supplierPayment->expense;
         if ($currentExpense && !$pendingExpenses->contains('id', $currentExpense->id)) {
             $pendingExpenses->push($currentExpense);
         }
-        
+
         return view('admin.supplier-payments.edit', compact(
             'supplierPayment',
             'suppliers',
@@ -259,28 +258,28 @@ class SupplierPaymentController extends Controller
             'attachments' => 'nullable|array',
             'attachments.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
         ]);
-        
+
         DB::beginTransaction();
         try {
             $supplier = Supplier::find($validated['supplier_id']);
-            
+
             // Check if payment amount is valid
             if ($validated['amount'] <= 0) {
                 throw new \Exception('Payment amount must be greater than zero.');
             }
-            
+
             // Store old values for reversal if needed
             $oldAmount = $payment->amount;
             $oldStatus = $payment->status;
             $oldSupplierId = $payment->supplier_id;
             $oldExpenseId = $payment->expense_id; // Fixed: define this variable
-            
+
             // Get old supplier if different
             $oldSupplier = null;
             if ($oldSupplierId != $supplier->id) {
                 $oldSupplier = Supplier::find($oldSupplierId);
             }
-            
+
             // 1. Reverse old payment if it was completed
             if ($oldStatus === 'completed') {
                 if ($oldSupplier) {
@@ -291,7 +290,7 @@ class SupplierPaymentController extends Controller
                     $supplier->updateBalance($oldAmount, 'add');
                 }
             }
-            
+
             // 2. Check if new amount exceeds current balance for completed payments
             if ($validated['status'] === 'completed') {
                 if ($validated['amount'] > $supplier->current_balance) {
@@ -305,11 +304,11 @@ class SupplierPaymentController extends Controller
                     }
                     throw new \Exception('Payment amount cannot exceed current balance of ' . number_format($supplier->current_balance, 2));
                 }
-                
+
                 // 3. Apply new payment
                 $supplier->updateBalance($validated['amount'], 'subtract');
             }
-            
+
             // 4. Handle file uploads - merge with existing attachments
             $attachmentPaths = $payment->attachments ?? [];
             if ($request->hasFile('attachments')) {
@@ -318,7 +317,7 @@ class SupplierPaymentController extends Controller
                     $attachmentPaths[] = $path;
                 }
             }
-            
+
             // Handle removed attachments
             if ($request->has('removed_attachments') && !empty($request->removed_attachments)) {
                 $removedIndices = explode(',', $request->removed_attachments);
@@ -349,7 +348,7 @@ class SupplierPaymentController extends Controller
                 'previous_balance' => $supplier->current_balance + ($validated['status'] === 'completed' ? $validated['amount'] : 0),
                 'new_balance' => $supplier->current_balance,
             ]);
-            
+
             // 6. Update expense statuses
             // Update old expense if changed
             if ($oldExpenseId && $oldExpenseId != $validated['expense_id']) {
@@ -358,7 +357,7 @@ class SupplierPaymentController extends Controller
                     $this->updateExpensePaymentStatus($oldExpense);
                 }
             }
-            
+
             // Update new expense if specified
             if ($validated['expense_id']) {
                 $expense = Expense::find($validated['expense_id']);
@@ -366,18 +365,17 @@ class SupplierPaymentController extends Controller
             } else {
                 // If no specific expense, check all expenses for the supplier
                 $this->checkAndUpdateSupplierExpenses($supplier);
-                
+
                 // Also check old supplier's expenses if supplier changed
                 if ($oldSupplier && $oldSupplier->id != $supplier->id) {
                     $this->checkAndUpdateSupplierExpenses($oldSupplier);
                 }
             }
-            
+
             DB::commit();
-            
+
             return redirect()->route('admin.supplier-payments.show', $payment)
                 ->with('success', 'Payment updated successfully.');
-                
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to update payment: ' . $e->getMessage());
@@ -411,7 +409,7 @@ class SupplierPaymentController extends Controller
         $expenses = $supplier->expenses()
             ->whereIn('status', ['pending', 'partial'])
             ->get();
-        
+
         foreach ($expenses as $expense) {
             $this->updateExpensePaymentStatus($expense);
         }
@@ -420,7 +418,7 @@ class SupplierPaymentController extends Controller
     public function show(SupplierPayment $supplierPayment)
     {
         $supplierPayment->load(['supplier', 'expense', 'user']);
-        
+
         return view('admin.supplier-payments.show', compact('supplierPayment'));
     }
 
@@ -436,7 +434,7 @@ class SupplierPaymentController extends Controller
             $newStatus = $request->status;
 
             $payment->status = $newStatus;
-            
+
             // Handle balance updates based on status change
             if ($oldStatus === 'completed' && $newStatus !== 'completed') {
                 // Reverse the balance if moving from completed to other status
@@ -445,7 +443,7 @@ class SupplierPaymentController extends Controller
                 // Apply the balance if moving to completed
                 $payment->supplier->updateBalance($payment->amount, 'subtract');
             }
-            
+
             $payment->new_balance = $payment->supplier->current_balance;
             $payment->save();
 
@@ -459,7 +457,6 @@ class SupplierPaymentController extends Controller
             DB::commit();
 
             return back()->with('success', 'Payment status updated successfully.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to update payment status: ' . $e->getMessage());
@@ -476,18 +473,18 @@ class SupplierPaymentController extends Controller
         ]);
 
         $supplier = Supplier::find($request->supplier_id);
-        
+
         // Get pending expenses for this supplier
         $pendingExpenses = Expense::where('supplier_id', $supplier->id)
             ->whereIn('status', ['pending', 'partial'])
-            ->with(['payments' => function($q) {
+            ->with(['payments' => function ($q) {
                 $q->where('status', 'completed');
             }])
             ->get()
-            ->map(function($expense) {
+            ->map(function ($expense) {
                 $totalPaid = $expense->payments->sum('amount');
                 $remainingAmount = max(0, $expense->total_amount - $totalPaid);
-                
+
                 return [
                     'id' => $expense->id,
                     'reference_number' => $expense->reference_number,
@@ -499,7 +496,7 @@ class SupplierPaymentController extends Controller
                     'date' => $expense->date->format('Y-m-d'),
                 ];
             })
-            ->filter(function($expense) {
+            ->filter(function ($expense) {
                 // Only return expenses that have remaining amount
                 return $expense['remaining_amount'] > 0;
             })
@@ -534,14 +531,14 @@ class SupplierPaymentController extends Controller
     {
         $pendingExpenses = Expense::where('supplier_id', $supplier->id)
             ->whereIn('status', ['pending', 'partial'])
-            ->with(['payments' => function($q) {
+            ->with(['payments' => function ($q) {
                 $q->where('status', 'completed');
             }])
             ->get()
-            ->map(function($expense) {
+            ->map(function ($expense) {
                 $totalPaid = $expense->payments->sum('amount');
                 $remainingAmount = max(0, $expense->total_amount - $totalPaid);
-                
+
                 return [
                     'id' => $expense->id,
                     'reference_number' => $expense->reference_number,

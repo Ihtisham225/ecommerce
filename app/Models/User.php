@@ -51,6 +51,16 @@ class User extends Authenticatable
         ];
     }
 
+    public function dashboardRoute(): string
+    {
+        return match (true) {
+            $this->hasRole('admin')    => route('admin.dashboard'),
+            $this->hasRole('vendor')   => route('vendor.dashboard'),
+            $this->hasRole('customer') => route('customer.dashboard'),
+            default                    => '/',
+        };
+    }
+
     // Relationships
     public function customer()
     {

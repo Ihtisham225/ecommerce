@@ -75,6 +75,30 @@
         <div class="center">
             {{ now()->format('d/m/Y H:i') }}
         </div>
+
+        @if($storeSetting->store_address)
+        <div class="store-address" style="text-align: center; margin: 10px 0;">
+            @if(is_array($storeSetting->store_address))
+                @foreach($storeSetting->store_address as $line)
+                    @if(!empty(trim($line)))
+                        {{ $line }}<br>
+                    @endif
+                @endforeach
+            @else
+                @foreach(explode("\n", $storeSetting->store_address) as $line)
+                    @if(!empty(trim($line)))
+                        {{ $line }}<br>
+                    @endif
+                @endforeach
+            @endif
+        </div>
+        @endif
+
+        @if($storeSetting->tax_number)
+        <div style="text-align: center; margin: 5px 0; font-size: 10px;">
+            Tax No: {{ $storeSetting->tax_number }}
+        </div>
+        @endif
         
         <div class="divider"></div>
         

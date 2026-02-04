@@ -20,7 +20,7 @@
                     <div>
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
                         <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                            ${{ number_format(App\Models\Order::sum('grand_total'), 2) }}
+                            {{ format_currency(App\Models\Order::sum('grand_total')) }}
                         </p>
                     </div>
                     <div class="bg-blue-100 dark:bg-blue-900 p-3 rounded-full">
@@ -31,7 +31,7 @@
                 </div>
                 <div class="mt-4">
                     <span class="text-sm text-green-600 dark:text-green-400">
-                        +{{ number_format(App\Models\Order::whereMonth('created_at', now()->month)->sum('grand_total'), 2) }} this month
+                        +{{ format_currency(App\Models\Order::whereMonth('created_at', now()->month)->sum('grand_total')) }} this month
                     </span>
                 </div>
             </div>
@@ -175,7 +175,7 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Order Value</p>
                         <p class="text-lg font-bold text-gray-900 dark:text-white">
-                            ${{ number_format(App\Models\Order::avg('grand_total') ?? 0, 2) }}
+                            {{ format_currency(App\Models\Order::avg('grand_total') ?? 0) }}
                         </p>
                     </div>
                 </div>
@@ -242,7 +242,7 @@
                         </div>
                         <div class="text-right">
                             <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $product->total_sold ?? 0 }} sold</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">${{ number_format($product->price, 2) }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ format_currency($product->price) }}</p>
                         </div>
                     </div>
                     @endforeach
@@ -299,7 +299,7 @@
                         @foreach(App\Models\Order::latest()->take(8)->get() as $order)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <a href="{{ route('orders.show', $order) }}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                                <a href="{{ route('admin.orders.show', $order) }}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $order->order_number }}
                                 </a>
                             </td>
@@ -324,7 +324,7 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
-                                ${{ number_format($order->grand_total, 2) }}
+                                {{ format_currency($order->grand_total) }}
                             </td>
                         </tr>
                         @endforeach
@@ -428,8 +428,8 @@
                     datasets: [{
                         label: 'Revenue',
                         data: @json($revenueData),
-                        borderColor: 'rgb(59, 130, 246)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: 'rgb(59, 13046)',
+                        backgroundColor: 'rgba(59, 13046, 0.1)',
                         tension: 0.4,
                         fill: true
                     }]
@@ -500,7 +500,7 @@
                         ],
                         backgroundColor: [
                             'rgb(251, 191, 36)',
-                            'rgb(59, 130, 246)',
+                            'rgb(59, 13046)',
                             'rgb(34, 197, 94)',
                             'rgb(239, 68, 68)'
                         ],

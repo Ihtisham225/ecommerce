@@ -93,10 +93,39 @@
 <body>
     <!-- Store Header -->
     <div class="header">
+        @if($storeSetting->store_logo)
+        <img src="{{ storage_path('app/public/' . $storeSetting->store_logo) }}" 
+            style="max-width: 150px; max-height: 80px; margin-bottom: 10px;">
+        @endif
+        
         <div class="store-name">{{ $storeSetting->store_name ?? 'My Store' }}</div>
         <div>{{ $storeSetting->store_email ?? 'store@example.com' }} | {{ $storeSetting->store_phone ?? '+1234567890' }}</div>
         <div class="invoice-title">INVOICE</div>
     </div>
+
+    @if($storeSetting->store_address)
+    <div class="store-address" style="text-align: center; margin: 10px 0;">
+        @if(is_array($storeSetting->store_address))
+            @foreach($storeSetting->store_address as $line)
+                @if(!empty(trim($line)))
+                    {{ $line }}<br>
+                @endif
+            @endforeach
+        @else
+            @foreach(explode("\n", $storeSetting->store_address) as $line)
+                @if(!empty(trim($line)))
+                    {{ $line }}<br>
+                @endif
+            @endforeach
+        @endif
+    </div>
+    @endif
+
+    @if($storeSetting->tax_number)
+    <div style="text-align: center; margin: 5px 0; font-size: 10px;">
+        Tax No: {{ $storeSetting->tax_number }}
+    </div>
+    @endif
 
     <!-- Order Info -->
     <div class="section">

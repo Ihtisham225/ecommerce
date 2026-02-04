@@ -31,7 +31,7 @@
     </x-slot>
 
     @php
-    $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
+    $storeSetting = \App\Models\StoreSetting::first();
     $currencyCode = $storeSetting?->currency_code ?? 'USD';
     $currencySymbols = [
     'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'JPY' => '¥',

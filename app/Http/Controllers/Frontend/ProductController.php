@@ -22,30 +22,30 @@ class ProductController extends Controller
         // Search
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%")
-                ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
         // Category filter
         if ($request->has('category')) {
-            $query->whereHas('categories', function($q) use ($request) {
+            $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('slug', $request->category);
             });
         }
 
         // Brand filter
         if ($request->has('brand')) {
-            $query->whereHas('brand', function($q) use ($request) {
+            $query->whereHas('brand', function ($q) use ($request) {
                 $q->where('slug', $request->brand);
             });
         }
 
         // Collection filter
         if ($request->has('collection')) {
-            $query->whereHas('collections', function($q) use ($request) {
+            $query->whereHas('collections', function ($q) use ($request) {
                 $q->where('slug', $request->collection);
             });
         }
@@ -105,7 +105,7 @@ class ProductController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
         // Get store setting
@@ -127,19 +127,19 @@ class ProductController extends Controller
 
         // Apply same filters as index
         $query = $this->applyFilters($query, $request);
-        
+
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
-        
+
         $currencySymbol = $this->getCurrencySymbol();
 
         $pageTitle = __('New Arrivals');
-        
+
         return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'))
             ->with('pageTitle', __('New Arrivals'));
     }
-    
+
     public function bestSellers(Request $request)
     {
         // Get product IDs with highest sales
@@ -149,7 +149,7 @@ class ProductController extends Controller
             ->orderBy('sales_count', 'desc')
             ->limit(100) // Get top 100 selling products
             ->pluck('product_id');
-        
+
         $query = Product::with(['brand', 'mainImage', 'galleryImages'])
             ->published()
             ->active()
@@ -159,27 +159,27 @@ class ProductController extends Controller
                 $idsOrdered = $bestSellerIds->implode(',');
                 return $q->orderByRaw("FIELD(id, $idsOrdered)");
             });
-        
+
         // If no best sellers yet, fall back to featured products
         if ($bestSellerIds->isEmpty()) {
             $query->featured()->latest();
         }
-        
+
         // Apply filters
         $query = $this->applyFilters($query, $request);
-        
+
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
-        
+
         $currencySymbol = $this->getCurrencySymbol();
 
         $pageTitle = __('Best Sellers');
-        
+
         return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'))
             ->with('pageTitle', __('Best Sellers'));
     }
-    
+
     public function sale(Request $request)
     {
         $query = Product::with(['brand', 'mainImage', 'galleryImages'])
@@ -188,18 +188,18 @@ class ProductController extends Controller
             ->whereNotNull('compare_at_price')
             ->where('compare_at_price', '>', 0)
             ->whereColumn('compare_at_price', '>', 'price'); // Products with sale price
-        
+
         // Apply filters
         $query = $this->applyFilters($query, $request);
-        
+
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
-        
+
         $currencySymbol = $this->getCurrencySymbol();
 
         $pageTitle = __('Sale');
-        
+
         return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'))
             ->with('pageTitle', __('Sale'));
     }
@@ -207,7 +207,7 @@ class ProductController extends Controller
     public function show($slug)
     {
         $product = Product::with([
-            'brand', 
+            'brand',
             'categories',
             'documents',
             'variants', // Just load variants
@@ -215,14 +215,14 @@ class ProductController extends Controller
         ])->where('slug', $slug)->firstOrFail();
 
         // Related products
-        $relatedProducts = Product::whereHas('categories', function($query) use ($product) {
+        $relatedProducts = Product::whereHas('categories', function ($query) use ($product) {
             $query->whereIn('categories.id', $product->categories->pluck('id'));
         })
-        ->where('id', '!=', $product->id)
-        ->published()
-        ->active()
-        ->limit(4)
-        ->get();
+            ->where('id', '!=', $product->id)
+            ->published()
+            ->active()
+            ->limit(4)
+            ->get();
 
         // Currency symbols
         $currencySymbols = [
@@ -235,27 +235,27 @@ class ProductController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
         // Get store setting
-        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'KWD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
         $productDecimals = $currencyCode === 'KWD' ? 3 : 2;
 
         // **ADD THIS VARIANT PROCESSING CODE:**
-        
+
         // Process variants for frontend
-        $variantsData = $product->variants->map(function($variant) use ($currencySymbol, $productDecimals) {
+        $variantsData = $product->variants->map(function ($variant) use ($currencySymbol, $productDecimals) {
             return [
                 'id' => $variant->id,
                 'title' => $variant->title,
                 'price' => $variant->price,
                 'formatted_price' => $currencySymbol . number_format($variant->price, $productDecimals),
                 'compare_at_price' => $variant->compare_at_price,
-                'formatted_compare_price' => $variant->compare_at_price 
-                    ? $currencySymbol . number_format($variant->compare_at_price, $productDecimals) 
+                'formatted_compare_price' => $variant->compare_at_price
+                    ? $currencySymbol . number_format($variant->compare_at_price, $productDecimals)
                     : null,
                 'discount_percentage' => $variant->compare_at_price && $variant->compare_at_price > $variant->price
                     ? round((($variant->compare_at_price - $variant->price) / $variant->compare_at_price) * 100)
@@ -274,8 +274,8 @@ class ProductController extends Controller
             'price' => $firstVariant->price,
             'formatted_price' => $currencySymbol . number_format($firstVariant->price, $productDecimals),
             'compare_at_price' => $firstVariant->compare_at_price,
-            'formatted_compare_price' => $firstVariant->compare_at_price 
-                ? $currencySymbol . number_format($firstVariant->compare_at_price, $productDecimals) 
+            'formatted_compare_price' => $firstVariant->compare_at_price
+                ? $currencySymbol . number_format($firstVariant->compare_at_price, $productDecimals)
                 : null,
             'discount_percentage' => $firstVariant->compare_at_price && $firstVariant->compare_at_price > $firstVariant->price
                 ? round((($firstVariant->compare_at_price - $firstVariant->price) / $firstVariant->compare_at_price) * 100)
@@ -305,8 +305,8 @@ class ProductController extends Controller
         // Calculate initial price display
         $initialPrice = $selectedVariant['formatted_price'] ?? $currencySymbol . number_format($product->price, $productDecimals);
         $initialComparePrice = $selectedVariant['formatted_compare_price'] ?? ($product->compare_price ? $currencySymbol . number_format($product->compare_price, $productDecimals) : null);
-        $initialDiscount = $selectedVariant['discount_percentage'] ?? ($product->compare_price && $product->compare_price > $product->price 
-            ? round((($product->compare_price - $product->price) / $product->compare_price) * 100) 
+        $initialDiscount = $selectedVariant['discount_percentage'] ?? ($product->compare_price && $product->compare_price > $product->price
+            ? round((($product->compare_price - $product->price) / $product->compare_price) * 100)
             : 0);
 
         $firstVariant = $product->variants->first();
@@ -336,27 +336,27 @@ class ProductController extends Controller
         // Search
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
-        
+
         // Category filter
         if ($request->has('category')) {
-            $query->whereHas('categories', function($q) use ($request) {
+            $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('slug', $request->category);
             });
         }
-        
+
         // Brand filter
         if ($request->has('brand')) {
-            $query->whereHas('brand', function($q) use ($request) {
+            $query->whereHas('brand', function ($q) use ($request) {
                 $q->where('slug', $request->brand);
             });
         }
-        
+
         // Price range filter
         if ($request->has('min_price') || $request->has('max_price')) {
             $query->whereBetween('price', [
@@ -364,7 +364,7 @@ class ProductController extends Controller
                 $request->max_price ?? 999999
             ]);
         }
-        
+
         // Stock filter
         if ($request->has('stock')) {
             if ($request->stock === 'in_stock') {
@@ -373,7 +373,7 @@ class ProductController extends Controller
                 $query->where('stock_status', 'out_of_stock');
             }
         }
-        
+
         // Sort options
         $sort = $request->get('sort', 'latest');
         switch ($sort) {
@@ -400,10 +400,10 @@ class ProductController extends Controller
                     $query->latest();
                 }
         }
-        
+
         return $query;
     }
-    
+
     /**
      * Helper method to get currency symbol
      */
@@ -419,9 +419,9 @@ class ProductController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
-        
+
         $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         return $currencySymbols[$currencyCode] ?? $currencyCode;

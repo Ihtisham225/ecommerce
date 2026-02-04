@@ -20,27 +20,9 @@
             <select name="document_type"
                     class="w-full mt-1 border-gray-300 rounded-lg shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:text-white">
                 <option value="">{{ __('Select') }}</option>
-                <option value="outline" {{ old('document_type', $document->document_type ?? '') == 'outline' ? 'selected' : '' }}>Outline</option>
-                <option value="cv" {{ old('document_type', $document->document_type ?? '') == 'cv' ? 'selected' : '' }}>CV</option>
-                <option value="flyer" {{ old('document_type', $document->document_type ?? '') == 'flyer' ? 'selected' : '' }}>Flyer</option>
-                <option value="cover_letter" {{ old('document_type', $document->document_type ?? '') == 'cover_letter' ? 'selected' : '' }}>Cover Letter</option>
-                <option value="complete_document" {{ old('document_type', $document->document_type ?? '') == 'complete_document' ? 'selected' : '' }}>Complete Document with Attendees</option>
-                <option value="attendance_sheet" {{ old('document_type', $document->document_type ?? '') == 'attendance_sheet' ? 'selected' : '' }}>Attendance Sheet</option>
-                <option value="certificate" {{ old('document_type', $document->document_type ?? '') == 'certificate' ? 'selected' : '' }}>Certificate</option>
-                <option value="course_evaluation" {{ old('document_type', $document->document_type ?? '') == 'course_evaluation' ? 'selected' : '' }}>Course Evaluation</option>
-                <option value="power_point" {{ old('document_type', $document->document_type ?? '') == 'power_point' ? 'selected' : '' }}>Power Point</option>
-                <option value="country_flag" {{ old('document_type', $document->document_type ?? '') == 'country_flag' ? 'selected' : '' }}>Country Flag</option>
-                <option value="country_flag" {{ old('sponsor_logo', $document->document_type ?? '') == 'sponsor_logo' ? 'selected' : '' }}>Sponsor Logo</option>
-                <option value="word" {{ old('document_type', $document->document_type ?? '') == 'word' ? 'selected' : '' }}>Word</option>
-                <option value="excel" {{ old('document_type', $document->document_type ?? '') == 'excel' ? 'selected' : '' }}>Excel</option>
+                <option value="pdf" {{ old('document_type', $document->document_type ?? '') == 'pdf' ? 'selected' : '' }}>PDF</option>
                 <option value="image" {{ old('document_type', $document->document_type ?? '') == 'image' ? 'selected' : '' }}>Image</option>
-                <option value="image" {{ old('certificate_file', $document->document_type ?? '') == 'certificate_file' ? 'selected' : '' }}>Course Completion Certificate</option>
-                <option value="profile_picture" {{ old('document_type', $document->document_type ?? '') == 'profile_picture' ? 'selected' : '' }}>Profile Picture</option>
-                <option value="user_avatar" {{ old('document_type', $document->document_type ?? '') == 'user_avatar' ? 'selected' : '' }}>User Avatar</option>
                 <option value="video" {{ old('document_type', $document->document_type ?? '') == 'video' ? 'selected' : '' }}>Video</option>
-                <option value="logo" {{ old('document_type', $document->document_type ?? '') == 'logo' ? 'selected' : '' }}>Logo</option>
-                <option value="invoice" {{ old('document_type', $document->document_type ?? '') == 'invoice' ? 'selected' : '' }}>Invoice</option>
-                <option value="gallery_media" {{ old('document_type', $document->document_type ?? '') == 'gallery_media' ? 'selected' : '' }}>Gallery Media</option>
                 <option value="other" {{ old('document_type', $document->document_type ?? '') == 'other' ? 'selected' : '' }}>Other</option>
             </select>
             @error('document_type')

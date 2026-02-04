@@ -47,7 +47,7 @@ class OrderController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
         // Get store setting from vendor

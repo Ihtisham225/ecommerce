@@ -156,7 +156,7 @@
                                         <div>
                                             <p class="text-gray-500 dark:text-gray-400">Total Amount</p>
                                             <p class="font-semibold text-gray-900 dark:text-white">
-                                                ${{ number_format($order->grand_total, 2) }}
+                                                {{ format_currency($order->grand_total, 2) }}
                                             </p>
                                         </div>
                                         <div>

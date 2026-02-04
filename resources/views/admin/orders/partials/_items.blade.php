@@ -1,7 +1,7 @@
 {{-- Order Items --}}
 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200" 
      x-data="orderItemsManager({{ $order->id }})"
-     @add-item-to-order.window="addItem($event.detail)">
+     @add-item-to-order.window="addItem($event.detail.item)">
     
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
@@ -166,26 +166,56 @@ function orderItemsManager(orderId) {
             'variant_name' => $i->variant_name ?? null,
         ])),
 
-
         async addItem(item) {
             try {
+                // ✅ Ensure we have the correct structure
+                const payload = {
+                    product_id: item.product_id,
+                    product_variant_id: item.product_variant_id,
+                    sku: item.sku,
+                    title: item.title,
+                    variant_name: item.variant_name,
+                    price: parseFloat(item.price),
+                    quantity: parseInt(item.quantity) || 1,
+                };
+
+                console.log('Adding item:', payload); // Debug log
+
                 const res = await fetch(`/admin/orders/${this.orderId}/items`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify(item)
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
+                console.log('Response:', data); // Debug log
 
                 if (data.success) {
-                    this.items.push(data.item);
+                    // Add the new item to the local items array
+                    this.items.push({
+                        id: data.item.id,
+                        product_id: data.item.product_id,
+                        title: data.item.title,
+                        sku: data.item.sku,
+                        quantity: data.item.quantity,
+                        price: data.item.price,
+                        total: data.item.total,
+                        variant_name: data.item.variant_name
+                    });
+                    
+                    // Trigger autosave to update totals
+                    this.triggerAutosave();
+                } else {
+                    console.error('Failed to add item:', data.message);
+                    this.showNotification(data.message || 'Failed to add item', 'error');
                 }
 
             } catch (e) {
                 console.error("Add item error:", e);
+                this.showNotification('Network error adding item', 'error');
             }
         },
 
@@ -194,31 +224,47 @@ function orderItemsManager(orderId) {
 
             if (!item.id) {
                 this.items.splice(index, 1);
+                this.triggerAutosave();
                 return;
             }
 
-            await fetch(`/admin/orders/${this.orderId}/items/${item.id}`, {
-                method: "DELETE",
-                headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
-                }
-            });
+            try {
+                await fetch(`/admin/orders/${this.orderId}/items/${item.id}`, {
+                    method: "DELETE",
+                    headers: {
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
 
-            this.items.splice(index, 1);
+                this.items.splice(index, 1);
+                this.triggerAutosave();
+                
+            } catch (e) {
+                console.error("Remove item error:", e);
+                this.showNotification('Failed to remove item', 'error');
+            }
         },
 
         async updateItem(item) {
-            await fetch(`/admin/orders/${this.orderId}/items/${item.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    quantity: item.quantity,
-                    price: item.price,
-                })
-            });
+            try {
+                await fetch(`/admin/orders/${this.orderId}/items/${item.id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        quantity: item.quantity,
+                        price: item.price,
+                    })
+                });
+                
+                this.triggerAutosave();
+                
+            } catch (e) {
+                console.error("Update item error:", e);
+                this.showNotification('Failed to update item', 'error');
+            }
         },
 
         updateItemTotals() {
@@ -229,6 +275,8 @@ function orderItemsManager(orderId) {
                     this.updateItem(item);
                 }
             });
+            
+            this.triggerAutosave();
         },
 
         calculateSubtotal() {
@@ -241,88 +289,16 @@ function orderItemsManager(orderId) {
         },
 
         triggerAutosave() {
-            this.$dispatch('autosave-trigger');
+            // Dispatch event to trigger autosave in parent component
+            window.dispatchEvent(new CustomEvent('autosave-trigger'));
         },
 
         openModal() {
-            this.$dispatch('open-add-item');
-        }
-    }
-}
-
-function addItemModal() {
-    return {
-        open: false,
-        search: '',
-        results: [],
-        selectedProduct: null,
-        selectedVariant: null,
-        loading: false,
-        searchCount: 0,
-
-        get searchStats() {
-            if (this.search.length === 0) return 'Start typing to search products...';
-            if (this.search.length < 2) return 'Type at least 2 characters to search';
-            if (this.loading) return 'Searching...';
-            return 'Search by name, SKU, or variant';
+            window.dispatchEvent(new CustomEvent('open-add-item'));
         },
 
-        async searchProducts() {
-            if (this.search.length < 2) {
-                this.results = [];
-                return;
-            }
-            this.loading = true;
-            this.searchCount++;
-            const currentSearch = this.searchCount;
-
-            try {
-                const response = await fetch(`/admin/products/search?q=${encodeURIComponent(this.search)}&t=${Date.now()}`);
-                const data = await response.json();
-                if (currentSearch === this.searchCount) {
-                    this.results = Array.isArray(data) ? data : [];
-                }
-            } catch (error) {
-                console.error('Search error:', error);
-                this.results = [];
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        selectProduct(product) {
-            this.selectedProduct = product;
-            this.selectedVariant = null;
-        },
-
-        selectVariant(variant) {
-            this.selectedVariant = variant;
-        },
-
-        addToOrder() {
-            if (!this.selectedProduct) return;
-
-            const item = {
-                product_id: this.selectedProduct.id,
-                product_variant_id: this.selectedVariant ? this.selectedVariant.id : null,
-                sku: this.selectedVariant ? this.selectedVariant.sku : this.selectedProduct.sku,
-                title: this.selectedProduct.title['en'] || 'Untitled',
-                variant_name: this.selectedVariant ? this.selectedVariant.name : null,
-                price: parseFloat(this.selectedVariant ? this.selectedVariant.price : this.selectedProduct.price),
-                quantity: 1
-            };
-
-            window.dispatchEvent(new CustomEvent('add-item-to-order', { detail: item }));
-            this.reset();
-        },
-
-        reset() {
-            this.open = false;
-            this.search = '';
-            this.results = [];
-            this.selectedProduct = null;
-            this.selectedVariant = null;
-            this.loading = false;
+        showNotification(message, type = 'info') {
+            // Your notification code...
         }
     }
 }

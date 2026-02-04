@@ -54,6 +54,11 @@ return new class extends Migration
             $table->string('handle')->nullable(); // Shopify handle or Woo slug
             $table->json('raw_data')->nullable(); // store full JSON response
 
+            // google merchant
+            $table->timestamp('google_last_synced')->nullable();
+            $table->string('google_product_id')->nullable();
+            $table->string('google_status')->nullable();
+
             // Ownership
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
 

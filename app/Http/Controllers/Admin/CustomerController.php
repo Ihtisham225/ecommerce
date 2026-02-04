@@ -32,9 +32,9 @@ class CustomerController extends Controller
                 $search = $request->search;
                 $customers->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                 });
             }
 
@@ -69,7 +69,7 @@ class CustomerController extends Controller
 
                     case 'month':
                         $customers->whereMonth('created_at', now()->month)
-                                ->whereYear('created_at', now()->year);
+                            ->whereYear('created_at', now()->year);
                         break;
 
                     case 'year':
@@ -83,7 +83,9 @@ class CustomerController extends Controller
              * -------------------------------------------------*/
             return DataTables::of($customers)
                 ->addColumn('full_name', fn($row) => e($row->full_name))
-                ->addColumn('guest', fn($row) => 
+                ->addColumn(
+                    'guest',
+                    fn($row) =>
                     $row->is_guest
                         ? '<span class="text-red-600">Guest</span>'
                         : '<span class="text-green-600">Registered</span>'
@@ -158,9 +160,9 @@ class CustomerController extends Controller
         ]);
 
         // Get store setting for currency
-        $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = \App\Models\StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
-        
+
         $currencySymbols = [
             'USD' => '$',
             'EUR' => '€',
@@ -171,9 +173,9 @@ class CustomerController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
-        
+
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
         return view('admin.customers.show', compact(
@@ -198,9 +200,9 @@ class CustomerController extends Controller
         $countries = config('countries', []); // Assuming you have a countries config
 
         // Get currency for order totals display
-        $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = \App\Models\StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
-        
+
         $currencySymbols = [
             'USD' => '$',
             'EUR' => '€',
@@ -211,9 +213,9 @@ class CustomerController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
-        
+
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
         return view('admin.customers.form', compact(
@@ -235,7 +237,7 @@ class CustomerController extends Controller
             'phone'      => 'nullable|string|max:30',
             'email'      => 'nullable|email|max:255',
             'is_guest'   => 'nullable|boolean',
-            
+
             // Addresses - simplified for minimal schema
             'addresses' => 'nullable|array',
             'addresses.*.id' => 'nullable|exists:addresses,id',
@@ -294,7 +296,6 @@ class CustomerController extends Controller
                 'message' => 'Customer updated successfully.',
                 'customer' => $customer->fresh(['addresses', 'orders', 'user'])
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -364,18 +365,18 @@ class CustomerController extends Controller
     private function normalizeDefaultAddresses(Customer $customer)
     {
         $addresses = $customer->addresses;
-        
+
         // Handle shipping addresses
         $defaultShippingCount = $addresses->where('type', 'shipping')
-                                         ->where('is_default', true)
-                                         ->count();
-        
+            ->where('is_default', true)
+            ->count();
+
         if ($defaultShippingCount > 1) {
             // Keep only the first shipping address as default
             $firstDefaultShipping = $addresses->where('type', 'shipping')
-                                             ->where('is_default', true)
-                                             ->first();
-            
+                ->where('is_default', true)
+                ->first();
+
             $customer->addresses()
                 ->where('type', 'shipping')
                 ->where('is_default', true)
@@ -388,18 +389,18 @@ class CustomerController extends Controller
                 ->first()
                 ->update(['is_default' => true]);
         }
-        
+
         // Handle billing addresses
         $defaultBillingCount = $addresses->where('type', 'billing')
-                                        ->where('is_default', true)
-                                        ->count();
-        
+            ->where('is_default', true)
+            ->count();
+
         if ($defaultBillingCount > 1) {
             // Keep only the first billing address as default
             $firstDefaultBilling = $addresses->where('type', 'billing')
-                                            ->where('is_default', true)
-                                            ->first();
-            
+                ->where('is_default', true)
+                ->first();
+
             $customer->addresses()
                 ->where('type', 'billing')
                 ->where('is_default', true)
@@ -421,10 +422,10 @@ class CustomerController extends Controller
     {
         // Reset all other shipping defaults
         $customer->addresses()->update(['is_default_shipping' => false]);
-        
+
         // Set this address as default shipping
         $address->update(['is_default_shipping' => true]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Default shipping address updated.'
@@ -438,10 +439,10 @@ class CustomerController extends Controller
     {
         // Reset all other billing defaults
         $customer->addresses()->update(['is_default_billing' => false]);
-        
+
         // Set this address as default billing
         $address->update(['is_default_billing' => true]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Default billing address updated.'
@@ -456,7 +457,7 @@ class CustomerController extends Controller
         $addresses = $customer->addresses;
         $defaultShipping = $customer->defaultShipping();
         $defaultBilling = $customer->defaultBilling();
-        
+
         return response()->json([
             'addresses' => $addresses,
             'default_shipping' => $defaultShipping,
@@ -471,7 +472,7 @@ class CustomerController extends Controller
     {
         // Check if user already exists with this email
         $existingUser = User::where('email', $customer->email)->first();
-        
+
         if ($existingUser) {
             // Link existing user to customer
             $customer->update(['user_id' => $existingUser->id]);
@@ -485,7 +486,7 @@ class CustomerController extends Controller
                 'user_password' => $password, // Random password, user can reset
                 'email_verified_at' => now(),
             ]);
-            
+
             $customer->update(['user_id' => $user->id]);
         }
     }
@@ -551,9 +552,9 @@ class CustomerController extends Controller
 
         // Check if customer already exists
         $customer = Customer::where('first_name', $validated['first_name'])
-                            ->where('last_name', $validated['last_name'])
-                            ->where('phone', $validated['phone'] ?? null)
-                            ->first();
+            ->where('last_name', $validated['last_name'])
+            ->where('phone', $validated['phone'] ?? null)
+            ->first();
 
         // If not exists, create new
         if (!$customer) {
@@ -565,5 +566,4 @@ class CustomerController extends Controller
             'customer' => $customer
         ]);
     }
-
 }

@@ -71,6 +71,6 @@ class RegisteredUserController extends Controller
         // Auto-login
         Auth::login($user);
 
-        return redirect()->intended(route('admin.dashboard', absolute: false));
+        return redirect()->intended($request->user()->dashboardRoute());
     }
 }

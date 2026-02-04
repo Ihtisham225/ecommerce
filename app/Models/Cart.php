@@ -78,49 +78,39 @@ class Cart extends Model
             ];
         }
 
-        // Load items with product and variant relationships
-        $cart->load(['items.product', 'items.variant']);
+        // IMPORTANT: Load the product AND variant relationships
+        $cart->load([
+            'items.product', 
+            'items.variant' // Add this line to load the variant
+        ]);
+
+        // Recalculate totals
         $cart->calculateTotals();
+        $cart->refresh();
 
         return (object) [
             'items' => $cart->items->map(function ($item) {
-                // Handle options - could be string or array
-                $options = [];
-                if (!empty($item->options)) {
-                    if (is_string($item->options)) {
-                        $decoded = json_decode($item->options, true);
-                        $options = json_last_error() === JSON_ERROR_NONE ? $decoded : [];
-                    } elseif (is_array($item->options)) {
-                        $options = $item->options;
-                    }
-                }
+                // Use variant price if variant exists
+                $price = $item->price; // This should already be set correctly from addItem
                 
-                // Get correct price - variant price takes priority
-                $price = $item->price;
-                if ($item->variant && $item->variant->price > 0) {
+                // But double-check: if we have a variant, use variant price
+                if ($item->variant && $item->variant->price && $item->variant->price > 0) {
                     $price = $item->variant->price;
-                } elseif ($item->product) {
-                    $price = $item->product->price;
-                }
-                
-                // Update item price if different
-                if ($item->price != $price) {
-                    $item->update(['price' => $price]);
                 }
                 
                 return [
-                    'id' => $item->id, // Add this for consistency
-                    'item_id' => $item->id, // For JavaScript compatibility
+                    'id' => $item->id,
+                    'item_id' => $item->id,
                     'product_id' => $item->product_id,
-                    'product' => $item->product,
-                    'quantity' => $item->quantity,
+                    'product' => $item->product,  // Eloquent model
                     'variant_id' => $item->variant_id,
-                    'variant' => $item->variant,
-                    'options' => $options, // Already properly handled
-                    'price' => $price,
+                    'variant' => $item->variant,  // Add variant to the array
+                    'quantity' => $item->quantity,
+                    'options' => $item->options ? json_decode($item->options, true) : [],
+                    'price' => $price,  // Use the correct price
                     'total' => $price * $item->quantity,
                 ];
-            })->values()->toArray(), // Use values() to reset keys
+            })->values()->toArray(),
             'subtotal' => $cart->subtotal,
             'tax' => $cart->tax_total,
             'shipping' => $cart->shipping_total,
@@ -131,9 +121,6 @@ class Cart extends Model
         ];
     }
 
-    /**
-     * Get cart for guests (session-based)
-     */
     private static function getSessionCart()
     {
         $cart = Session::get('cart', (object) [
@@ -146,6 +133,7 @@ class Cart extends Model
             'source' => 'session'
         ]);
 
+        // Recalculate session totals
         self::calculateSessionTotals($cart);
         
         return $cart;
@@ -179,19 +167,6 @@ class Cart extends Model
             ]);
         }
 
-        // Get product with variants
-        $product = Product::with('variants')->findOrFail($productId);
-        
-        // Determine the correct price - FIXED
-        $price = $product->price; // Default to product price
-        
-        if ($variantId) {
-            $variant = \App\Models\ProductVariant::find($variantId);
-            if ($variant && $variant->price > 0) {
-                $price = $variant->price; // Use variant price if exists and > 0
-            }
-        }
-
         // Check if item already exists
         $existingItem = $cart->items()
             ->where('product_id', $productId)
@@ -201,16 +176,26 @@ class Cart extends Model
 
         if ($existingItem) {
             $existingItem->update([
-                'quantity' => $existingItem->quantity + $quantity,
-                'price' => $price // Update price in case it changed
+                'quantity' => $existingItem->quantity + $quantity
             ]);
         } else {
+            $product = Product::findOrFail($productId);
+
+            $price = $product->price; // Default to product price
+
+            if ($variantId) {
+                $variant = ProductVariant::find($variantId);
+                if ($variant && $variant->price) {
+                    $price = $variant->price; // Use variant price
+                }
+            }
+            
             $cart->items()->create([
                 'product_id' => $productId,
                 'variant_id' => $variantId,
                 'quantity' => $quantity,
-                'price' => $price, // Store the correct price (variant or product)
-                'options' => !empty($options) ? json_encode($options) : null
+                'price' => $price, // Use variant price here
+                'options' => $options
             ]);
         }
 
@@ -233,21 +218,21 @@ class Cart extends Model
             'source' => 'session'
         ]);
 
-        $product = Product::with('variants')->findOrFail($productId);
+        $product = Product::findOrFail($productId);
+
+        // FIX: Get variant price if variant_id exists
+        $price = $product->price; // Default to product price
+        
+        if ($variantId) {
+            $variant = ProductVariant::find($variantId);
+            if ($variant && $variant->price) {
+                $price = $variant->price; // Use variant price if available
+            }
+        }
         
         // Check stock
         if ($product->track_stock && $product->stock_quantity < $quantity) {
             throw new \Exception('Insufficient stock available');
-        }
-        
-        // Determine the correct price - FIXED
-        $price = $product->price; // Default to product price
-        
-        if ($variantId) {
-            $variant = \App\Models\ProductVariant::find($variantId);
-            if ($variant && $variant->price > 0) {
-                $price = $variant->price; // Use variant price if exists and > 0
-            }
         }
         
         $itemKey = self::generateItemKey($productId, $variantId, $options);
@@ -260,19 +245,18 @@ class Cart extends Model
             }
             
             $cart->items[$itemKey]['quantity'] = $newQuantity;
-            $cart->items[$itemKey]['price'] = $price; // Update price
-            $cart->items[$itemKey]['total'] = $price * $newQuantity; // Use correct price
+            $cart->items[$itemKey]['total'] = $cart->items[$itemKey]['price'] * $newQuantity;
         } else {
             $cart->items[$itemKey] = [
-                'id' => $itemKey, // Use same key for consistency
+                'id' => $itemKey,
                 'item_id' => $itemKey,
                 'product_id' => $productId,
                 'product' => $product,
                 'quantity' => $quantity,
                 'variant_id' => $variantId,
                 'options' => $options,
-                'price' => $price, // Store correct price
-                'total' => $price * $quantity // Calculate with correct price
+                'price' => $price, // Use variant price here
+                'total' => $price * $quantity
             ];
         }
 
@@ -305,25 +289,16 @@ class Cart extends Model
             throw new \Exception('Cart not found');
         }
 
-        $item = $cart->items()->with(['product', 'variant'])->find($itemId);
+        $item = $cart->items()->find($itemId);
         
         if (!$item) {
             throw new \Exception('Item not found in cart');
         }
 
-        // Recalculate price on update
-        $price = $item->product->price;
-        if ($item->variant_id && $item->variant && $item->variant->price > 0) {
-            $price = $item->variant->price;
-        }
-
         if ($quantity <= 0) {
             $item->delete();
         } else {
-            $item->update([
-                'quantity' => $quantity,
-                'price' => $price
-            ]);
+            $item->update(['quantity' => $quantity]);
         }
 
         $cart->calculateTotals();
@@ -341,23 +316,11 @@ class Cart extends Model
             throw new \Exception('Item not found in cart');
         }
 
-        // Recalculate price
-        $product = Product::with('variants')->find($cart->items[$itemKey]['product_id']);
-        $price = $product->price;
-        
-        if ($cart->items[$itemKey]['variant_id']) {
-            $variant = \App\Models\ProductVariant::find($cart->items[$itemKey]['variant_id']);
-            if ($variant && $variant->price > 0) {
-                $price = $variant->price;
-            }
-        }
-
         if ($quantity <= 0) {
             unset($cart->items[$itemKey]);
         } else {
             $cart->items[$itemKey]['quantity'] = $quantity;
-            $cart->items[$itemKey]['price'] = $price;
-            $cart->items[$itemKey]['total'] = $price * $quantity;
+            $cart->items[$itemKey]['total'] = $cart->items[$itemKey]['price'] * $quantity;
         }
 
         self::calculateSessionTotals($cart);
@@ -453,82 +416,69 @@ class Cart extends Model
      */
     public function calculateTotals()
     {
-        // Load items with relationships
-        $this->load(['items.product', 'items.variant']);
-        
-        $this->subtotal = $this->items->sum(function ($item) {
-            // Get correct price
+        $subtotal = $this->items->sum(function ($item) {
+            // If item has a variant with price, use variant price
             $price = $item->price;
-            if ($item->variant && $item->variant->price > 0) {
-                $price = $item->variant->price;
-            } elseif ($item->product) {
-                $price = $item->product->price;
-            }
             
-            // Update if price changed
-            if ($item->price != $price) {
-                $item->update(['price' => $price]);
+            // Double check variant price
+            if ($item->variant_id && $item->variant && $item->variant->price) {
+                $price = $item->variant->price;
             }
             
             return $price * $item->quantity;
         });
-        
-        $this->tax_total = $this->subtotal * 0.00;
-        $this->shipping_total = 0.000;
-        $this->discount_total = 0;
-        $this->grand_total = $this->subtotal + $this->tax_total + $this->shipping_total - $this->discount_total;
-        
-        $this->save();
-    }
 
-    /**
-     * Calculate taxes for given items
-     */
-    public static function calculateTaxes(array $items): array
-    {
-        $storeSetting = StoreSetting::first();
-        $taxSettings = $storeSetting?->settings['tax_settings'] ?? [];
-        $taxEnabled = $taxSettings['tax_enabled'] ?? false;
-        $taxRate = (float)($taxSettings['tax_rate'] ?? 0);
-        $taxInclusive = $taxSettings['tax_inclusive'] ?? false;
+        // Get store settings
+        $storeSettings = StoreSetting::first();
+        $settings = $storeSettings->settings ?? [];
 
-        $subtotal = 0;
-        $taxableSubtotal = 0;
-        
-        foreach ($items as $item) {
-            $product = $item['product'];
-            $variant = isset($item['variant_id']) ? ProductVariant::find($item['variant_id']) : null;
-            
-            // Get price
-            $price = $variant && $variant->price > 0 ? $variant->price : $product->price;
-            
-            // Calculate line total
-            $lineTotal = $price * $item['quantity'];
-            $subtotal += $lineTotal;
-            
-            // Check if product/variant is taxable
-            $isTaxable = $variant ? ($variant->taxable ?? $product->charge_tax) : $product->charge_tax;
-            
-            if ($taxEnabled && $isTaxable) {
-                $taxableSubtotal += $lineTotal;
+        // Get tax settings
+        $taxSettings = $settings['tax_settings'] ?? [
+            'tax_enabled' => false,
+            'tax_rate' => 0,
+            'tax_inclusive' => false
+        ];
+
+        // Calculate tax
+        $taxAmount = 0;
+        if ($taxSettings['tax_enabled'] ?? false) {
+            $taxRate = ($taxSettings['tax_rate'] ?? 0) / 100;
+            if ($taxSettings['tax_inclusive'] ?? false) {
+                // Tax is included in price
+                $taxAmount = $subtotal * $taxRate / (1 + $taxRate);
+            } else {
+                // Tax is added on top
+                $taxAmount = $subtotal * $taxRate;
             }
         }
 
-        // Calculate tax
-        $tax = $taxEnabled ? ($taxableSubtotal * ($taxRate / 100)) : 0;
-        
-        // If tax is inclusive, adjust subtotal
-        if ($taxInclusive && $taxEnabled) {
-            $subtotal = $subtotal - $tax;
+        // Get shipping methods
+        $shippingMethods = $settings['shipping_methods'] ?? [
+            [
+                'name' => 'Standard',
+                'cost' => 2.000,
+                'description' => '3-5 business days',
+                'is_active' => true
+            ]
+        ];
+
+        // Use default shipping cost (first active method)
+        $shippingCost = 0;
+        foreach ($shippingMethods as $method) {
+            if ($method['is_active'] ?? true) {
+                $shippingCost = $method['cost'];
+                break;
+            }
         }
 
-        return [
-            'subtotal' => $subtotal,
-            'tax' => $tax,
-            'tax_enabled' => $taxEnabled,
-            'tax_rate' => $taxRate,
-            'tax_inclusive' => $taxInclusive,
-        ];
+        $this->subtotal = $subtotal;
+        $this->tax_total = $taxAmount;
+        $this->shipping_total = $shippingCost;
+        $this->discount_total = 0;
+        $this->grand_total = $subtotal + $taxAmount + $shippingCost;
+        $this->currency_code = $storeSettings->currency_code ?? 'KWD';
+        
+        $this->save();
     }
 
     /**
@@ -536,28 +486,104 @@ class Cart extends Model
      */
     private static function calculateSessionTotals(&$cart)
     {
-        // Recalculate prices for all items
-        foreach ($cart->items as $key => $item) {
-            if (isset($item['product'])) {
-                $price = $item['product']->price;
-                
-                if ($item['variant_id']) {
-                    $variant = \App\Models\ProductVariant::find($item['variant_id']);
-                    if ($variant && $variant->price > 0) {
-                        $price = $variant->price;
-                    }
-                }
-                
-                $cart->items[$key]['price'] = $price;
-                $cart->items[$key]['total'] = $price * $item['quantity'];
+        $subtotal = collect($cart->items)->sum('total');
+
+        // Get store settings
+        $storeSettings = StoreSetting::first();
+        $settings = $storeSettings->settings ?? [];
+
+        // Get tax settings
+        $taxSettings = $settings['tax_settings'] ?? [
+            'tax_enabled' => false,
+            'tax_rate' => 0,
+            'tax_inclusive' => false
+        ];
+
+        // Calculate tax
+        $taxAmount = 0;
+        if ($taxSettings['tax_enabled'] ?? false) {
+            $taxRate = ($taxSettings['tax_rate'] ?? 0) / 100;
+            if ($taxSettings['tax_inclusive'] ?? false) {
+                // Tax is included in price
+                $taxAmount = $subtotal * $taxRate / (1 + $taxRate);
+            } else {
+                // Tax is added on top
+                $taxAmount = $subtotal * $taxRate;
             }
         }
-        
-        $cart->subtotal = collect($cart->items)->sum('total');
-        $cart->tax = $cart->subtotal * 0.00;
-        $cart->shipping = 0.000;
+
+        // Get shipping methods
+        $shippingMethods = $settings['shipping_methods'] ?? [
+            [
+                'name' => 'Standard',
+                'cost' => 2.000,
+                'description' => '3-5 business days',
+                'is_active' => true
+            ]
+        ];
+
+        // Use default shipping cost (first active method)
+        $shippingCost = 0;
+        foreach ($shippingMethods as $method) {
+            if ($method['is_active'] ?? true) {
+                $shippingCost = $method['cost'];
+                break;
+            }
+        }
+
+        $cart->subtotal = $subtotal;
+        $cart->tax = $taxAmount;
+        $cart->shipping = $shippingCost;
         $cart->discount = 0;
-        $cart->total = $cart->subtotal + $cart->tax + $cart->shipping - $cart->discount;
+        $cart->total = $subtotal + $taxAmount + $shippingCost;
+    }
+
+    /**
+     * Get store settings for cart
+     */
+    public static function getStoreSettingsForCart(): array
+    {
+        $storeSettings = StoreSetting::first();
+        
+        if (!$storeSettings) {
+            return [
+                'base_currency' => 'KWD',
+                'store_name' => 'Store',
+                'shipping_methods' => [
+                    [
+                        'name' => 'Standard',
+                        'cost' => 2.000,
+                        'description' => '3-5 business days',
+                        'is_active' => true
+                    ]
+                ],
+                'tax_settings' => [
+                    'tax_enabled' => false,
+                    'tax_rate' => 0,
+                    'tax_inclusive' => false
+                ]
+            ];
+        }
+
+        $settings = $storeSettings->settings ?? [];
+        
+        return [
+            'base_currency' => $storeSettings->currency_code ?? 'KWD',
+            'store_name' => $storeSettings->store_name ?? 'Store',
+            'shipping_methods' => $settings['shipping_methods'] ?? [
+                [
+                    'name' => 'Standard',
+                    'cost' => 2.000,
+                    'description' => '3-5 business days',
+                    'is_active' => true
+                ]
+            ],
+            'tax_settings' => $settings['tax_settings'] ?? [
+                'tax_enabled' => false,
+                'tax_rate' => 0,
+                'tax_inclusive' => false
+            ]
+        ];
     }
 
     /**
@@ -581,90 +607,81 @@ class Cart extends Model
     {
         $cart = self::getCart();
         
+        \Log::info('Cart summary called:', [
+            'cart_source' => $cart->source,
+            'cart_items_count' => $cart->source === 'database' 
+                ? ($cart->cart_model->items->count() ?? 0) 
+                : count($cart->items ?? []),
+            'cart_subtotal' => $cart->subtotal,
+            'cart_total' => $cart->total
+        ]);
+        
         $items = [];
         
         if ($cart->source === 'database') {
-            // Get the cart model and load relationships
-            $cartModel = $cart->cart_model ?? null;
-            
-            if ($cartModel) {
-                $cartModel->load(['items.product.mainImage', 'items.product.brand', 'items.variant']);
+            // Database cart logic
+            $items = $cart->cart_model->items->map(function ($item) {
+                \Log::info('Database cart item:', [
+                    'item_id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'price' => $item->price,
+                    'quantity' => $item->quantity
+                ]);
                 
-                if ($cartModel->items->count() > 0) {
-                    $items = $cartModel->items->map(function ($item) {
-                        // Get correct price
-                        $price = $item->product->price;
-                        if ($item->variant_id && $item->variant && $item->variant->price > 0) {
-                            $price = $item->variant->price;
-                        }
-                        
-                        // Handle options
-                        $options = [];
-                        if (!empty($item->options)) {
-                            if (is_string($item->options)) {
-                                $decoded = json_decode($item->options, true);
-                                $options = json_last_error() === JSON_ERROR_NONE ? $decoded : [];
-                            } elseif (is_array($item->options)) {
-                                $options = $item->options;
-                            }
-                        }
-                        
-                        return (object) [
-                            'id' => $item->id,
-                            'item_id' => $item->id,
-                            'product_id' => $item->product_id,
-                            'product' => $item->product,
-                            'variant' => $item->variant,
-                            'quantity' => $item->quantity,
-                            'price' => $price,
-                            'total' => $price * $item->quantity,
-                            'options' => $options
-                        ];
-                    })->toArray();
-                }
-            }
+                return [
+                    'id' => $item->id,
+                    'item_id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->translate('title') ?? $item->product->title ?? 'Untitled',
+                    'product_slug' => $item->product->slug,
+                    'product_image' => $item->product->mainImage() ? 
+                        asset('storage/' . $item->product->mainImage()->first()->file_path) : null,
+                    'variant_id' => $item->variant_id,
+                    'quantity' => $item->quantity,
+                    'price' => $item->price,
+                    'total' => $item->price * $item->quantity,
+                    'options' => $item->options ?? []
+                ];
+            })->toArray();
         } else {
-            // For session cart
-            if (!empty($cart->items)) {
-                foreach ($cart->items as $key => $itemData) {
-                    if (isset($itemData['product'])) {
-                        $itemData['product']->load('mainImage', 'brand');
-                        
-                        // Get correct price
-                        $price = $itemData['product']->price;
-                        
-                        if (isset($itemData['variant_id']) && $itemData['variant_id']) {
-                            $variant = \App\Models\ProductVariant::find($itemData['variant_id']);
-                            $itemData['variant'] = $variant;
-                            
-                            if ($variant && $variant->price > 0) {
-                                $price = $variant->price;
-                            }
-                        }
-                        
-                        $items[] = (object) [
-                            'id' => $itemData['id'] ?? $key,
-                            'item_id' => $itemData['item_id'] ?? $key,
-                            'product_id' => $itemData['product_id'],
-                            'product' => $itemData['product'],
-                            'variant' => $itemData['variant'] ?? null,
-                            'quantity' => $itemData['quantity'],
-                            'price' => $price,
-                            'total' => $price * $itemData['quantity'],
-                            'options' => $itemData['options'] ?? []
-                        ];
-                    }
-                }
-            }
+            // Session cart logic
+            $items = collect($cart->items)->map(function ($item, $key) {
+                \Log::info('Session cart item:', [
+                    'item_key' => $key,
+                    'product_id' => $item['product']->id ?? 'N/A',
+                    'price' => $item['price'] ?? 0,
+                    'quantity' => $item['quantity'] ?? 0
+                ]);
+                
+                return [
+                    'id' => $key,
+                    'item_id' => $key,
+                    'product_id' => $item['product']->id ?? null,
+                    'product_name' => $item['product']->translate('title') ?? $item['product']->title ?? 'Untitled',
+                    'product_slug' => $item['product']->slug ?? null,
+                    'product_image' => isset($item['product']->mainImage) && $item['product']->mainImage() ? 
+                        asset('storage/' . $item['product']->mainImage()->first()->file_path) : null,
+                    'variant_id' => $item['variant_id'] ?? null,
+                    'quantity' => $item['quantity'] ?? 0,
+                    'price' => $item['price'] ?? 0,
+                    'total' => $item['total'] ?? 0,
+                    'options' => $item['options'] ?? []
+                ];
+            })->values()->toArray();
         }
+
+        \Log::info('Final cart summary items:', [
+            'items_count' => count($items),
+            'items_structure' => $items
+        ]);
 
         return [
             'items' => $items,
-            'subtotal' => $cart->subtotal ?? 0,
-            'tax' => $cart->tax ?? 0,
-            'shipping' => $cart->shipping ?? 0,
-            'discount' => $cart->discount ?? 0,
-            'total' => $cart->total ?? 0,
+            'subtotal' => $cart->subtotal,
+            'tax' => $cart->tax,
+            'shipping' => $cart->shipping,
+            'discount' => $cart->discount,
+            'total' => $cart->total,
             'item_count' => self::totalQuantity(),
             'source' => $cart->source
         ];
@@ -682,7 +699,7 @@ class Cart extends Model
         }
         
         if (!empty($options)) {
-            ksort($options); // Sort to ensure consistent keys
+            ksort($options);
             $key .= "_" . md5(json_encode($options));
         }
         
@@ -708,34 +725,23 @@ class Cart extends Model
         $cart = self::getCurrentCart();
 
         foreach ($sessionCart->items as $item) {
-            // Get correct price
-            $price = $item['product']->price;
-            
-            if ($item['variant_id']) {
-                $variant = \App\Models\ProductVariant::find($item['variant_id']);
-                if ($variant && $variant->price > 0) {
-                    $price = $variant->price;
-                }
-            }
-            
             $existingItem = $cart->items()
                 ->where('product_id', $item['product_id'])
                 ->where('variant_id', $item['variant_id'])
-                ->where('options', json_encode($item['options'] ?? []))
+                ->where('options', json_encode($item['options']))
                 ->first();
 
             if ($existingItem) {
                 $existingItem->update([
                     'quantity' => $existingItem->quantity + $item['quantity'],
-                    'price' => $price
                 ]);
             } else {
                 $cart->items()->create([
                     'product_id' => $item['product_id'],
                     'variant_id' => $item['variant_id'],
                     'quantity' => $item['quantity'],
-                    'price' => $price,
-                    'options' => json_encode($item['options'] ?? [])
+                    'price' => $item['price'],
+                    'options' => json_encode($item['options']),
                 ]);
             }
         }
@@ -776,12 +782,6 @@ class Cart extends Model
     public function mergeGuestCart($guestCart)
     {
         foreach ($guestCart->items as $item) {
-            // Get correct price
-            $price = $item->product->price;
-            if ($item->variant_id && $item->variant && $item->variant->price > 0) {
-                $price = $item->variant->price;
-            }
-            
             $existingItem = $this->items()
                 ->where('product_id', $item->product_id)
                 ->where('variant_id', $item->variant_id)
@@ -790,15 +790,14 @@ class Cart extends Model
 
             if ($existingItem) {
                 $existingItem->update([
-                    'quantity' => $existingItem->quantity + $item->quantity,
-                    'price' => $price
+                    'quantity' => $existingItem->quantity + $item->quantity
                 ]);
             } else {
                 $this->items()->create([
                     'product_id' => $item->product_id,
                     'variant_id' => $item->variant_id,
                     'quantity' => $item->quantity,
-                    'price' => $price,
+                    'price' => $item->price,
                     'options' => $item->options
                 ]);
             }
@@ -813,28 +812,5 @@ class Cart extends Model
     public static function getCartCount()
     {
         return self::totalQuantity();
-    }
-
-    /**
-     * Get total cart amount
-     */
-    public static function totalAmount()
-    {
-        $cart = self::getCart();
-        return $cart->total ?? 0;
-    }
-
-    /**
-     * Get cart items (alias for getCartSummary but returns only items)
-     */
-    public static function getItems()
-    {
-        $cart = self::getCart();
-        
-        if ($cart->source === 'database') {
-            return $cart->items ?? [];
-        } else {
-            return $cart->items ?? [];
-        }
     }
 }

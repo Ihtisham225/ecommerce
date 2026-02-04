@@ -91,18 +91,33 @@
                             @forelse($documents as $document)
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <td class="px-4 py-2 border relative">
-                                        <!-- Clickable Document Name -->
-                                        <span 
-                                            class="copy-url text-blue-600 cursor-pointer hover:underline"
-                                            data-url="{{ url(Storage::url($document->file_path)) }}"
-                                            title="{{ __('Click to copy file URL') }}"
+                                        <a 
+                                            href="{{ $document->url }}" 
+                                            target="_blank"
+                                            class="block"
+                                            title="Open document"
                                         >
-                                            {{ $document->name }}
-                                        </span>
-                                        <!-- Tooltip -->
-                                        <div class="copy-tooltip absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 transition-opacity duration-300 pointer-events-none">
-                                            Copied!
-                                        </div>
+                                            @if(Str::startsWith($document->mime_type, 'image/'))
+                                                <!-- Image Preview -->
+                                                <img 
+                                                    src="{{ $document->url }}" 
+                                                    alt="{{ $document->name }}"
+                                                    class="h-16 w-16 object-fit rounded border"
+                                                >
+
+                                            @elseif($document->mime_type === 'application/pdf')
+                                                <!-- PDF Preview -->
+                                                <div class="flex items-center justify-center h-16 w-16 bg-red-100 text-red-600 rounded border">
+                                                    📄
+                                                </div>
+
+                                            @else
+                                                <!-- Generic File Preview -->
+                                                <div class="flex items-center justify-center h-16 w-16 bg-gray-100 text-gray-600 rounded border">
+                                                    📁
+                                                </div>
+                                            @endif
+                                        </a>
                                     </td>
                                     <td class="px-4 py-2 border capitalize">{{ $document->document_type }}</td>
                                     <td class="px-4 py-2 border capitalize">{{ $document->file_type }}</td>
@@ -118,19 +133,6 @@
                                     </td>
                                     <td class="px-4 py-2 border">
                                         <div class="flex space-x-3">
-                                            <!-- Show -->
-                                            <a href="{{ route('admin.documents.show', $document) }}" 
-                                            class="text-blue-600 hover:text-blue-800" 
-                                            title="{{ __('View Details') }}">
-                                                <!-- Eye icon -->
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </a>
-
                                            <!-- Edit -->
                                             <a href="{{ route('admin.documents.edit', $document) }}" 
                                             class="text-yellow-600 hover:text-yellow-800" 

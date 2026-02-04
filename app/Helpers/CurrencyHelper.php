@@ -16,7 +16,7 @@ class CurrencyHelper
         'SAR' => '﷼',
         'CAD' => '$',
         'AUD' => '$',
-        'KWD' => 'K.D',
+        'KWD' => 'KD',
     ];
 
     /**
@@ -25,7 +25,7 @@ class CurrencyHelper
     public static function getCurrencySymbol()
     {
         try {
-            $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+            $storeSetting = StoreSetting::first();
             $currencyCode = $storeSetting?->currency_code ?? 'USD';
             return self::$currencySymbols[$currencyCode] ?? $currencyCode;
         } catch (\Exception $e) {
@@ -39,7 +39,7 @@ class CurrencyHelper
     public static function getCurrencyCode()
     {
         try {
-            $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+            $storeSetting = StoreSetting::first();
             return $storeSetting?->currency_code ?? 'USD';
         } catch (\Exception $e) {
             return 'USD'; // Fallback

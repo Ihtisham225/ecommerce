@@ -22,7 +22,7 @@ return new class extends Migration
             $table->decimal('price', 15, 3);
             $table->decimal('subtotal', 15, 3)->nullable();
             $table->decimal('total', 15, 3);
-            $table->decimal('tax', 15, 3);
+            $table->decimal('tax', 15, 3)->nullable();
             $table->timestamps();
         });
     }

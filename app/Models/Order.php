@@ -13,7 +13,7 @@ class Order extends Model
     protected $fillable = [
         'order_number', 'customer_id', 'status', 'source', 'platform', 'external_id',
         'subtotal', 'discount_total', 'tax_total', 'shipping_total', 'grand_total',
-        'payment_status', 'shipping_status', 'notes', 'admin_notes',
+        'payment_status', 'shipping_status', 'notes', 'admin_notes', 'tax_inclusive', 'tax_rate',
         'shipping_method', 'created_by', 'cancelled_at', 'completed_at', 'raw_data'
     ];
 
@@ -21,24 +21,13 @@ class Order extends Model
         'subtotal' => 'decimal:3',
         'discount_total' => 'decimal:3',
         'tax_total' => 'decimal:3',
+        'tax_rate' => 'decimal:3',
         'shipping_total' => 'decimal:3',
         'grand_total' => 'decimal:3',
         'cancelled_at' => 'datetime',
         'completed_at' => 'datetime',
         'raw_data' => 'array',
     ];
-
-    protected static function booted()
-    {
-        static::saving(function ($order) {
-            $order->subtotal = $order->items()->sum(DB::raw('price * quantity'));
-            $order->discount_total = $order->adjustments()
-                ->where('type', 'discount')
-                ->sum('amount');
-            $order->tax_total = $order->items()->sum('tax');
-            $order->grand_total = $order->subtotal + $order->shipping_total + $order->tax_total - $order->discount_total;
-        });
-    }
 
     /** Relations */
     public function customer()

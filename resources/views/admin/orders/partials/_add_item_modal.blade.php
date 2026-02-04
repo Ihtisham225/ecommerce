@@ -92,27 +92,56 @@
                     <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Select Variant</h3>
                     <template x-for="variant in selectedProduct.variants" :key="variant.id">
                         <button @click="selectVariant(variant)" 
-                                :class="selectedVariant?.id === variant.id ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'"
-                                class="w-full p-3 border rounded mb-2 text-left">
+                                :class="selectedVariant?.id === variant.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-700' : 'border-gray-200 dark:border-gray-600'"
+                                class="w-full p-3 border rounded mb-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             <div class="flex justify-between">
-                                <span x-text="variant.name"></span>
-                                <span x-text="formatCurrency(variant.price)"></span>
+                                <span class="text-gray-900 dark:text-white" x-text="variant.name"></span>
+                                <span class="font-medium text-gray-900 dark:text-white" x-text="formatCurrency(variant.price)"></span>
                             </div>
-                            <div class="text-xs text-gray-500 mt-1" x-text="`SKU: ${variant.sku} | Stock: ${variant.stock_quantity}`"></div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="`SKU: ${variant.sku} | Stock: ${variant.stock_quantity}`"></div>
                         </button>
                     </template>
                 </div>
             </template>
 
+            {{-- Simple Product Selected (no variants) --}}
+            <template x-if="selectedProduct && !selectedProduct.variants?.length">
+                <div class="p-6">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <div>
+                                <p class="font-medium text-blue-800 dark:text-blue-300" x-text="selectedProduct.title['en']"></p>
+                                <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                                    Ready to add to order. Click "Add to Order" below.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
 
             {{-- No Results --}}
             <template x-if="results.length === 0 && search.length >= 2 && !loading">
                 <div class="p-8 text-center text-gray-500 dark:text-gray-400">
-                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
-                    <p class="text-sm">No products found matching "<span x-text="search"></span>"</p>
+                    <p class="text-sm">No products found matching "<span x-text="search" class="font-medium"></span>"</p>
                     <p class="text-xs mt-1">Try searching by product name, SKU, or variant name</p>
+                </div>
+            </template>
+
+            {{-- Initial State --}}
+            <template x-if="results.length === 0 && search.length < 2">
+                <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <p class="text-sm">Search for products to add to order</p>
+                    <p class="text-xs mt-1">Type at least 2 characters to start searching</p>
                 </div>
             </template>
         </div>
@@ -122,7 +151,7 @@
             <div class="flex items-center justify-between">
                 <div x-show="selectedProduct" class="text-sm text-gray-600 dark:text-gray-400">
                     <template x-if="selectedVariant">
-                        <span x-text="`Selected: ${selectedVariant.name}`"></span>
+                        <span x-text="`Selected: ${selectedVariant.title || selectedVariant.name}`"></span>
                     </template>
                     <template x-if="!selectedVariant && selectedProduct">
                         <span x-text="`Selected: ${selectedProduct.title['en']}`"></span>
@@ -137,10 +166,14 @@
                     </button>
                     <button
                         @click="addToOrder()"
-                        :disabled="!selectedProduct || (selectedProduct.has_options && !selectedVariant)"
-                        class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        :disabled="!selectedProduct || (selectedProduct.has_options && !selectedVariant) || addingItem"
+                        class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
-                        Add to Order
+                        <svg x-show="addingItem" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="addingItem ? 'Adding...' : 'Add to Order'"></span>
                     </button>
                 </div>
             </div>
@@ -158,6 +191,7 @@ function addItemModal() {
         selectedVariant: null,
         loading: false,
         searchCount: 0,
+        addingItem: false,
 
         get searchStats() {
             if (this.search.length === 0) return 'Start typing to search products...';
@@ -173,7 +207,7 @@ function addItemModal() {
             }
 
             this.loading = true;
-            this.searchCount++;
+            const currentSearchCount = ++this.searchCount;
 
             try {
                 const response = await fetch(`/admin/products/search?q=${encodeURIComponent(this.search)}&t=${Date.now()}`);
@@ -184,14 +218,13 @@ function addItemModal() {
                 
                 const data = await response.json();
                 
-                // Only update results if this is the most recent search
-                if (this.searchCount === this.searchCount) {
+                if (currentSearchCount === this.searchCount) {
                     this.results = Array.isArray(data) ? data : [];
                 }
             } catch (error) {
                 console.error('Search error:', error);
                 this.results = [];
-                // You could show a user-friendly error message here
+                this.showNotification('Failed to search products', 'error');
             } finally {
                 this.loading = false;
             }
@@ -202,7 +235,7 @@ function addItemModal() {
 
             // Simple product (no options)
             if (!product.has_options) {
-                this.selectedVariant = null; // simple item, no variant required
+                this.selectedVariant = null;
                 return;
             }
 
@@ -219,28 +252,56 @@ function addItemModal() {
             this.selectedVariant = variant;
         },
 
-        addToOrder() {
+        async addToOrder() {
             const p = this.selectedProduct;
 
             if (!p) return;
 
             const v = p.has_options ? this.selectedVariant : null;
 
-            const price = v ? parseFloat(v.price) : parseFloat(p.price);
+            // Validation
+            if (p.has_options && !v) {
+                this.showNotification('Please select a variant first', 'error');
+                return;
+            }
 
-            const item = {
-                product_id: p.id,
-                product_variant_id: v ? v.id : null,
-                sku: v ? v.sku : p.sku,
-                title: p.title['en'] || 'Untitled Product',
-                variant_name: v ? v.name : null,
-                price: price,
-                qty: 1,
-                total: price,
-            };
+            this.addingItem = true;
 
-            window.dispatchEvent(new CustomEvent('add-item-to-order', { detail: item }));
-            this.reset();
+            try {
+                const price = v ? parseFloat(v.price) : parseFloat(p.price);
+
+                const item = {
+                    product_id: p.id,
+                    product_variant_id: v ? v.id : null,
+                    sku: v ? v.sku : p.sku,
+                    title: p.title['en'] || 'Untitled Product',
+                    variant_name: v ? (v.title || v.name) : null,
+                    price: price,
+                    quantity: 1, // Changed from 'qty' to 'quantity' to match backend
+                    total: price,
+                };
+
+                // ✅ CORRECT: Dispatch event with proper detail structure
+                window.dispatchEvent(new CustomEvent('add-item-to-order', {
+                    detail: { item } // Wrap in object
+                }));
+                
+                // Show success notification
+                const productName = p.title['en'] || 'Product';
+                const variantName = v ? `(${v.title || v.name})` : '';
+                this.showNotification(`✅ ${productName} ${variantName} added to order`, 'success');
+                
+                // Close modal after a short delay
+                setTimeout(() => {
+                    this.reset();
+                }, 500);
+
+            } catch (error) {
+                console.error('Error adding item to order:', error);
+                this.showNotification('Failed to add item to order', 'error');
+            } finally {
+                this.addingItem = false;
+            }
         },
 
         formatCurrency(amount) {
@@ -255,11 +316,58 @@ function addItemModal() {
             this.selectedProduct = null;
             this.selectedVariant = null;
             this.loading = false;
+            this.addingItem = false;
         },
 
-        showNotification(message) {
-            // You can implement a notification system here
-            console.log(message);
+        showNotification(message, type = 'info') {
+            const bgColor =
+                type === 'success' ? 'bg-green-600' :
+                type === 'error' ? 'bg-red-600' :
+                type === 'warning' ? 'bg-yellow-600' :
+                'bg-blue-600';
+
+            const icon = 
+                type === 'success' ? '✓' :
+                type === 'error' ? '✗' :
+                type === 'warning' ? '⚠' :
+                'ℹ';
+
+            // Remove any existing notifications
+            document.querySelectorAll('.custom-notification').forEach(el => el.remove());
+
+            const notification = document.createElement('div');
+            notification.className = `custom-notification fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out translate-x-full z-[100] flex items-center gap-2`;
+            notification.innerHTML = `
+                <span class="font-bold">${icon}</span>
+                <span>${message}</span>
+            `;
+
+            document.body.appendChild(notification);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                notification.classList.remove('translate-x-full');
+            });
+
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 4000);
+
+            // Optional: Click to dismiss
+            notification.addEventListener('click', () => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            });
         }
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StoreSetting;
+use App\Models\GoogleMerchantSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,33 +14,43 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Yajra\DataTables\DataTables;
 use Illuminate\Validation\Rule;
+use App\Services\GoogleMerchantService;
 use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
+    protected $merchantService;
+    protected $googleSettings;
+
+    public function __construct(GoogleMerchantService $merchantService)
+    {
+        $this->merchantService = $merchantService;
+        $this->googleSettings = GoogleMerchantSetting::first();
+    }
+
     public function index(Request $request)
     {
         if ($request->ajax()) {
             $products = Product::query()
-                ->select(['id', 'title', 'is_active', 'is_featured', 'stock_status', 'created_at'])->latest();
-                
+            ->select(['id', 'title', 'is_active', 'is_featured', 'stock_status', 'google_last_synced', 'google_status', 'created_at'])->latest();
+
             // Status filter
             if ($request->filled('status')) {
                 if ($request->status === 'active') {
                     $products->where(function ($q) {
                         $q->where('is_active', true)
-                        ->orWhere('is_active', 1)
-                        ->orWhere('is_active', '1');
+                            ->orWhere('is_active', 1)
+                            ->orWhere('is_active', '1');
                     });
                 } elseif ($request->status === 'draft') {
                     $products->where(function ($q) {
                         $q->where('is_active', false)
-                        ->orWhere('is_active', 0)
-                        ->orWhere('is_active', '0');
+                            ->orWhere('is_active', 0)
+                            ->orWhere('is_active', '0');
                     });
                 }
             }
-            
+
             // Featured filter
             if ($request->filled('featured')) {
                 if ($request->featured == 1 || $request->featured === '1' || $request->featured === true) {
@@ -52,12 +63,12 @@ class ProductController extends Controller
                     });
                 }
             }
-            
+
             // Stock status filter
             if ($request->filled('stock_status')) {
                 $products->where('stock_status', $request->stock_status);
             }
-            
+
             // Date range filter
             if ($request->has('date_range') && $request->date_range !== '') {
                 $now = now();
@@ -88,7 +99,7 @@ class ProductController extends Controller
                         break;
                 }
             }
-            
+
             return DataTables::of($products)
                 ->addColumn('title', function ($row) {
                     try {
@@ -158,6 +169,63 @@ class ProductController extends Controller
                         </button>
                     HTML;
                 })
+                ->addColumn('google_sync', function ($row) {
+                    $status = $row->google_status ?? 'not_synced';
+                    $lastSynced = $row->google_last_synced;
+                    
+                    $statusLabels = [
+                        'active' => 'Active',
+                        'pending' => 'Pending',
+                        'error' => 'Error',
+                        'disapproved' => 'Disapproved',
+                        'not_synced' => 'Not Synced'
+                    ];
+                    
+                    $statusColors = [
+                        'active' => 'green',
+                        'pending' => 'yellow',
+                        'error' => 'red',
+                        'disapproved' => 'orange',
+                        'not_synced' => 'gray'
+                    ];
+                    
+                    $label = $statusLabels[$status] ?? 'Not Synced';
+                    $color = $statusColors[$status] ?? 'gray';
+                    
+                    $statusHtml = <<<HTML
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                                    bg-{$color}-100 text-{$color}-800 dark:bg-{$color}-900 dark:text-{$color}-200">
+                            {$label}
+                        </span>
+                    HTML;
+                    
+                    $lastSyncHtml = '';
+                    if ($lastSynced) {
+                        $lastSyncHtml = <<<HTML
+                            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Last: {$lastSynced->format('M d, H:i')}
+                            </div>
+                        HTML;
+                    }
+                    
+                    $syncButton = <<<HTML
+                        <button data-id="{$row->id}" 
+                                class="sync-google-btn inline-flex items-center px-2 py-1 mt-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition duration-150">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Sync
+                        </button>
+                    HTML;
+                    
+                    return <<<HTML
+                        <div class="text-center">
+                            <div>{$statusHtml}</div>
+                            {$lastSyncHtml}
+                            {$syncButton}
+                        </div>
+                    HTML;
+                })
                 ->addColumn('actions', function ($row) {
                     $showUrl = route('admin.products.show', $row->id);
                     $editUrl = route('admin.products.edit', $row->id);
@@ -199,7 +267,7 @@ class ProductController extends Controller
                     HTML;
                 })
                 ->editColumn('created_at', fn($row) => $row->created_at?->format('Y-m-d H:i'))
-                ->rawColumns(['status', 'featured', 'stock_status', 'actions'])
+                ->rawColumns(['status', 'featured', 'stock_status', 'google_sync', 'actions'])
                 ->make(true);
         }
 
@@ -231,7 +299,7 @@ class ProductController extends Controller
             'tags:id,name,slug',
         ]);
 
-        $storeSetting = \App\Models\StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = \App\Models\StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
@@ -284,10 +352,10 @@ class ProductController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
-        $storeSetting = StoreSetting::where('user_id', auth()->id())->first();
+        $storeSetting = StoreSetting::first();
         $currencyCode = $storeSetting?->currency_code ?? 'USD';
         $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
 
@@ -308,7 +376,7 @@ class ProductController extends Controller
                 }
             }
         }
-        
+
         // convert empty strings to nulls
         foreach (['weight', 'width', 'height', 'length'] as $f) {
             if ($request->has($f) && in_array($request->$f, ['null', ''])) {
@@ -369,7 +437,7 @@ class ProductController extends Controller
         try {
             $validatedTitle = $validated['title']['en'] ?? $product->title['en'] ?? 'Untitled';
             $skuAndSlug = Product::generateUniqueSkuAndSlug($validatedTitle, $product->id);
-                
+
             // extract organization data
             $org = $validated['organizationData'] ?? [];
 
@@ -461,7 +529,16 @@ class ProductController extends Controller
                 'meta_title' => $seoTitle,
                 'meta_description' => $seoDescription,
             ]);
-            
+
+            // Auto-sync if enabled in settings
+            if ($this->shouldAutoSync()) {
+                $result = $this->merchantService->syncProduct($product);
+                
+                if (!$result['success']) {
+                    Log::error('Google Merchant sync failed for product ' . $product->id . ': ' . $result['message']);
+                }
+            }
+
             DB::commit();
 
             // ✅ Reload product with relations for frontend
@@ -483,7 +560,6 @@ class ProductController extends Controller
                 'updated_at' => now()->toDateTimeString(),
                 'product' => $product,
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -493,6 +569,19 @@ class ProductController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Check if auto-sync is enabled in Google Merchant settings
+     */
+    private function shouldAutoSync(): bool
+    {
+        if (!$this->googleSettings) {
+            return false;
+        }
+        
+        return $this->googleSettings->is_enabled && 
+               $this->googleSettings->auto_sync;
     }
 
     public function bulk(Request $request)
@@ -537,7 +626,7 @@ class ProductController extends Controller
                     Product::whereIn('id', $ids)->update(['stock_status' => 'out_of_stock']);
                     $message = 'Selected products have been marked as out of stock.';
                     break;
-                
+
                 case 'in_stock':
                     Product::whereIn('id', $ids)->update(['stock_status' => 'in_stock']);
                     $message = 'Selected products have been marked as in stock.';
@@ -605,7 +694,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        $product->deleteCompletely(); 
+        $product->deleteCompletely();
     }
 
     /**
@@ -614,7 +703,7 @@ class ProductController extends Controller
     public function search(Request $request)
     {
         $query = $request->get('q');
-        
+
         if (empty($query) || strlen($query) < 2) {
             return response()->json([]);
         }
@@ -623,25 +712,25 @@ class ProductController extends Controller
 
         // Use raw SQL for better JSON searching if needed
         $products = Product::with(['variants', 'mainImage'])
-            ->where(function($q) use ($searchTerm) {
+            ->where(function ($q) use ($searchTerm) {
                 // Search in product title (handles JSON and translations)
-                $q->where(function($q2) use ($searchTerm) {
+                $q->where(function ($q2) use ($searchTerm) {
                     // Direct JSON field search
                     $q2->where('title->en', 'LIKE', $searchTerm)
-                       ->orWhere('title->ar', 'LIKE', $searchTerm);
+                        ->orWhere('title->ar', 'LIKE', $searchTerm);
                 })
-                ->orWhere('sku', 'LIKE', $searchTerm)
-                ->orWhereHas('translations', function($q2) use ($searchTerm) {
-                    // Search in translations table
-                    $q2->where('field', 'title')
-                       ->where('value', 'LIKE', $searchTerm);
-                });
+                    ->orWhere('sku', 'LIKE', $searchTerm)
+                    ->orWhereHas('translations', function ($q2) use ($searchTerm) {
+                        // Search in translations table
+                        $q2->where('field', 'title')
+                            ->where('value', 'LIKE', $searchTerm);
+                    });
             })
-            ->orWhereHas('variants', function($q) use ($searchTerm) {
+            ->orWhereHas('variants', function ($q) use ($searchTerm) {
                 // Search in variant titles, SKUs, and barcodes
                 $q->where('title', 'LIKE', $searchTerm)
-                  ->orWhere('sku', 'LIKE', $searchTerm)
-                  ->orWhere('barcode', 'LIKE', $searchTerm);
+                    ->orWhere('sku', 'LIKE', $searchTerm)
+                    ->orWhere('barcode', 'LIKE', $searchTerm);
             })
             ->active()
             ->orderByRaw("
@@ -653,7 +742,7 @@ class ProductController extends Controller
             ", [$query . '%', $query . '%'])
             ->limit(50)
             ->get()
-            ->map(function($product) {
+            ->map(function ($product) {
                 return $this->formatProductForSearch($product);
             });
 
@@ -672,9 +761,9 @@ class ProductController extends Controller
         }
 
         // Format variants with additional data
-        $variants = $product->variants->map(function($variant) use ($product) {
+        $variants = $product->variants->map(function ($variant) use ($product) {
             $variantImage = $variant->image ? $variant->image->file_url : null;
-            
+
             return [
                 'id' => $variant->id,
                 'title' => $variant->title,
@@ -706,5 +795,92 @@ class ProductController extends Controller
             'charge_tax' => (bool) $product->charge_tax,
             'status' => $product->is_active ? 'active' : 'inactive',
         ];
+    }
+
+    /**
+     * Sync single product to Google Merchant
+     */
+    public function syncToGoogle(Product $product)
+    {
+        try {
+            if (!$this->merchantService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Google Merchant is not configured'
+                ], 400);
+            }
+            
+            $result = $this->merchantService->syncProduct($product);
+            
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Product synced to Google Merchant'
+                ]);
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Sync failed: ' . $result['message']
+            ], 500);
+            
+        } catch (\Exception $e) {
+            \Log::error('Google Sync Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Sync error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk sync products to Google Merchant
+     */
+    public function bulkSyncToGoogle(Request $request)
+    {
+        $validated = $request->validate([
+            'product_ids' => 'required|array',
+            'product_ids.*' => 'exists:products,id'
+        ]);
+        
+        if (!$this->merchantService->isConfigured()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Google Merchant is not configured'
+            ], 400);
+        }
+        
+        $products = Product::whereIn('id', $validated['product_ids'])->get();
+        
+        $results = [
+            'total' => $products->count(),
+            'successful' => 0,
+            'failed' => 0,
+            'errors' => []
+        ];
+        
+        foreach ($products as $product) {
+            $result = $this->merchantService->syncProduct($product);
+            
+            if ($result['success']) {
+                $results['successful']++;
+            } else {
+                $results['failed']++;
+                $results['errors'][] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->title,
+                    'error' => $result['message']
+                ];
+            }
+            
+            // Small delay to avoid rate limiting
+            usleep(50000); // 0.05 seconds
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Synced {$results['successful']} of {$results['total']} products to Google Merchant",
+            'results' => $results
+        ]);
     }
 }

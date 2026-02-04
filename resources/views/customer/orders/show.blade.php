@@ -113,10 +113,10 @@
                                             </div>
                                             <div class="text-right">
                                                 <p class="font-semibold text-gray-900 dark:text-white">
-                                                    {{ $currencySymbol }}{{ number_format($item->price, $decimals) }} × {{ $item->quantity }}
+                                                    {{ format_currency($item->price, $decimals) }} × {{ $item->quantity }}
                                                 </p>
                                                 <p class="font-bold text-lg text-indigo-600 dark:text-indigo-400">
-                                                    {{ $currencySymbol }}{{ number_format($item->total, $decimals) }}
+                                                    {{ format_currency($item->total, $decimals) }}
                                                 </p>
                                             </div>
                                         </div>
@@ -132,14 +132,14 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
                                     <span class="font-medium text-gray-900 dark:text-white">
-                                        {{ $currencySymbol }}{{ number_format($order->subtotal, $decimals) }}
+                                        {{ format_currency($order->subtotal, $decimals) }}
                                     </span>
                                 </div>
                                 @if($order->discount_total > 0)
                                 <div class="flex justify-between">
                                     <span class="text-gray-600 dark:text-gray-400">Discount</span>
                                     <span class="font-medium text-red-600 dark:text-red-400">
-                                        -{{ $currencySymbol }}{{ number_format($order->discount_total, $decimals) }}
+                                        -{{ format_currency($order->discount_total, $decimals) }}
                                     </span>
                                 </div>
                                 @endif
@@ -147,7 +147,7 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600 dark:text-gray-400">Tax</span>
                                     <span class="font-medium text-gray-900 dark:text-white">
-                                        {{ $currencySymbol }}{{ number_format($order->tax_total, $decimals) }}
+                                        {{ format_currency($order->tax_total, $decimals) }}
                                     </span>
                                 </div>
                                 @endif
@@ -155,14 +155,14 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600 dark:text-gray-400">Shipping</span>
                                     <span class="font-medium text-gray-900 dark:text-white">
-                                        {{ $currencySymbol }}{{ number_format($order->shipping_total, $decimals) }}
+                                        {{ format_currency($order->shipping_total, $decimals) }}
                                     </span>
                                 </div>
                                 @endif
                                 <div class="flex justify-between text-lg font-bold pt-2 border-t border-gray-200 dark:border-gray-600">
                                     <span>Total</span>
                                     <span class="text-xl">
-                                        {{ $currencySymbol }}{{ number_format($order->grand_total, $decimals) }}
+                                        {{ format_currency($order->grand_total, $decimals) }}
                                     </span>
                                 </div>
                             </div>
@@ -237,20 +237,20 @@
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Order Total</span>
                                         <span class="font-semibold text-gray-900 dark:text-white">
-                                            {{ $currencySymbol }}{{ number_format($order->grand_total, $decimals) }}
+                                            {{ format_currency($order->grand_total, $decimals) }}
                                         </span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Amount Paid</span>
                                         <span class="font-semibold text-green-600 dark:text-green-400">
-                                            {{ $currencySymbol }}{{ number_format($totalPaid, $decimals) }}
+                                            {{ format_currency($totalPaid, $decimals) }}
                                         </span>
                                     </div>
                                     @if($balanceDue > 0)
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Balance Due</span>
                                         <span class="font-semibold text-orange-600 dark:text-orange-400">
-                                            {{ $currencySymbol }}{{ number_format($balanceDue, $decimals) }}
+                                            {{ format_currency($balanceDue, $decimals) }}
                                         </span>
                                     </div>
                                     @endif
@@ -286,7 +286,7 @@
                                                     {{ ucfirst($payment->method) }} Payment
                                                 </span>
                                                 <span class="font-medium">
-                                                    {{ $currencySymbol }}{{ number_format($payment->amount, $decimals) }}
+                                                    {{ format_currency($payment->amount, $decimals) }}
                                                 </span>
                                             </div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">

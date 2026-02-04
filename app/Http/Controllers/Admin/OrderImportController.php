@@ -54,7 +54,6 @@ class OrderImportController extends Controller
                 'path' => $path,
                 'total' => $total,
             ]);
-
         } catch (\Exception $e) {
             Log::error('Order upload failed', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Upload failed: ' . $e->getMessage()], 500);
@@ -98,7 +97,6 @@ class OrderImportController extends Controller
                     $this->processOrderRecord($record, $currentRow);
                     $processed++;
                     $currentRow++;
-
                 } catch (\Exception $e) {
                     $errorMsg = "Row {$currentRow}: " . $e->getMessage();
                     Log::error('Order import row failed', ['error' => $e->getMessage(), 'record' => $record]);
@@ -112,7 +110,6 @@ class OrderImportController extends Controller
                 'errors' => $errors,
                 'message' => $processed > 0 ? "Processed {$processed} orders" : "No orders processed",
             ]);
-
         } catch (\Exception $e) {
             Log::error('Order chunk processing failed', ['error' => $e->getMessage()]);
             return response()->json([
@@ -203,7 +200,6 @@ class OrderImportController extends Controller
             ]);
 
             DB::commit();
-
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -255,7 +251,7 @@ class OrderImportController extends Controller
         // Generate unique order number
         $prefix = 'ORD';
         $date = now()->format('Ymd');
-        
+
         do {
             $number = $prefix . $date . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
         } while (Order::where('order_number', $number)->exists());
@@ -270,7 +266,7 @@ class OrderImportController extends Controller
     {
         // WooCommerce CSV often has multiple items in separate rows
         // For single-row per order format, we need to parse item data
-        
+
         $itemName = $record['Item Name'] ?? $record['Product'] ?? null;
         if (!$itemName) {
             return;
@@ -403,7 +399,7 @@ class OrderImportController extends Controller
 
         $value = (string)$value;
         $value = preg_replace('/[^\d.-]/', '', $value);
-        
+
         return (float)$value;
     }
 
@@ -456,7 +452,7 @@ class OrderImportController extends Controller
             'SAR' => '﷼',
             'CAD' => '$',
             'AUD' => '$',
-            'KWD' => 'K.D',
+            'KWD' => 'KD',
         ];
 
         return $symbols[strtoupper($currencyCode)] ?? $currencyCode;
@@ -489,7 +485,7 @@ class OrderImportController extends Controller
     {
         // This is simplified - you might want to map based on WooCommerce status
         $paidMethods = ['paid', 'completed', 'processing', 'cod', 'bacs', 'cheque'];
-        
+
         if (in_array(strtolower($paymentMethod), $paidMethods)) {
             return 'paid';
         }
@@ -555,7 +551,6 @@ class OrderImportController extends Controller
                 'success' => true,
                 'message' => 'Import files deleted successfully'
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
