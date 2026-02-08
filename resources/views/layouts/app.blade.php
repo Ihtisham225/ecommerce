@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+      x-data="{
+          sidebarOpen: false
+      }"
       dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
@@ -22,22 +25,27 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased">
+    <!-- Dark mode class is managed by navigation component -->
     <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
         @include('layouts.navigation')
 
-        <!-- Page Heading -->
-        @isset($header)
-            <header class="bg-white dark:bg-gray-800 shadow">
-                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    {{ $header }}
-                </div>
-            </header>
-        @endisset
-
-        <!-- Page Content -->
-        <main>
-            {{ $slot }}
-        </main>
+        <!-- Page Content with sidebar -->
+        <div class="flex pt-16">
+            <!-- Sidebar -->
+            @include('layouts.sidebar')
+            
+            <!-- Main Content - Add margin for sidebar on desktop -->
+            <main class="flex-1 p-4 md:p-6 w-full md:ml-64">
+                <!-- Page Heading -->
+                @isset($header)
+                    <div class="mb-6">
+                        {{ $header }}
+                    </div>
+                @endisset
+                
+                {{ $slot }}
+            </main>
+        </div>
     </div>
 
     <!-- Tom Select -->
@@ -67,7 +75,6 @@
             });
         });
     </script>
-
 
     @stack('scripts')
 </body>
