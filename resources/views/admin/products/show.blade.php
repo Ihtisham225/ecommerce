@@ -36,7 +36,7 @@
     $currencySymbols = [
     'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'JPY' => '¥',
     'CAD' => 'C$', 'AUD' => 'A$', 'CHF' => 'CHF', 'CNY' => '¥',
-    'INR' => '₹', 'KWD' => 'KD', 'SAR' => 'SR', 'AED' => 'AED'
+    'INR' => '₹', 'PKR' => 'Rs', 'KWD' => 'KD', 'SAR' => 'SR', 'AED' => 'AED'
     ];
     $currencySymbol = $currencySymbols[$currencyCode] ?? $currencyCode;
     $decimals = $currencyCode === 'KWD' ? 3 : 2;

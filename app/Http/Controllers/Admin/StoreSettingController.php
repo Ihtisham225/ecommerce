@@ -643,6 +643,8 @@ class StoreSettingController extends Controller
             'OMR' => ['name' => 'Omani Rial', 'symbol' => 'ر.ع.'],
             'BHD' => ['name' => 'Bahraini Dinar', 'symbol' => '.د.ب'],
             'JOD' => ['name' => 'Jordanian Dinar', 'symbol' => 'د.ا'],
+            'PKR' => ['name' => 'Pakistani Rupee', 'symbol' => '₨'],
+            'INR' => ['name' => 'Indian Rupee', 'symbol' => '₹'],
         ];
     }
 }

@@ -131,12 +131,13 @@ class ProductController extends Controller
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
+        $collections = Collection::active()->withCount('products')->get();
 
         $currencySymbol = $this->getCurrencySymbol();
 
         $pageTitle = __('New Arrivals');
 
-        return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'))
+        return view('frontend.products.index', compact('products', 'categories', 'brands', 'collections', 'currencySymbol', 'pageTitle'))
             ->with('pageTitle', __('New Arrivals'));
     }
 
@@ -171,12 +172,13 @@ class ProductController extends Controller
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
+        $collections = Collection::active()->withCount('products')->get();
 
         $currencySymbol = $this->getCurrencySymbol();
 
         $pageTitle = __('Best Sellers');
 
-        return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'))
+        return view('frontend.products.index', compact('products', 'categories', 'brands', 'collections', 'currencySymbol', 'pageTitle'))
             ->with('pageTitle', __('Best Sellers'));
     }
 
@@ -195,12 +197,13 @@ class ProductController extends Controller
         $products = $query->paginate(12);
         $categories = Category::withCount('products')->get();
         $brands = Brand::withCount('products')->get();
+        $collections = Collection::active()->withCount('products')->get();
 
         $currencySymbol = $this->getCurrencySymbol();
 
         $pageTitle = __('Sale');
 
-        return view('frontend.products.index', compact('products', 'categories', 'brands', 'currencySymbol', 'pageTitle'))
+        return view('frontend.products.index', compact('products', 'categories', 'brands', 'collections', 'currencySymbol', 'pageTitle'))
             ->with('pageTitle', __('Sale'));
     }
 

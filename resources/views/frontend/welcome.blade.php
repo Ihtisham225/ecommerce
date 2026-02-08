@@ -319,16 +319,16 @@
                                                 $minPrice = $product->variants->min('price');
                                                 $maxPrice = $product->variants->max('price');
                                             @endphp
-                                            ${{ number_format($minPrice, 2) }}
+                                            {{ format_currency($minPrice, 2) }}
                                             @if($minPrice != $maxPrice)
-                                                - ${{ number_format($maxPrice, 2) }}
+                                                - {{ format_currency($maxPrice, 2) }}
                                             @endif
                                         @else
                                             <!-- Show single price for products without variants -->
-                                            ${{ number_format($product->current_price, 2) }}
+                                            {{ format_currency($product->current_price, 2) }}
                                             @if($product->compare_at_price && $product->compare_at_price > $product->current_price)
                                                 <span class="text-sm text-gray-500 line-through ml-2">
-                                                    ${{ number_format($product->compare_at_price, 2) }}
+                                                    {{ format_currency($product->compare_at_price, 2) }}
                                                 </span>
                                             @endif
                                         @endif
@@ -491,11 +491,11 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <span class="text-2xl font-bold text-gray-900 dark:text-white">
-                                        ${{ number_format($product->current_price, 2) }}
+                                        {{ format_currency($product->current_price, 2) }}
                                     </span>
                                     @if($product->compare_at_price && $product->compare_at_price > $product->current_price)
                                     <span class="text-sm text-gray-500 line-through ml-2">
-                                        ${{ number_format($product->compare_at_price, 2) }}
+                                        {{ format_currency($product->compare_at_price, 2) }}
                                     </span>
                                     @endif
                                 </div>
